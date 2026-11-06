@@ -1,0 +1,14 @@
+[
+  {
+    "url": "https://example.com/listing-detail-page",
+    "quote": "把来源里的原文复制到这里，至少 12 个字符",
+    "source_text": "选填。网站挡脚本时，把页面原文粘贴到这里；quote 必须能在这段文字里找到。把来源里的原文复制到这里，至少 12 个字符。",
+    "kind": "revenue",
+    "stance": "support",
+    "product": "产品名",
+    "category": "品类",
+    "number": "$170",
+    "metric": "过去 12 个月收入",
+    "collected_at": "2026-11-05"
+  }
+]

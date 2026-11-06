@@ -1,0 +1,345 @@
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  customType,
+  doublePrecision,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+const id = () => uuid("id").primaryKey().default(sql`gen_random_uuid()`);
+const createdAt = () =>
+  timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
+const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
+
+export const projects = pgTable("projects", {
+  id: id(),
+  tokenHash: text("token_hash").notNull().unique(),
+  productName: text("product_name").notNull(),
+  productUrl: text("product_url"),
+  stage: text("stage").notNull(),
+  goal: text("goal").notNull(),
+  targetMarket: text("target_market"),
+  budgetNote: text("budget_note"),
+  contact: text("contact").notNull(),
+  isOwnProduct: boolean("is_own_product").notNull().default(false),
+  paused: boolean("paused").notNull().default(false),
+  status: text("status").notNull().default("submitted"),
+  failedFrom: text("failed_from"),
+  failedReason: text("failed_reason"),
+  escalation: jsonb("escalation"),
+  pendingRequest: jsonb("pending_request"),
+  founderNote: text("founder_note"),
+  positioningVersion: integer("positioning_version").notNull().default(0),
+  round: integer("round").notNull().default(1),
+  createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const stateTransitions = pgTable(
+  "state_transitions",
+  {
+    id: id(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    fromStatus: text("from_status").notNull(),
+    toStatus: text("to_status").notNull(),
+    actor: text("actor").notNull(),
+    reason: text("reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("state_transitions_project_idx").on(t.projectId)],
+);
+
+export const clarifications = pgTable(
+  "clarifications",
+  {
+    id: id(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    why: text("why").notNull(),
+    answer: text("answer"),
+    answeredBy: text("answered_by"),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("clarifications_project_idx").on(t.projectId)],
+);
+
+export const projectImages = pgTable(
+  "project_images",
+  {
+    id: id(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    note: text("note"),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    data: bytea("data").notNull(),
+    uploadedBy: text("uploaded_by").notNull(),
+    analysisStatus: text("analysis_status").notNull().default("pending"),
+    analysis: jsonb("analysis"),
+    analysisError: text("analysis_error"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("project_images_project_idx").on(t.projectId)],
+);
+
+export const orders = pgTable("orders", {
+  id: id(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  sku: text("sku").notNull(),
+  quoteFen: integer("quote_fen"),
+  status: text("status").notNull().default("inquiry"),
+  deliveryStatus: text("delivery_status").notNull().default("not_started"),
+  founderMinutes: integer("founder_minutes").notNull().default(0),
+  createdAt: createdAt(),
+});
+
+export const payments = pgTable("payments", {
+  id: id(),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  amountFen: integer("amount_fen").notNull(),
+  method: text("method").notNull(),
+  reference: text("reference"),
+  paidAt: timestamp("paid_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const agentTasks = pgTable(
+  "agent_tasks",
+  {
+    id: id(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    agent: text("agent").notNull(),
+    status: text("status").notNull().default("running"),
+    trigger: text("trigger").notNull().default("normal"),
+    parentTaskId: uuid("parent_task_id"),
+    sendBackRoute: text("send_back_route"),
+    sendBackReason: text("send_back_reason"),
+    round: integer("round").notNull().default(1),
+    provider: text("provider"),
+    model: text("model"),
+    input: jsonb("input"),
+    output: jsonb("output"),
+    error: text("error"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    searchCalls: integer("search_calls").notNull().default(0),
+    listCostYuan: doublePrecision("list_cost_yuan").notNull().default(0),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [index("agent_tasks_project_idx").on(t.projectId)],
+);
+
+// project_id 为空表示赛前手工录入、各项目可共用的种子证据。
+export const evidenceItems = pgTable(
+  "evidence_items",
+  {
+    id: id(),
+    projectId: uuid("project_id").references(() => projects.id, {
+      onDelete: "cascade",
+    }),
+    candidate: text("candidate"),
+    product: text("product"),
+    category: text("category"),
+    kind: text("kind").notNull(),
+    stance: text("stance").notNull(),
+    numberValue: text("number_value"),
+    metric: text("metric"),
+    url: text("url").notNull(),
+    sourceName: text("source_name").notNull(),
+    excerpt: text("excerpt").notNull(),
+    grade: text("grade"),
+    status: text("status").notNull(),
+    matchScore: doublePrecision("match_score"),
+    licenseStatus: text("license_status").notNull(),
+    createdBy: text("created_by").notNull(),
+    collectedAt: timestamp("collected_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("evidence_items_project_idx").on(t.projectId)],
+);
+
+export const sourceDocuments = pgTable("source_documents", {
+  id: id(),
+  url: text("url").notNull().unique(),
+  title: text("title"),
+  text: text("text").notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const evidenceSearches = pgTable(
+  "evidence_searches",
+  {
+    id: id(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    candidate: text("candidate"),
+    purpose: text("purpose").notNull(),
+    source: text("source").notNull(),
+    query: text("query").notNull(),
+    resultCount: integer("result_count").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("evidence_searches_project_idx").on(t.projectId)],
+);
+
+export const positionings = pgTable(
+  "positionings",
+  {
+    id: id(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    options: jsonb("options").notNull(),
+    recommendedOption: integer("recommended_option").notNull(),
+    chosenOption: integer("chosen_option"),
+    rationale: text("rationale").notNull(),
+    experiment: jsonb("experiment").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("positionings_version_idx").on(t.projectId, t.version)],
+);
+
+export const counterResponses = pgTable("counter_responses", {
+  id: id(),
+  positioningId: uuid("positioning_id")
+    .notNull()
+    .references(() => positionings.id, { onDelete: "cascade" }),
+  evidenceId: uuid("evidence_id")
+    .notNull()
+    .references(() => evidenceItems.id, { onDelete: "cascade" }),
+  response: text("response").notNull(),
+  note: text("note").notNull(),
+});
+
+export const decisions = pgTable(
+  "decisions",
+  {
+    id: id(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    gate: text("gate").notNull(),
+    subjectVersion: integer("subject_version").notNull(),
+    actorRole: text("actor_role").notNull(),
+    verdict: text("verdict").notNull(),
+    reason: text("reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("decisions_project_idx").on(t.projectId)],
+);
+
+export const landingPages = pgTable("landing_pages", {
+  id: id(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  positioningVersion: integer("positioning_version").notNull(),
+  slug: text("slug").notNull().unique(),
+  content: jsonb("content").notNull(),
+  status: text("status").notNull().default("draft"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: createdAt(),
+});
+
+export const claims = pgTable("claims", {
+  id: id(),
+  landingPageId: uuid("landing_page_id")
+    .notNull()
+    .references(() => landingPages.id, { onDelete: "cascade" }),
+  location: text("location").notNull(),
+  text: text("text").notNull(),
+  kind: text("kind").notNull(),
+  evidenceId: uuid("evidence_id").references(() => evidenceItems.id, {
+    onDelete: "cascade",
+  }),
+  checkPassed: boolean("check_passed").notNull(),
+});
+
+export const campaigns = pgTable("campaigns", {
+  id: id(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  landingPageId: uuid("landing_page_id")
+    .notNull()
+    .references(() => landingPages.id, { onDelete: "cascade" }),
+  channel: text("channel").notNull(),
+  reason: text("reason").notNull(),
+  checklist: jsonb("checklist").notNull(),
+  assets: jsonb("assets").notNull(),
+  status: text("status").notNull().default("draft"),
+  executedUrl: text("executed_url"),
+  executedAt: timestamp("executed_at", { withTimezone: true }),
+  createdAt: createdAt(),
+});
+
+export const events = pgTable(
+  "events",
+  {
+    id: id(),
+    landingPageId: uuid("landing_page_id")
+      .notNull()
+      .references(() => landingPages.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    visitorHash: text("visitor_hash"),
+    payload: jsonb("payload"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("events_page_type_idx").on(t.landingPageId, t.type)],
+);
+
+export const leads = pgTable(
+  "leads",
+  {
+    id: id(),
+    landingPageId: uuid("landing_page_id")
+      .notNull()
+      .references(() => landingPages.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    isTest: boolean("is_test").notNull().default(false),
+    message: text("message"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("leads_page_email_idx").on(t.landingPageId, t.email)],
+);
+
+export const deliverables = pgTable("deliverables", {
+  id: id(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  round: integer("round").notNull(),
+  content: jsonb("content").notNull(),
+  createdAt: createdAt(),
+});
