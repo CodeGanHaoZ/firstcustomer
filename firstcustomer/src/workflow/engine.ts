@@ -1,8 +1,9 @@
 import { randomBytes } from "node:crypto";
-import { and, asc, count, countDistinct, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, gt, inArray } from "drizzle-orm";
 import {
   GROWTH_PROMPT,
   LAUNCH_PROMPT,
+  RESEARCH_PLAN_PROMPT,
   RESEARCH_PROMPT,
   STRATEGY_PROMPT,
   VISION_PROMPT,
@@ -11,6 +12,7 @@ import {
   growthOutput,
   launchOutput,
   researchOutput,
+  researchPlan,
   strategyOutput,
   visionOutput,
   type LaunchOutput,
@@ -18,7 +20,9 @@ import {
   type SendBackRequest,
 } from "@/agents/schemas";
 import type { SourceClient } from "@/agents/sources";
-import { createResearchTools } from "@/agents/tools";
+import { gatherSources } from "@/agents/gather";
+import { LIBRARY_CATEGORIES, libraryEvidence } from "@/agents/library";
+import { cacheDocument, createResearchTools } from "@/agents/tools";
 import { listCostYuan } from "@/ai/call-model";
 import { AgentRunError, runAgent, type RunSummary } from "@/ai/run-agent";
 import type { ModelClient } from "@/ai/types";
@@ -203,16 +207,13 @@ function productInput(project: Project) {
   };
 }
 
+// 只看本项目的证据。预存证据库（project_id 为空）要由 Research 选中、复制进项目后才可见，
+// 免得 Strategy 和 Launch 看到不相关品类的证据。
 export async function visibleEvidence(db: Db, projectId: string) {
   return db
     .select()
     .from(evidenceItems)
-    .where(
-      and(
-        gt(evidenceItems.expiresAt, new Date()),
-        or(isNull(evidenceItems.projectId), eq(evidenceItems.projectId, projectId)),
-      ),
-    );
+    .where(and(gt(evidenceItems.expiresAt, new Date()), eq(evidenceItems.projectId, projectId)));
 }
 
 async function sendBack(
@@ -341,6 +342,32 @@ async function screenshotContext(db: Db, projectId: string) {
   return rows;
 }
 
+function mergeSummaries(list: RunSummary[]): RunSummary {
+  const join = (values: (string | null)[]) =>
+    [...new Set(values.flatMap((v) => (v ? v.split("+") : [])))].join("+") || null;
+  return {
+    provider: join(list.map((s) => s.provider)),
+    model: join(list.map((s) => s.model)),
+    usage: {
+      inputTokens: list.reduce((n, s) => n + s.usage.inputTokens, 0),
+      outputTokens: list.reduce((n, s) => n + s.usage.outputTokens, 0),
+      searchCalls: list.reduce((n, s) => n + s.usage.searchCalls, 0),
+    },
+    listCostYuan: list.reduce((n, s) => n + s.listCostYuan, 0),
+  };
+}
+
+async function readProductPage(deps: EngineDeps, url: string | null) {
+  if (!url) return null;
+  try {
+    const page = await deps.sources.readPage(url);
+    await cacheDocument(deps.db, { url, title: page.title, text: page.text });
+    return { url, title: page.title, text: page.text.slice(0, 4000) };
+  } catch (error) {
+    return { url, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 async function runResearch(deps: EngineDeps, project: Project) {
   const { db } = deps;
   const pending = project.pendingRequest as PendingRequest | null;
@@ -363,42 +390,111 @@ async function runResearch(deps: EngineDeps, project: Project) {
     deps,
     project,
     { agent: "research", input, ...triggerFor(pending) },
-    ({ addSearchCalls }) =>
-      runAgent({
-        agent: "research",
-        system: RESEARCH_PROMPT,
-        maxTurns: 20,
-        input,
-        schema: researchOutput,
-        model: deps.model,
-        tools: createResearchTools({
-          db,
-          projectId: project.id,
-          sources: deps.sources,
-          onSearchCalls: addSearchCalls,
-        }),
-        validate: async (output) => {
-          if (output.status === "need_info") {
-            return asked.length || pending
-              ? ["这个项目不能再追问客户了，请继续研究，把不确定的内容写进 unknowns"]
-              : [];
-          }
-          const searches = await db
-            .select({ candidate: evidenceSearches.candidate, purpose: evidenceSearches.purpose })
-            .from(evidenceSearches)
-            .where(eq(evidenceSearches.projectId, project.id));
-          const known = new Set((await visibleEvidence(db, project.id)).map((e) => e.id));
-          const missing = candidatesWithoutCounterSearch(
-            output.candidates.map((c) => c.name),
-            searches,
-          ).map((c) => `候选人群“${c}”还没有做反向检索（purpose=counter）`);
-          const unknown = output.candidates
-            .flatMap((c) => c.evidence_ids)
-            .filter((id) => !known.has(id))
-            .map((id) => `证据 ${id} 不存在`);
-          return [...missing, ...unknown];
-        },
-      }),
+    async ({ addSearchCalls }) => {
+      const summaries: RunSummary[] = [];
+      try {
+        // 第一步：程序先读产品页，由模型规划检索词。
+        const productPage = await readProductPage(deps, project.productUrl);
+        const plan = await runAgent({
+          agent: "research:plan",
+          tier: "flash",
+          system: RESEARCH_PLAN_PROMPT,
+          input: {
+            ...input,
+            product_page: productPage,
+            sources: deps.sources.help ?? deps.sources.names.join("、"),
+            library_categories: LIBRARY_CATEGORIES.map((c) => ({ id: c.id, label: c.label })),
+          },
+          schema: researchPlan,
+          model: deps.model,
+          validate: (p) => {
+            const names = new Set(p.candidates);
+            return [
+              ...p.candidates
+                .filter((c) => !p.queries.some((q) => q.candidate === c && q.purpose === "counter"))
+                .map((c) => `候选人群“${c}”还没有安排 counter 检索`),
+              ...p.queries
+                .filter((q) => !names.has(q.candidate))
+                .map((q) => `检索“${q.query}”的 candidate 不在 candidates 里`),
+            ];
+          },
+        });
+        summaries.push(plan.summary);
+
+        // 第二步：程序并行检索，并取出相关品类的预存证据。
+        const gathered = await gatherSources(db, deps.sources, plan.output.queries, { projectId: project.id });
+        addSearchCalls(gathered.searchCalls);
+        const categories = plan.output.categories.filter((c) => LIBRARY_CATEGORIES.some((l) => l.id === c));
+        const library = (await libraryEvidence(db, categories)).slice(0, 40).map((e) => ({
+          library_id: e.id,
+          category: e.category,
+          product: e.product,
+          kind: e.kind,
+          stance: e.stance,
+          excerpt: e.excerpt,
+          grade: e.grade,
+          url: e.url,
+        }));
+
+        // 第三步：模型从已有资料里挑证据，只在缺口处少量补查。
+        const result = await runAgent({
+          agent: "research",
+          system: RESEARCH_PROMPT,
+          maxTurns: 10,
+          input: {
+            ...input,
+            candidates_hint: plan.output.candidates,
+            product_page: productPage,
+            library,
+            prefetched: gathered.results.slice(0, 40).map((r) => ({
+              url: r.url,
+              title: r.title,
+              source: r.source,
+              purpose: r.purpose,
+              candidate: r.candidate,
+              published_at: r.publishedAt,
+              text: r.text.slice(0, 1200),
+            })),
+            search_failures: gathered.failures.map((f) => `${f.source}:${f.query}`),
+          },
+          schema: researchOutput,
+          model: deps.model,
+          tools: createResearchTools({
+            db,
+            projectId: project.id,
+            sources: deps.sources,
+            onSearchCalls: addSearchCalls,
+            searchLimit: 6,
+          }),
+          validate: async (output) => {
+            if (output.status === "need_info") {
+              return asked.length || pending
+                ? ["这个项目不能再追问客户了，请继续研究，把不确定的内容写进 unknowns"]
+                : [];
+            }
+            const searches = await db
+              .select({ candidate: evidenceSearches.candidate, purpose: evidenceSearches.purpose })
+              .from(evidenceSearches)
+              .where(eq(evidenceSearches.projectId, project.id));
+            const known = new Set((await visibleEvidence(db, project.id)).map((e) => e.id));
+            const missing = candidatesWithoutCounterSearch(
+              output.candidates.map((c) => c.name),
+              searches,
+            ).map((c) => `候选人群“${c}”还没有做反向检索（purpose=counter）；名字请沿用 candidates_hint`);
+            const unknown = output.candidates
+              .flatMap((c) => c.evidence_ids)
+              .filter((id) => !known.has(id))
+              .map((id) => `证据 ${id} 不存在`);
+            return [...missing, ...unknown];
+          },
+        });
+        summaries.push(result.summary);
+        return { output: result.output, summary: mergeSummaries(summaries) };
+      } catch (error) {
+        if (error instanceof AgentRunError) summaries.push(error.summary);
+        throw new AgentRunError(error instanceof Error ? error.message : String(error), mergeSummaries(summaries));
+      }
+    },
   );
   if (output.status === "need_info") {
     await db.insert(clarifications).values(

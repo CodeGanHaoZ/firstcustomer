@@ -34,6 +34,8 @@ function stripHtml(value: string) {
     .replace(/<[^>]+>/g, " ")
     .replace(/&quot;/g, '"')
     .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
     .replace(/&amp;/g, "&")
     .replace(/&gt;/g, ">")
     .replace(/&lt;/g, "<")
@@ -116,6 +118,40 @@ async function searchItunes(query: string): Promise<SourceResult[]> {
   }));
 }
 
+type ReviewEntry = {
+  "im:rating"?: { label: string };
+  title?: { label: string };
+  content?: { label: string };
+};
+
+// 美区 App Store 用户评价（公开 RSS）。每个应用合成一份文档，摘录要从这份文档里原样复制。
+export async function searchAppStoreReviews(query: string): Promise<SourceResult[]> {
+  const params = new URLSearchParams({ term: query, entity: "software", limit: "2", country: "us" });
+  const apps = await getJson<{ results: { trackId: number; trackName: string }[] }>(
+    `https://itunes.apple.com/search?${params}`,
+  );
+  const docs = await Promise.all(
+    apps.results.map(async (app) => {
+      const feed = await getJson<{ feed: { entry?: ReviewEntry | ReviewEntry[] } }>(
+        `https://itunes.apple.com/us/rss/customerreviews/page=1/id=${app.trackId}/sortby=mosthelpful/json`,
+      ).catch(() => ({ feed: { entry: [] as ReviewEntry[] } }));
+      const entries = ([] as ReviewEntry[]).concat(feed.feed.entry ?? []);
+      // 差评排在前面，方便反向检索。
+      const reviews = entries
+        .filter((e) => e.content?.label)
+        .sort((a, b) => Number(a["im:rating"]?.label ?? 5) - Number(b["im:rating"]?.label ?? 5))
+        .map((e) => `[${e["im:rating"]?.label ?? "?"} stars] ${e.title?.label ?? ""}: ${e.content?.label ?? ""}`.replace(/\s+/g, " "));
+      if (!reviews.length) return null;
+      return {
+        url: `https://apps.apple.com/us/app/id${app.trackId}?see-all=reviews`,
+        title: `${app.trackName} — App Store reviews`,
+        text: `${app.trackName} App Store reviews (US). ${reviews.join(" \n")}`.slice(0, MAX_DOC_CHARS),
+      } satisfies SourceResult;
+    }),
+  );
+  return docs.filter((d): d is SourceResult => d !== null);
+}
+
 async function npmDownloads(packageName: string): Promise<SourceResult[]> {
   const name = encodeURIComponent(packageName.trim()).replace("%40", "@").replace("%2F", "/");
   const data = await getJson<{ downloads: number; package: string }>(
@@ -178,6 +214,7 @@ const SOURCE_HELP: Record<string, string> = {
   stackexchange: "stackexchange（Stack Overflow，query 用关键词）",
   devto: "devto（dev.to 文章，query 只能是一个标签，如 saas）",
   itunes: "itunes（App Store 应用和评分数，query 用应用名）",
+  appstore_reviews: "appstore_reviews（美区 App Store 用户评价，差评在前，query 用竞品应用名）",
   npm: "npm（上个月下载量，query 是包名）",
   wayback: "wayback（历史快照时间范围，query 是页面网址，如 otter.ai/pricing）",
   web: "web（MiMo 联网搜索，query 用关键词）",
@@ -190,6 +227,7 @@ export function createLiveSources(model: ModelClient): SourceClient {
     stackexchange: searchStackExchange,
     devto: searchDevto,
     itunes: searchItunes,
+    appstore_reviews: searchAppStoreReviews,
     npm: npmDownloads,
     wayback: searchWayback,
   };

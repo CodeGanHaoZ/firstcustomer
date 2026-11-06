@@ -14,7 +14,8 @@
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
     "seed:evidence": "tsx --env-file-if-exists=.env.local scripts/import-evidence.ts",
     "test": "vitest run",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "library:build": "tsx --env-file-if-exists=.env.local scripts/build-library.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

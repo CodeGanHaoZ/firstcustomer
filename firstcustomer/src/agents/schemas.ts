@@ -25,6 +25,39 @@ export const researchOutput = z.discriminatedUnion("status", [
 ]);
 export type ResearchOutput = z.infer<typeof researchOutput>;
 
+export const researchPlan = z.object({
+  categories: z.array(z.string()).max(2),
+  candidates: z.array(z.string()).min(1).max(2),
+  queries: z
+    .array(
+      z.object({
+        source: z.string(),
+        query: z.string(),
+        purpose: z.enum(["support", "counter"]),
+        candidate: z.string(),
+      }),
+    )
+    .max(16),
+});
+export type ResearchPlan = z.infer<typeof researchPlan>;
+
+export const libraryExtract = z.object({
+  items: z
+    .array(
+      z.object({
+        url: z.string(),
+        quote: z.string(),
+        kind: z.enum(["pain", "pricing", "revenue", "signal", "channel", "product"]),
+        stance: z.enum(["support", "against", "neutral"]),
+        product: z.string().nullable(),
+        number_value: z.string().nullable(),
+        metric: z.string().nullable(),
+      }),
+    )
+    .max(30),
+});
+export type LibraryExtract = z.infer<typeof libraryExtract>;
+
 export const visionOutput = z.object({
   summary: z.string(),
   visible_text: z.array(z.string()),

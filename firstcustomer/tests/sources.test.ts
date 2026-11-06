@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { researchOutput } from "@/agents/schemas";
-import { createLiveSources, searchDevto, searchWayback } from "@/agents/sources";
+import { createLiveSources, searchAppStoreReviews, searchDevto, searchWayback } from "@/agents/sources";
 import type { ModelClient } from "@/ai/types";
 import { detectImageType, imageError, MAX_IMAGE_BYTES, toDataUrl } from "@/domain/images";
 
@@ -52,6 +52,32 @@ describe("dev.to 来源", () => {
     const [result] = await searchDevto("Meeting Notes!");
     expect(new URL(requested).searchParams.get("tag")).toBe("meetingnotes");
     expect(result).toMatchObject({ url: "https://dev.to/a/post", text: "T. D" });
+  });
+});
+
+describe("App Store 评价来源", () => {
+  it("每个应用合成一份文档，差评排在前面", async () => {
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (String(url).includes("/search?")) return json({ results: [{ trackId: 42, trackName: "Notes AI" }] });
+      return json({
+        feed: {
+          entry: [
+            { "im:rating": { label: "5" }, title: { label: "Great" }, content: { label: "Love it" } },
+            { "im:rating": { label: "1" }, title: { label: "Pricey" }, content: { label: "Too expensive for &amp; me" } },
+          ],
+        },
+      });
+    });
+    const [doc] = await searchAppStoreReviews("notes ai");
+    expect(doc.url).toBe("https://apps.apple.com/us/app/id42?see-all=reviews");
+    expect(doc.text.indexOf("[1 stars]")).toBeLessThan(doc.text.indexOf("[5 stars]"));
+  });
+
+  it("没有评价时不返回文档", async () => {
+    vi.stubGlobal("fetch", async (url: string) =>
+      String(url).includes("/search?") ? json({ results: [{ trackId: 1, trackName: "X" }] }) : json({ feed: {} }),
+    );
+    expect(await searchAppStoreReviews("x")).toEqual([]);
   });
 });
 

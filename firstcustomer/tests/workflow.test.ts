@@ -43,7 +43,11 @@ import {
   startResearch,
   startReview,
 } from "@/workflow/actions";
-import { advanceProject, type EngineDeps } from "@/workflow/engine";
+import { advanceProject, visibleEvidence, type EngineDeps } from "@/workflow/engine";
+import { gatherSources } from "@/agents/gather";
+import { copyLibraryEvidence, libraryEvidence } from "@/agents/library";
+import type { SourceClient } from "@/agents/sources";
+import { createResearchTools } from "@/agents/tools";
 
 let pg: EmbeddedPostgres;
 let db: Db;
@@ -834,5 +838,121 @@ describe("订单和留资的唯一约束（AC-05）", () => {
     await expect(
       db.insert(leads).values({ landingPageId: page.id, email: "a@example.com" }),
     ).rejects.toThrow();
+  });
+});
+
+describe("预检索和品类证据库", () => {
+  const fakeSources = (calls: string[]): SourceClient => ({
+    names: ["hn", "boom"],
+    async search(source, query) {
+      calls.push(`${source}:${query}`);
+      if (source === "boom") throw new Error("来源挂了");
+      return {
+        searchCalls: 0,
+        results: [
+          { url: "https://news.ycombinator.com/item?id=1", title: "a", text: "Same thread shows up for both queries here." },
+          { url: `https://news.ycombinator.com/item?id=${query.length}`, title: "b", text: `Result for ${query} with enough text.` },
+        ],
+      };
+    },
+    async readPage() {
+      throw new Error("不读网页");
+    },
+  });
+
+  it("并行检索时跳过重复的检索词和网址，失败的来源不影响其他来源", async () => {
+    const { project } = await newProject();
+    const calls: string[] = [];
+    const report = await gatherSources(
+      db,
+      fakeSources(calls),
+      [
+        { source: "hn", query: "meeting notes", purpose: "support", candidate: "A" },
+        { source: "hn", query: "Meeting  Notes", purpose: "support", candidate: "A" },
+        { source: "hn", query: "meeting bot", purpose: "counter", candidate: "A" },
+        { source: "boom", query: "x", purpose: "support", candidate: "A" },
+        { source: "unknown", query: "x", purpose: "support", candidate: "A" },
+      ],
+      { projectId: project.id },
+    );
+    expect(calls.sort()).toEqual(["boom:x", "hn:meeting bot", "hn:meeting notes"]);
+    expect(report.skippedDuplicates).toBe(1);
+    expect(report.failures).toHaveLength(1);
+    expect(new Set(report.results.map((r) => r.url)).size).toBe(report.results.length);
+
+    // 同一项目再检索一次，已搜过的检索词不再请求。
+    calls.length = 0;
+    await gatherSources(db, fakeSources(calls), [{ source: "hn", query: "meeting notes", purpose: "support", candidate: "A" }], {
+      projectId: project.id,
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it("预存证据只有被选中复制后，项目才能看到；重复复制不会多存", async () => {
+    const { project } = await newProject();
+    const seed = await addManualEvidence(db, {
+      url: "https://news.ycombinator.com/item?id=9",
+      quote: "I would pay for a private meeting notes tool",
+      sourceText: "Honestly I would pay for a private meeting notes tool today.",
+      kind: "signal",
+      stance: "support",
+      category: "ai_meeting_notes",
+      createdBy: "library",
+    });
+    expect((await visibleEvidence(db, project.id)).map((e) => e.id)).not.toContain(seed.id);
+    expect((await libraryEvidence(db, ["ai_meeting_notes"])).map((e) => e.id)).toContain(seed.id);
+    const first = await copyLibraryEvidence(db, project.id, [seed.id], "顾问");
+    const again = await copyLibraryEvidence(db, project.id, [seed.id], "顾问");
+    expect(again[0].evidence_id).toBe(first[0].evidence_id);
+    const visible = await visibleEvidence(db, project.id);
+    expect(visible).toHaveLength(1);
+    expect(visible[0]).toMatchObject({ candidate: "顾问", createdBy: "library:library", excerpt: seed.excerpt });
+  });
+
+  it("现场检索有次数上限，同一检索词不重复搜，同一摘录不重复存", async () => {
+    const { project } = await newProject();
+    const calls: string[] = [];
+    const tools = createResearchTools({ db, projectId: project.id, sources: fakeSources(calls), onSearchCalls: () => {}, searchLimit: 2 });
+    const search = (query: string) =>
+      tools.search_evidence.execute({ query, source: "hn", purpose: "support", candidate: "A" } as never) as Promise<unknown>;
+    await search("one");
+    expect(await search("ONE")).toMatchObject({ error: expect.stringContaining("刚刚搜过") });
+    await search("two");
+    expect(await search("three")).toMatchObject({ error: expect.stringContaining("用完") });
+    expect(calls).toEqual(["hn:one", "hn:two"]);
+
+    const save = () =>
+      tools.save_evidence.execute({
+        url: "https://news.ycombinator.com/item?id=1",
+        quote: "Same thread shows up for both queries",
+        kind: "pain",
+        stance: "support",
+        candidate: "A",
+        product: null,
+        category: null,
+        number_value: null,
+        metric: null,
+      } as never) as Promise<{ evidence_id: string }>;
+    const a = await save();
+    const b = await save();
+    expect(b.evidence_id).toBe(a.evidence_id);
+    expect(await visibleEvidence(db, project.id)).toHaveLength(1);
+  });
+
+  it("Research 先规划检索，再把预检索结果和预存证据交给模型", async () => {
+    const { seen, wrapped } = recording();
+    const h = harness(wrapped);
+    const { project } = await newProject();
+    await startResearch(db, h.enqueue, project.id);
+    await h.drain();
+    const plan = seen.findIndex((r) => r.agent === "research:plan");
+    const research = seen.findIndex((r) => r.agent === "research");
+    expect(plan).toBeGreaterThanOrEqual(0);
+    expect(plan).toBeLessThan(research);
+    const input = JSON.parse(String(seen[research].messages[1].content));
+    expect(input.prefetched.length).toBeGreaterThan(0);
+    expect(input).toHaveProperty("library");
+    const [task] = (await tasksOf(project.id)).filter((t) => t.agent === "research");
+    expect(task.model).toBe("stub-model");
   });
 });

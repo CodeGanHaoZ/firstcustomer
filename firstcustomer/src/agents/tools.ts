@@ -3,7 +3,8 @@ import { z } from "zod";
 import type { AgentTool } from "@/ai/run-agent";
 import type { Db } from "@/db";
 import { evidenceItems, evidenceSearches, sourceDocuments } from "@/db/schema";
-import { expiresAt, gradeFor, verifyQuote, type EvidenceKind } from "@/domain/evidence";
+import { expiresAt, gradeFor, normalizeText, verifyQuote, type EvidenceKind } from "@/domain/evidence";
+import { copyLibraryEvidence } from "./library";
 import type { SourceClient, SourceResult } from "./sources";
 
 const MAX_TEXT_FOR_MODEL = 6000;
@@ -32,9 +33,19 @@ export function createResearchTools(context: {
   projectId: string;
   sources: SourceClient;
   onSearchCalls: (count: number) => void;
+  /** 现场检索的次数上限，资料已由程序预先检索好。 */
+  searchLimit?: number;
 }): Record<string, AgentTool> {
-  const { db, projectId, sources } = context;
+  const { db, projectId, sources, searchLimit = 6 } = context;
+  let searchesUsed = 0;
+  const searchedKeys = new Set<string>();
   return {
+    use_library_evidence: {
+      description: "把输入 library 里的预存证据（已核对原文）加入本项目，返回本项目里的 evidence_id。可一次传多条。",
+      parameters: z.object({ library_ids: z.array(z.string()).min(1), candidate: z.string() }),
+      execute: async ({ library_ids, candidate }: { library_ids: string[]; candidate: string }) =>
+        copyLibraryEvidence(db, projectId, library_ids, candidate),
+    },
     lookup_evidence: {
       description: "查本地证据库里未过期的证据。",
       parameters: z.object({ query: z.string() }),
@@ -81,6 +92,15 @@ export function createResearchTools(context: {
         purpose: "support" | "counter";
         candidate: string;
       }) => {
+        const key = `${args.source}|${normalizeText(args.query)}`;
+        if (searchedKeys.has(key)) {
+          return { error: "这个检索词刚刚搜过，结果不会变。换一个检索词或来源，或直接用已有资料。" };
+        }
+        if (searchesUsed >= searchLimit) {
+          return { error: `现场检索已用完 ${searchLimit} 次，请用已有资料完成，查不到的写进 unknowns。` };
+        }
+        searchesUsed++;
+        searchedKeys.add(key);
         const { results, searchCalls } = await sources.search(args.source, args.query);
         context.onSearchCalls(searchCalls);
         await Promise.all(results.map((r: SourceResult) => cacheDocument(db, r)));
@@ -140,6 +160,15 @@ export function createResearchTools(context: {
         if (!doc) throw new Error("这个网址还没有读取过，不能保存为证据");
         const check = verifyQuote(args.quote, doc.text);
         if (check.status === "rejected") throw new Error(check.reason);
+        // 同一项目里同一网址、同一摘录只存一次。
+        const sameUrl = await db
+          .select({ id: evidenceItems.id, excerpt: evidenceItems.excerpt, grade: evidenceItems.grade, status: evidenceItems.status })
+          .from(evidenceItems)
+          .where(and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.url, args.url)));
+        const duplicate = sameUrl.find((e) => normalizeText(e.excerpt) === normalizeText(args.quote));
+        if (duplicate) {
+          return { evidence_id: duplicate.id, status: duplicate.status, grade: duplicate.grade, note: "已经保存过，直接复用" };
+        }
         const collectedAt = new Date();
         const [row] = await db
           .insert(evidenceItems)

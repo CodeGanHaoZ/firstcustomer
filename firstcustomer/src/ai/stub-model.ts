@@ -295,6 +295,20 @@ export const stubModel: ModelClient = async (request) => {
   switch (request.agent) {
     case "vision":
       return visionStep();
+    case "research:plan":
+      // 预检索用和后面 Research 步骤相同的检索词，模拟流程不变。
+      return respond(
+        JSON.stringify({
+          categories: [],
+          candidates: [CONSULTING, SMB],
+          queries: [
+            { source: "stub", query: "consultants meeting notes", purpose: "support", candidate: CONSULTING },
+            { source: "stub", query: "consultants meeting notes complaint", purpose: "counter", candidate: CONSULTING },
+            { source: "stub", query: "smb meeting notes", purpose: "support", candidate: SMB },
+            { source: "stub", query: "smb meeting notes complaint", purpose: "counter", candidate: SMB },
+          ],
+        }),
+      );
     case "research":
       return researchStep(request);
     case "strategy":
