@@ -103,7 +103,11 @@ async function callEndpoint(endpoint: Endpoint, request: ModelRequest) {
     ...(request.jsonMode
       ? { response_format: { type: "json_object" as const } }
       : {}),
-  });
+    // MiMo 默认先思考再回答，思考也计入输出 token。
+    ...(endpoint.provider === "mimo" && request.thinking === false
+      ? ({ thinking: { type: "disabled" } } as Record<string, unknown>)
+      : {}),
+  } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
   return toResponse(completion, endpoint.provider);
 }
 

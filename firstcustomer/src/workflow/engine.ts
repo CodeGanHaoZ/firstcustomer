@@ -402,6 +402,7 @@ async function runResearch(deps: EngineDeps, project: Project) {
         const plan = await runAgent({
           agent: "research:plan",
           tier: "flash",
+          thinking: false,
           system: RESEARCH_PLAN_PROMPT,
           input: {
             ...input,
@@ -476,6 +477,7 @@ async function runResearch(deps: EngineDeps, project: Project) {
           runAgent({
             agent: "research",
             system: RESEARCH_PROMPT,
+            thinking: false,
             input: {
               ...input,
               candidates_hint: plan.output.candidates,
@@ -549,11 +551,12 @@ async function runResearch(deps: EngineDeps, project: Project) {
           const copied = await copyLibraryEvidence(
             db,
             project.id,
-            c.library_ids.filter((id) => libraryIds.has(id)),
+            c.library_ids.filter((id) => libraryIds.has(id)).slice(0, 8),
             c.name,
           );
           ids.push(...copied.map((x) => x.evidence_id));
-          for (const pick of c.picks) {
+          // 多写的不报错，只取前 8 条，免得为了条数让模型重写一遍。
+          for (const pick of c.picks.slice(0, 8)) {
             const problem = pickProblem(pick);
             if (problem) {
               dropped.push(`${pick.url}：${problem}`);

@@ -60,7 +60,7 @@ export const researchSelection = z.discriminatedUnion("status", [
           name: z.string(),
           why: z.string(),
           library_ids: z.array(z.string()),
-          picks: z.array(evidencePick).max(15),
+          picks: z.array(evidencePick),
         }),
       )
       .min(1)

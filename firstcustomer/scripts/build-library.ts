@@ -61,6 +61,7 @@ async function buildCategory(category: LibraryCategory) {
   const { output, summary } = await runAgent({
     agent: "library",
     system: LIBRARY_EXTRACT_PROMPT,
+    thinking: false,
     input: {
       category: category.label,
       documents: [...byUrl.values()].map((d) => ({

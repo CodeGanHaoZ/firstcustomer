@@ -112,6 +112,7 @@ export async function runAgent<T>(options: {
   schema: z.ZodType<T>;
   model: ModelClient;
   maxTurns?: number;
+  thinking?: boolean;
   validate?: (output: T) => Promise<string[]> | string[];
 }): Promise<{ output: T; summary: RunSummary }> {
   const { agent, schema, model, tools = {}, tier = "pro", maxTurns = 12 } = options;
@@ -140,6 +141,7 @@ export async function runAgent<T>(options: {
       agent: `${agent}:repair`,
       tier: "flash",
       jsonMode: true,
+      thinking: false,
       messages: [
         {
           role: "system",
@@ -170,6 +172,7 @@ export async function runAgent<T>(options: {
         agent,
         tier,
         messages,
+        ...(options.thinking === false ? { thinking: false } : {}),
         ...(toolSpecs.length && !wrapUp ? { tools: toolSpecs } : {}),
       });
       recorder.add(response);

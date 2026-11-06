@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { isPrivateAddress, assertPublicUrl, htmlToText } from "@/agents/fetch-page";
 import { listCostYuan, createModelClient } from "@/ai/call-model";
@@ -223,6 +223,30 @@ describe("模型配置", () => {
     expect(() => createModelClient({} as NodeJS.ProcessEnv)).toThrow("MIMO_API_KEY");
     expect(() => createModelClient({ LLM_PROVIDER: "stub" } as unknown as NodeJS.ProcessEnv)).toThrow("ALLOW_STUB");
     expect(createModelClient({ LLM_PROVIDER: "stub", ALLOW_STUB: "1" } as unknown as NodeJS.ProcessEnv)).toBeTypeOf("function");
+  });
+
+  it("thinking=false 时向 MiMo 关闭思考模式，默认不传", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return new Response(
+        JSON.stringify({
+          id: "x",
+          object: "chat.completion",
+          created: 0,
+          model: "mimo-v2.6-pro",
+          choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "{}" } }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    });
+    const client = createModelClient({ MIMO_API_KEY: "k" } as unknown as NodeJS.ProcessEnv);
+    await client({ agent: "a", tier: "pro", messages: [{ role: "user", content: "hi" }], thinking: false });
+    await client({ agent: "a", tier: "pro", messages: [{ role: "user", content: "hi" }] });
+    vi.unstubAllGlobals();
+    expect(bodies[0].thinking).toEqual({ type: "disabled" });
+    expect(bodies[1].thinking).toBeUndefined();
   });
 
   it("可以切换到 StepFun，缺 Key 或写错服务商时报错", () => {
