@@ -30,6 +30,8 @@ import { loadProjectImage } from "@/workflow/queries";
 import { confirmReceipt, customerPaymentCode, decideQuote, latestReceipt, projectOrder, savePaymentCode, uploadReceipt } from "@/workflow/commerce";
 import { companyDocuments, saveCompanySettings } from "@/workflow/company-context";
 import { decideWeekly, requestCompanyReport, runCompanyReport } from "@/workflow/company-reports";
+import { loadCoo, loadDepartments, officeRevision, projectAttention } from "@/workflow/office";
+import { loadTaskBoard } from "@/workflow/task-board";
 import { editLandingPage, loadPublicVersionImage, loadVersionImage } from "@/workflow/landing-edits";
 import { openSupportMessage, projectSupport, replyToSupport } from "@/workflow/support";
 import type { PageContent } from "@/agents/schemas";
@@ -259,6 +261,11 @@ describe("完整流程", () => {
     const followUp = tasks.find((t) => t.parentTaskId === sentBack?.id);
     expect(followUp?.agent).toBe("research");
     expect(followUp?.trigger).toBe("send_back");
+    const [current] = await db.select().from(projects).where(eq(projects.id, project.id));
+    const rooms = await loadDepartments(db, current);
+    expect(rooms.find(({ key }) => key === "strategy")).toMatchObject({
+      state: "completed", handoff: { id: sentBack?.id, to: "research", reason: sentBack?.sendBackReason },
+    });
     // 补查后新旧证据都在。
     const evidence = await db.select().from(evidenceItems).where(eq(evidenceItems.projectId, project.id));
     expect(evidence.length).toBe(5);
@@ -350,6 +357,44 @@ describe("完整流程", () => {
     // 已发布页面不会被自动修改。
     const [stillLive] = await db.select().from(landingPages).where(eq(landingPages.id, page.id));
     expect(stillLive.status).toBe("published");
+  });
+});
+
+describe("跨项目任务板与 COO", () => {
+  it("按时间分页，筛选时合并项目任务和公司报告", async () => {
+    const { project: first } = await newProject();
+    const { project: second } = await newProject({ productName: "Another project" });
+    const started = new Date("2026-11-06T09:00:00Z");
+    await db.insert(agentTasks).values(Array.from({ length: 25 }, (_, i) => ({
+      projectId: i === 0 ? second.id : first.id, agent: "research",
+      status: i === 0 ? "failed" : "succeeded", startedAt: new Date(started.getTime() + i * 1000),
+    })));
+    await db.insert(companyReports).values({ kind: "weekly", status: "failed", createdAt: new Date(started.getTime() + 26_000) });
+
+    const page = await loadTaskBoard(db, "", 1);
+    expect(page.rows).toHaveLength(25);
+    expect(page.hasMore).toBe(true);
+    expect(page.rows[0]).toMatchObject({ agent: "weekly", projectId: null });
+    expect(await loadTaskBoard(db, "", 2)).toMatchObject({ rows: [{ projectId: second.id }], hasMore: false });
+    expect((await loadTaskBoard(db, "failed", 1)).rows).toMatchObject([
+      { agent: "weekly", status: "failed" }, { agent: "research", projectId: second.id, status: "failed" },
+    ]);
+  });
+
+  it("区分等待客户与老板操作，并在待办跨过提醒时间后刷新办公室", async () => {
+    const { project } = await newProject({ isOwnProduct: false });
+    const entered = new Date("2026-11-06T09:00:00Z");
+    const [waiting] = await db.update(projects).set({ status: "awaiting_quote_acceptance", updatedAt: entered })
+      .where(eq(projects.id, project.id)).returning();
+    expect(await projectAttention(db, waiting)).toMatchObject({ owner: false, action: "等客户接受报价" });
+    const [pending] = await db.update(projects).set({ status: "awaiting_quote" })
+      .where(eq(projects.id, project.id)).returning();
+    expect(await projectAttention(db, pending)).toMatchObject({ owner: true, since: entered });
+    expect(await officeRevision(db, new Date("2026-11-07T08:59:00Z")))
+      .not.toBe(await officeRevision(db, new Date("2026-11-07T09:01:00Z")));
+
+    const [stalled] = await db.insert(agentTasks).values({ projectId: project.id, agent: "quote", startedAt: new Date(Date.now() - 31 * 60_000) }).returning();
+    expect((await loadCoo(db)).stalled).toMatchObject([{ id: stalled.id, projectId: project.id }]);
   });
 });
 

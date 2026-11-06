@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import Link from "next/link";
+import { z } from "zod";
 import type { WeeklyOutput } from "@/agents/schemas";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { OperatingNumbers } from "@/components/operating-numbers";
@@ -18,17 +19,23 @@ export const metadata = { title: "经营周报", robots: { index: false, follow:
 
 export default async function ReportsPage({ searchParams }: PageProps<"/admin/reports">) {
   await requireAdmin();
-  const { error } = await searchParams;
+  const { error, report } = await searchParams;
+  const focused = z.uuid().safeParse(report).data;
   const db = getDb();
   const [reports, records] = await Promise.all([
-    db.select().from(companyReports).where(eq(companyReports.kind, "weekly")).orderBy(desc(companyReports.createdAt)).limit(20),
+    db.select().from(companyReports)
+      .where(and(eq(companyReports.kind, "weekly"), focused ? eq(companyReports.id, focused) : undefined))
+      .orderBy(desc(companyReports.createdAt)).limit(20),
     db.select().from(decisions).where(and(eq(decisions.gate, "weekly"), eq(decisions.actorRole, "founder"))),
   ]);
   const byReport = new Map(records.map((record) => [record.subjectId, record]));
   const working = reports.some(({ status }) => status === "queued" || status === "running");
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8">
-      <Link href="/admin" className="self-start text-sm underline">返回办公室</Link>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <Link href="/admin" className="underline">返回办公室</Link>
+        {focused ? <Link href="/admin/reports" className="underline">返回周报列表</Link> : null}
+      </div>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">经营周报</h1>
         <form action={createWeeklyReport}><Button type="submit" disabled={working}>生成经营周报</Button></form>

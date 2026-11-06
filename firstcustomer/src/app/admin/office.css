@@ -78,6 +78,8 @@
 .office-todos svg { flex: 0 0 auto; }
 .office-no-todos { margin: .5rem 0; font-size: .82rem; }
 .office-desk-link { display: flex; align-items: center; gap: .35rem; padding-top: .55rem; font-size: .8rem; font-weight: 750; }
+.office-desk-link svg { flex: 0 0 auto; }
+.office-desk-alert { color: #8a3f2c; overflow-wrap: anywhere; }
 .office-desk-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .office-handoff { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .55rem; margin-top: .85rem; padding: .6rem .8rem; border: 1px solid #dfcaa1; border-radius: 12px; background: #fff1d0; color: #714b25; font-size: .8rem; }
 .office-empty { grid-column: 1 / -1; padding: 1.5rem; border: 1px dashed #bdb39b; border-radius: 15px; }

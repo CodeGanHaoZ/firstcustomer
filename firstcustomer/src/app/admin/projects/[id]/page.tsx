@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db";
 import { orders, payments, projects } from "@/db/schema";
 import type { Gate, GateState } from "@/domain/approval";
+import { AGENT_LABELS, TASK_STATUS_LABELS, TASK_TRIGGER_LABELS } from "@/domain/office";
 import { STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatYuan } from "@/lib/format";
@@ -68,30 +69,6 @@ import {
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "项目详情", robots: { index: false, follow: false } };
-
-const AGENT_LABELS: Record<string, string> = {
-  quote: "接待报价员",
-  receipt: "票据员",
-  support: "客服",
-  vision: "截图读取",
-  research: "Research",
-  strategy: "Strategy",
-  launch: "Launch",
-  growth: "Growth",
-};
-const TASK_STATUS: Record<string, string> = {
-  running: "运行中",
-  succeeded: "完成",
-  failed: "失败",
-  sent_back: "已打回",
-  rejected: "声明检查未通过",
-  escalated: "打回超限",
-};
-const TRIGGER_LABELS: Record<string, string> = {
-  normal: "正常",
-  send_back: "打回后执行",
-  rewrite: "改写",
-};
 
 function GateForm(props: {
   projectId: string;
@@ -174,6 +151,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   const taskStatuses = [...new Set(audit.tasks.map(({ status }) => status))];
   const taskFilter = typeof task === "string" && taskStatuses.includes(task) ? task : "";
   const visibleTasks = taskFilter ? audit.tasks.filter(({ status }) => status === taskFilter) : audit.tasks;
+  const acceptanceNote = order?.deliveryStatus === "changes_requested" ? view.decisions
+    .filter(({ gate, verdict, subjectVersion }) => gate === "acceptance" && verdict === "reject" && subjectVersion === project.round)
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] : null;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
@@ -498,6 +478,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       <Card id="tasks">
         <CardHeader>
           <CardTitle>Agent 执行记录</CardTitle>
+          <Link href="/admin/tasks" className="w-fit text-sm underline">查看全部项目任务</Link>
         </CardHeader>
         <CardContent>
           {taskStatuses.length > 1 ? (
@@ -505,7 +486,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               <Label htmlFor="task-filter">任务状态</Label>
               <select id="task-filter" name="task" defaultValue={taskFilter} className="rounded-md border bg-background px-2 py-1">
                 <option value="">全部</option>
-                {taskStatuses.map((status) => <option key={status} value={status}>{TASK_STATUS[status] ?? status}</option>)}
+                {taskStatuses.map((status) => <option key={status} value={status}>{TASK_STATUS_LABELS[status] ?? status}</option>)}
               </select>
               <Button type="submit" variant="outline" size="sm">筛选</Button>
             </form>
@@ -531,10 +512,10 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
             </TableHeader>
             <TableBody>
               {visibleTasks.map((task) => (
-                <TableRow key={task.id}>
+                <TableRow key={task.id} id={`task-${task.id}`} className="scroll-mt-4 target:bg-muted">
                   <TableCell>{AGENT_LABELS[task.agent] ?? task.agent}</TableCell>
-                  <TableCell>{TRIGGER_LABELS[task.trigger] ?? task.trigger}</TableCell>
-                  <TableCell>{TASK_STATUS[task.status] ?? task.status}</TableCell>
+                  <TableCell>{TASK_TRIGGER_LABELS[task.trigger] ?? task.trigger}</TableCell>
+                  <TableCell>{TASK_STATUS_LABELS[task.status] ?? task.status}</TableCell>
                   <TableCell className="whitespace-normal">{task.sendBackReason ?? task.error ?? ""}</TableCell>
                   <TableCell>
                     {task.provider ?? "无"} / {task.model ?? "无"}
@@ -574,6 +555,12 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                   {p.reference ? `，${p.reference}` : ""}）
                 </p>
               ))}
+              {acceptanceNote ? (
+                <div className="rounded-md border p-3">
+                  <p className="font-medium">客户修改意见 · {formatDateTime(acceptanceNote.createdAt)}</p>
+                  <p className="whitespace-pre-wrap break-words">{acceptanceNote.reason}</p>
+                </div>
+              ) : null}
               {!project.requiresPayment ? <><form action={bind(quoteAction)} className="flex items-end gap-2">
                 <input type="hidden" name="orderId" value={order.id} />
                 <Input name="yuan" type="number" step="0.01" min="0" required placeholder="报价（元）" className="w-40" />

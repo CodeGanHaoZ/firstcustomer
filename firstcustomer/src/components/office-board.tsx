@@ -19,18 +19,27 @@ const position = ([x, y]: [number, number]) => `${x}% ${y}%`;
 const departmentTitle = (key: DepartmentKey) => DEPARTMENTS.find((room) => room.key === key)?.room ?? key;
 
 type ProjectBrief = { id: string; productName: string; status: string; paused: boolean };
+export type DeskItem = { id: string; title: string; action: string; href: string };
+
+const activeRoom: Partial<Record<ProjectStatus, DepartmentKey>> = {
+  submitted: "research", needs_info: "research", awaiting_quote: "frontdesk", awaiting_quote_acceptance: "frontdesk",
+  awaiting_payment: "finance", awaiting_positioning: "strategy", awaiting_publish: "launch", reviewing: "growth",
+};
 
 function StaffSprite({ slot, className = "" }: { slot: [number, number]; className?: string }) {
   return <span aria-hidden="true" className={`office-sprite ${className}`} style={{ backgroundPosition: position(slot) }} />;
 }
 
 export function OfficeBoard({
-  project, allProjects, departments, todo, firstPaymentAt, firstLeadAt, revision, listMode,
+  project, allProjects, departments, todo, waitingCount, overdueCount, stalled, firstPaymentAt, firstLeadAt, revision, listMode,
 }: {
   project: ProjectBrief | null;
   allProjects: ProjectBrief[];
   departments: DepartmentView[];
-  todo: { project: ProjectBrief; action: string; anchor: string }[];
+  todo: DeskItem[];
+  waitingCount: number;
+  overdueCount: number;
+  stalled: DeskItem[];
   firstPaymentAt: Date | null;
   firstLeadAt: Date | null;
   revision: string;
@@ -39,7 +48,8 @@ export function OfficeBoard({
   const base = project ? `/admin/projects/${project.id}` : "/admin#projects";
   const modeUrl = project ? `/admin?project=${project.id}` : "/admin";
   const listUrl = project ? `${modeUrl}&view=list` : "/admin?view=list";
-  const handoff = departments.find((room) => room.handoff);
+  const handoff = departments.flatMap(({ key, handoff }) => handoff ? [{ key, ...handoff }] : [])
+    .sort((left, right) => right.at.getTime() - left.at.getTime())[0];
   return (
     <section aria-labelledby="office-title" className="office-board">
       <div className="office-heading">
@@ -73,32 +83,36 @@ export function OfficeBoard({
 
       <div className="office-layout">
         <div className={`office-rooms ${listMode ? "office-rooms-list" : ""}`}>
-          {departments.length ? departments.map((entry) => {
-            const room = rooms[entry.key];
-            return (
-              <Link key={entry.key} href={`${base}#${
-                (entry.key === "finance" && project?.status === "awaiting_payment") ||
-                (entry.key === "frontdesk" && project?.status === "awaiting_quote") ? "decisions" : room.anchor
-              }`} className="office-room" data-state={entry.state}>
+          {!project ? <p className="office-empty">新建项目后，就可以在各工位开始工作。</p> : null}
+          {DEPARTMENTS.map(({ key, duty }) => {
+            const room = rooms[key];
+            const entry = departments.find((department) => department.key === key);
+            const state = entry?.state ?? "idle";
+            const anchor = state === "failed" || activeRoom[project?.status as ProjectStatus] === key ? "decisions" : room.anchor;
+            const content = (
+              <>
                 <div className="office-room-scene" style={{ "--scene": position(room.scene) } as CSSProperties}>
                   <span className="office-room-set" aria-hidden="true" />
                   <StaffSprite slot={room.staff} className="office-room-mascot" />
-                  <span className="office-state"><i aria-hidden="true" />{AGENT_STATE_LABELS[entry.state]}</span>
+                  <span className="office-state"><i aria-hidden="true" />{AGENT_STATE_LABELS[state]}</span>
                 </div>
                 <div className="office-room-caption">
                   <div>
-                    <h2>{departmentTitle(entry.key)}</h2>
+                    <h2>{departmentTitle(key)}</h2>
                     <p>{room.name}</p>
                   </div>
-                  <ArrowUpRight size={18} aria-hidden="true" />
+                  {project ? <ArrowUpRight size={18} aria-hidden="true" /> : null}
                 </div>
                 <p className="office-room-detail">
-                  {entry.detail}
-                  {entry.runningSince ? ` · ${formatDateTime(entry.runningSince)} 开始` : ""}
+                  {entry?.detail ?? duty}
+                  {entry?.runningSince ? ` · ${formatDateTime(entry.runningSince)} 开始` : ""}
                 </p>
-              </Link>
+              </>
             );
-          }) : <p className="office-empty">客户提交项目后，就可以在办公室开始免费初诊。</p>}
+            return project
+              ? <Link key={key} href={`${base}#${anchor}`} className="office-room" data-state={state}>{content}</Link>
+              : <article key={key} className="office-room" data-state={state}>{content}</article>;
+          })}
         </div>
 
         <aside className="office-desk" aria-labelledby="office-desk-title">
@@ -112,7 +126,7 @@ export function OfficeBoard({
           </div>
           <div className="office-milestones">
             <div><span>首客第一单</span><strong>{firstPaymentAt ? formatDateTime(firstPaymentAt) : "待确认到账"}</strong></div>
-            <div><span>当前项目第一条线索</span><strong>{firstLeadAt ? formatDateTime(firstLeadAt) : "等待有效留资"}</strong></div>
+            <div><span>客户第一单</span><strong>{firstLeadAt ? formatDateTime(firstLeadAt) : "等待有效留资"}</strong></div>
           </div>
           <div className="office-desk-heading">
             <h3>待我决定</h3>
@@ -120,30 +134,29 @@ export function OfficeBoard({
           </div>
           {todo.length ? (
             <ul className="office-todos">
-              {todo.slice(0, 4).map(({ project: item, action, anchor }) => (
-                <li key={item.id}>
-                  <Link href={`/admin/projects/${item.id}#${anchor}`}>
-                    <span><strong>{action}</strong><small>{item.productName}</small></span>
+              {todo.slice(0, 4).map(({ id, title, action, href }) => (
+                <li key={id}>
+                  <Link href={href}>
+                    <span><strong>{action}</strong><small>{title}</small></span>
                     <ArrowUpRight size={15} aria-hidden="true" />
                   </Link>
                 </li>
               ))}
             </ul>
           ) : <p className="office-no-todos">眼下没有待处理的审批。</p>}
-          {project ? (
-            <>
-              <Link href={`${base}#tasks`} className="office-desk-link"><ClipboardList size={16} /> 任务板 <ArrowDownRight size={15} /></Link>
-              <Link href={`${base}#deliverables`} className="office-desk-link"><FolderOpen size={16} /> 交付清单 <ArrowDownRight size={15} /></Link>
-            </>
-          ) : null}
+          {waitingCount ? <Link href="#waiting" className="office-desk-link">等客户处理（{waitingCount}）<ArrowDownLeft size={15} /></Link> : null}
+          {stalled.length ? <Link href={stalled[0].href} className="office-desk-link office-desk-alert"><span>{stalled[0].title} · {stalled[0].action}{stalled.length > 1 ? `，共 ${stalled.length} 项` : ""}</span><ArrowUpRight size={15} /></Link> : null}
+          {overdueCount ? <Link href="#overdue" className="office-desk-link office-desk-alert">超时待办（{overdueCount}）<ArrowDownLeft size={15} /></Link> : null}
+          <Link href="/admin/tasks" className="office-desk-link"><ClipboardList size={16} /> 任务板 <ArrowUpRight size={15} /></Link>
+          {project ? <Link href={`${base}#deliverables`} className="office-desk-link"><FolderOpen size={16} /> 交付清单 <ArrowDownRight size={15} /></Link> : null}
           <Link href="#standup" className="office-desk-link">COO 每日站会 <ArrowDownLeft size={15} /></Link>
           {todo.length > 2 ? <Link href="#pending" className="office-desk-link">查看全部待办 <ArrowDownLeft size={15} /></Link> : null}
         </aside>
       </div>
-      {handoff?.handoff ? (
-        <Link href={`${base}#tasks`} className="office-handoff">
-          <strong>{departmentTitle(handoff.key)}退回给{departmentTitle(handoff.handoff.to)}</strong>
-          <span>{handoff.handoff.reason}</span>
+      {handoff ? (
+        <Link href={`${base}#task-${handoff.id}`} className="office-handoff">
+          <strong>最近一次打回 · {departmentTitle(handoff.key)} → {departmentTitle(handoff.to)}</strong>
+          <span>{handoff.reason}</span>
           <ArrowUpRight size={16} aria-hidden="true" />
         </Link>
       ) : null}

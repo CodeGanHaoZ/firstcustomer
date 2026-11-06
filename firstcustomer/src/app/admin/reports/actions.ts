@@ -39,5 +39,5 @@ export async function weeklyDecisionAction(reportId: string, formData: FormData)
     redirect(`/admin/reports?error=${encodeURIComponent(error instanceof Error ? error.message : "保存失败")}`);
   }
   revalidatePath("/admin/reports");
-  redirect(`/admin/reports#${reportId}`);
+  redirect(`/admin/reports?report=${reportId}`);
 }

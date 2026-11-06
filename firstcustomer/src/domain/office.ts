@@ -24,6 +24,35 @@ export const AGENT_STATE_LABELS: Record<AgentState, string> = {
   paused: "已暂停",
 };
 
+export const AGENT_LABELS: Record<string, string> = {
+  quote: "接待报价员",
+  receipt: "票据员",
+  support: "客服",
+  vision: "截图读取",
+  research: "Research",
+  strategy: "Strategy",
+  launch: "Launch",
+  growth: "Growth",
+  weekly: "秘书 · 周报",
+  standup: "COO · 站会",
+};
+
+export const TASK_STATUS_LABELS: Record<string, string> = {
+  queued: "排队中",
+  running: "运行中",
+  succeeded: "完成",
+  failed: "失败",
+  sent_back: "已打回",
+  rejected: "声明检查未通过",
+  escalated: "打回超限",
+};
+
+export const TASK_TRIGGER_LABELS: Record<string, string> = {
+  normal: "正常",
+  send_back: "打回后执行",
+  rewrite: "改写",
+};
+
 export const DEPARTMENTS: { key: DepartmentKey; room: string; agent: string; duty: string }[] = [
   { key: "frontdesk", room: "前台", agent: "兔兔 · 接待报价员", duty: "整理初诊结果，起草提案和报价，接待客户问题" },
   { key: "research", room: "市场研究室", agent: "研究员 Research", duty: "研究海外需求、竞品定价和反面证据，每条结论都带来源" },
@@ -34,15 +63,18 @@ export const DEPARTMENTS: { key: DepartmentKey; room: string; agent: string; dut
 ];
 
 export type OfficeTask = {
+  id: string;
   agent: string;
   status: string;
   startedAt: Date;
+  round: number;
   sendBackRoute: string | null;
   sendBackReason: string | null;
 };
 
 export type OfficeInput = {
   status: ProjectStatus;
+  round: number;
   paused: boolean;
   failedFrom: string | null;
   escalationFrom: string | null;
@@ -61,7 +93,7 @@ export type DepartmentView = {
   state: AgentState;
   detail: string;
   runningSince: Date | null;
-  handoff: { to: DepartmentKey; reason: string } | null;
+  handoff: { id: string; to: DepartmentKey; reason: string; at: Date } | null;
 };
 
 const AGENT_ROOM: Record<string, DepartmentKey> = {
@@ -105,15 +137,16 @@ function gateDetail(gate: GateState, subject: string) {
 export function departmentViews(input: OfficeInput): DepartmentView[] {
   const { status } = input;
   const current = STATUS_ROOM[status];
-  const latest = (key: DepartmentKey) => input.tasks.find((t) => AGENT_ROOM[t.agent] === key);
   const succeeded = (key: DepartmentKey) =>
     input.tasks.some((t) => AGENT_ROOM[t.agent] === key && t.status === "succeeded");
 
   return DEPARTMENTS.map(({ key }) => {
-    const task = latest(key);
     const running = input.tasks.find((t) => AGENT_ROOM[t.agent] === key && t.status === "running");
-    const handoffTarget = task?.status === "sent_back" && task.sendBackRoute ? ROUTE_TARGET[task.sendBackRoute] : undefined;
-    const handoff = handoffTarget ? { to: handoffTarget, reason: task?.sendBackReason ?? "" } : null;
+    const handoffTask = input.tasks.find((t) => t.round === input.round && AGENT_ROOM[t.agent] === key && t.status === "sent_back");
+    const target = handoffTask?.sendBackRoute ? ROUTE_TARGET[handoffTask.sendBackRoute] : undefined;
+    const handoff = handoffTask && target
+      ? { id: handoffTask.id, to: target, reason: handoffTask.sendBackReason ?? "", at: handoffTask.startedAt }
+      : null;
     const view = (state: AgentState, detail: string): DepartmentView => ({
       key,
       state,
