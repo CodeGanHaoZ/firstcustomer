@@ -305,6 +305,30 @@ function visionStep() {
 
 export const stubModel: ModelClient = async (request) => {
   switch (request.agent) {
+    case "weekly":
+      return respond(JSON.stringify({
+        summary: "【模拟周报】服务订单与客户产品的验证数据已分别记录。",
+        recommendations: ["处理待确认的交付", "核对客户反馈的来源", "选择一个渠道继续验证"],
+      }));
+    case "standup":
+      return respond(JSON.stringify({
+        yesterday: "【模拟站会】查看昨日任务记录。", today: "先处理待确认项目。", blockers: "以工位上标记的卡点为准。",
+      }));
+    case "support": {
+      const input = userInput(request);
+      return respond(JSON.stringify({ risk: "normal", reply: `【模拟答复】你的项目当前处于“${input.status}”。` }));
+    }
+    case "quote":
+      return respond(JSON.stringify({
+        scope: "【模拟提案】验证北美首批用户的需求和定位。",
+        deliverables: ["定位卡及商业证据卡", "英文验证页", "单渠道行动卡", "增长复盘及验收"],
+        timing: "以客户确认速度和实验样本为准。",
+        terms: "确认到账后开始正式服务，客户审核后才发布。",
+      }));
+    case "receipt":
+      return respond(JSON.stringify({
+        amountFen: null, paidAtText: null, payer: null, unreadable: "【模拟读取】请对照实际到账记录。",
+      }));
     case "vision":
       return visionStep();
     case "research:plan":

@@ -1,5 +1,11 @@
 const MAX_FILES_PER_SUBMIT = 3;
 
+export async function readUploadedImage(formData: FormData, field: string) {
+  const files = await readUploadedFiles(formData, field);
+  if (files.length !== 1) throw new Error("请选择一张图片");
+  return files[0];
+}
+
 export async function readUploadedFiles(formData: FormData, field: string) {
   const files = formData
     .getAll(field)

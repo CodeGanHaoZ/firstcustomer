@@ -1,6 +1,11 @@
 export const STATUS_LABELS = {
   submitted: "已提交",
   researching: "研究中",
+  drafting_quote: "起草报价中",
+  awaiting_quote: "待老板确认报价",
+  awaiting_quote_acceptance: "待客户接受报价",
+  awaiting_payment: "等待付款或确认到账",
+  reading_receipt: "读取付款截图中",
   strategizing: "制定策略",
   awaiting_positioning: "等待定位确认",
   preparing_page: "准备页面",
@@ -30,11 +35,20 @@ export const MAIN_FLOW: ProjectStatus[] = [
   "delivered",
 ];
 
+export function usesQuoteFlow(project: { requiresPayment: boolean; isOwnProduct: boolean }) {
+  return project.requiresPayment && !project.isOwnProduct;
+}
+
 // 状态机只放行这里列出的流转，回退路径对应 PRD 5.4。
 const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   submitted: ["researching"],
   needs_info: ["researching"],
-  researching: ["strategizing", "needs_info", "failed"],
+  researching: ["drafting_quote", "strategizing", "needs_info", "failed"],
+  drafting_quote: ["awaiting_quote", "failed"],
+  awaiting_quote: ["awaiting_quote_acceptance", "drafting_quote"],
+  awaiting_quote_acceptance: ["awaiting_payment", "drafting_quote"],
+  awaiting_payment: ["reading_receipt", "strategizing"],
+  reading_receipt: ["awaiting_payment", "failed"],
   strategizing: [
     "awaiting_positioning",
     "researching",
@@ -49,12 +63,12 @@ const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
     "awaiting_founder",
     "failed",
   ],
-  awaiting_publish: ["published", "preparing_page"],
+  awaiting_publish: ["published", "preparing_page", "awaiting_publish"],
   published: ["collecting"],
-  collecting: ["reviewing"],
+  collecting: ["reviewing", "awaiting_publish"],
   reviewing: ["delivered", "strategizing", "failed"],
   delivered: [],
-  failed: ["researching", "strategizing", "preparing_page", "reviewing"],
+  failed: ["researching", "drafting_quote", "reading_receipt", "strategizing", "preparing_page", "reviewing"],
   awaiting_founder: ["researching", "strategizing", "preparing_page"],
   cancelled: [],
 };
@@ -66,6 +80,8 @@ export function canTransition(from: ProjectStatus, to: ProjectStatus) {
 
 export const AGENT_STATUSES: ProjectStatus[] = [
   "researching",
+  "drafting_quote",
+  "reading_receipt",
   "strategizing",
   "preparing_page",
   "reviewing",

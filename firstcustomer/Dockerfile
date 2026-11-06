@@ -24,7 +24,7 @@ FROM node:24-bookworm-slim AS worker
 WORKDIR /app
 ENV NODE_ENV=production PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 COPY --from=deps /app/node_modules ./node_modules
+RUN ./node_modules/.bin/playwright install --with-deps --only-shell chromium && chown -R node:node /ms-playwright
 COPY . .
-RUN npx playwright install --with-deps chromium && chown -R node:node /ms-playwright
 USER node
 CMD ["npx", "tsx", "src/worker/index.ts"]

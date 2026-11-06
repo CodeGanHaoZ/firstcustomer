@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { isPrivateAddress, assertPublicUrl, htmlToText } from "@/agents/fetch-page";
-import { listCostYuan, createModelClient } from "@/ai/call-model";
+import { listCostYuan, createModelClient, hasModelListPrice } from "@/ai/call-model";
 import { AgentRunError, runAgent, type AgentTool } from "@/ai/run-agent";
 import type { ChatMessage, ModelClient, ModelRequest, ModelResponse, ToolCall } from "@/ai/types";
 
@@ -225,6 +225,11 @@ describe("模型配置", () => {
     expect(createModelClient({ LLM_PROVIDER: "stub", ALLOW_STUB: "1" } as unknown as NodeJS.ProcessEnv)).toBeTypeOf("function");
   });
 
+  it("识别跨型号初诊的已计价和未计价组合", () => {
+    expect(hasModelListPrice("mimo-v2.6-flash+mimo-v2.6-pro")).toBe(true);
+    expect(hasModelListPrice("mimo-v2.6-flash+unknown")).toBe(false);
+  });
+
   it("thinking=false 时向 MiMo 关闭思考模式，默认不传", async () => {
     const bodies: Record<string, unknown>[] = [];
     vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
@@ -255,10 +260,34 @@ describe("模型配置", () => {
     expect(createModelClient(env({ LLM_PROVIDER: "stepfun", STEPFUN_API_KEY: "k" }))).toBeTypeOf("function");
     expect(() => createModelClient(env({ LLM_PROVIDER: "other", MIMO_API_KEY: "k" }))).toThrow("不支持");
   });
+
+  it("结构化任务从 MiMo 事件流收集完整 JSON 和实际用量", async () => {
+    const chunks = [
+      { choices: [{ index: 0, delta: { content: '{"answer"' }, finish_reason: null }] },
+      { choices: [{ index: 0, delta: { content: ':"ok"}' }, finish_reason: "stop" }] },
+      { choices: [], usage: { prompt_tokens: 13, completion_tokens: 7, total_tokens: 20 } },
+    ];
+    const fetchStream = vi.fn(async (_url: string, init: RequestInit) => {
+      expect(JSON.parse(String(init.body))).toMatchObject({ stream: true, stream_options: { include_usage: true } });
+      const body = chunks.map((chunk) => `data: ${JSON.stringify({
+        id: "stream", model: "mimo-v2.6-flash", object: "chat.completion.chunk", created: 0, ...chunk,
+      })}\n\n`).join("") + "data: [DONE]\n\n";
+      return new Response(body, { headers: { "content-type": "text/event-stream" } });
+    });
+    vi.stubGlobal("fetch", fetchStream);
+    try {
+      const client = createModelClient({ MIMO_API_KEY: "k" } as unknown as NodeJS.ProcessEnv);
+      const result = await client({ agent: "quote", tier: "flash", preferStreaming: true, messages: [{ role: "user", content: "hi" }] });
+      expect(result).toMatchObject({ content: '{"answer":"ok"}', model: "mimo-v2.6-flash",
+        usage: { inputTokens: 13, outputTokens: 7, searchCalls: 0 } });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe("读取网页的安全检查", () => {
-  it.each(["127.0.0.1", "10.0.0.1", "172.16.0.1", "192.168.1.1", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1"])(
+  it.each(["127.0.0.1", "10.0.0.1", "172.16.0.1", "192.168.1.1", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1", "::ffff:7f00:1", "::ffff:a9fe:a9fe"])(
     "%s 是内部地址",
     (ip) => {
       expect(isPrivateAddress(ip)).toBe(true);
@@ -273,6 +302,7 @@ describe("读取网页的安全检查", () => {
     await expect(assertPublicUrl("http://127.0.0.1:54329/")).rejects.toThrow("内部网络");
     await expect(assertPublicUrl("http://localhost/")).rejects.toThrow("内部网络");
     await expect(assertPublicUrl("http://[::1]/")).rejects.toThrow("内部网络");
+    await expect(assertPublicUrl("http://[::ffff:7f00:1]:3100/")).rejects.toThrow("内部网络");
     await expect(assertPublicUrl("file:///etc/passwd")).rejects.toThrow("http");
   });
 
@@ -283,5 +313,10 @@ describe("读取网页的安全检查", () => {
     expect(text).not.toContain("pwned");
     expect(title).toBe("T");
     expect((globalThis as { __pwned?: boolean }).__pwned).toBeUndefined();
+  });
+
+  it("空页面不把脚本误认成正文，允许使用浏览器兜底", () => {
+    const html = '<div id="root"></div><script>document.querySelector("#root").innerText = "loaded";</script>';
+    expect(htmlToText(html, "https://example.com/").text).toBe("");
   });
 });

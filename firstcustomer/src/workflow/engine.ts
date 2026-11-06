@@ -3,18 +3,24 @@ import { and, asc, count, countDistinct, desc, eq, gt, inArray } from "drizzle-o
 import {
   GROWTH_PROMPT,
   LAUNCH_PROMPT,
+  QUOTE_PROMPT,
+  RECEIPT_PROMPT,
   RESEARCH_PLAN_PROMPT,
   RESEARCH_PROMPT,
   STRATEGY_PROMPT,
+  SUPPORT_PROMPT,
   VISION_PROMPT,
 } from "@/agents/prompts";
 import {
   growthOutput,
   launchOutput,
+  proposalOutput,
+  receiptOutput,
   researchPlan,
   researchSelection,
   type ResearchOutput,
   strategyOutput,
+  supportOutput,
   visionOutput,
   type LaunchOutput,
   type PositioningOption,
@@ -34,23 +40,26 @@ import {
   campaigns,
   clarifications,
   claims,
+  companySettings,
   counterResponses,
   deliverables,
   events,
   evidenceItems,
   landingPages,
   leads,
+  paymentReceipts,
   positionings,
   projectImages,
   projects,
   sourceDocuments,
-  stateTransitions,
+  supportMessages,
 } from "@/db/schema";
 import { toDataUrl } from "@/domain/images";
-import { checkClaims } from "@/domain/claims";
+import { checkClaims, checkForbiddenTerms } from "@/domain/claims";
 import { unansweredCounterEvidence } from "@/domain/counter";
 import {
   evaluateExperiment,
+  channelProblems,
   experimentProblems,
   unsupportedFigures,
   VERDICT_LABELS,
@@ -58,11 +67,16 @@ import {
   type Metrics,
 } from "@/domain/experiment";
 import {
-  canTransition,
   sendBackAllowed,
+  STATUS_LABELS,
+  usesQuoteFlow,
   type ProjectStatus,
   type SendBackRoute,
 } from "@/domain/workflow";
+
+import { ConflictError, transition } from "./transitions";
+import { latestReceipt, loadReceiptImage, projectOrder, quoteFeedback, saveDraftProposal } from "./commerce";
+import { needsFounder } from "./support";
 
 export type EngineDeps = {
   db: Db;
@@ -87,35 +101,6 @@ export type Escalation = {
   taskId: string;
 };
 
-export class ConflictError extends Error {}
-
-export async function transition(
-  db: Db,
-  project: { id: string; status: string },
-  to: ProjectStatus,
-  actor: string,
-  reason: string | null,
-  patch: Partial<typeof projects.$inferInsert> = {},
-) {
-  const from = project.status as ProjectStatus;
-  if (!canTransition(from, to)) throw new Error(`不允许从 ${from} 流转到 ${to}`);
-  await db.transaction(async (tx) => {
-    const rows = await tx
-      .update(projects)
-      .set({ ...patch, status: to, updatedAt: new Date() })
-      .where(and(eq(projects.id, project.id), eq(projects.status, from)))
-      .returning({ id: projects.id });
-    if (!rows.length) throw new ConflictError(`项目状态已不是 ${from}`);
-    await tx.insert(stateTransitions).values({
-      projectId: project.id,
-      fromStatus: from,
-      toStatus: to,
-      actor,
-      reason,
-    });
-  });
-}
-
 type TaskOptions = {
   agent: string;
   input: unknown;
@@ -132,17 +117,21 @@ async function runTask<T>(
     summary: RunSummary;
   }>,
 ) {
-  const [task] = await deps.db
-    .insert(agentTasks)
-    .values({
+  const [task] = await deps.db.transaction(async (tx) => {
+    // Serialize task admission with pause and other project decisions.
+    const [active] = await tx.select({ id: projects.id }).from(projects)
+      .where(and(eq(projects.id, project.id), eq(projects.status, project.status), eq(projects.paused, false)))
+      .for("update");
+    if (!active) throw new ConflictError("项目已暂停或已进入其他阶段");
+    return tx.insert(agentTasks).values({
       projectId: project.id,
       agent: options.agent,
       input: options.input,
       trigger: options.trigger ?? "normal",
       parentTaskId: options.parentTaskId ?? null,
       round: project.round,
-    })
-    .returning({ id: agentTasks.id });
+    }).returning({ id: agentTasks.id });
+  });
 
   let toolSearchCalls = 0;
   const finish = (
@@ -323,6 +312,7 @@ async function analyzePendingImages(deps: EngineDeps, project: Project) {
         .set({ analysisStatus: "done", analysis: output, analysisError: null })
         .where(eq(projectImages.id, image.id));
     } catch (error) {
+      if (error instanceof ConflictError) throw error;
       await db
         .update(projectImages)
         .set({
@@ -596,8 +586,69 @@ async function runResearch(deps: EngineDeps, project: Project) {
     await transition(db, project, "needs_info", "research", `追问客户 ${output.questions.length} 个问题`);
     return;
   }
-  await transition(db, project, "strategizing", "research", null, { pendingRequest: null });
+  const order = usesQuoteFlow(project) ? await projectOrder(db, project.id) : null;
+  const next = usesQuoteFlow(project) && order?.status !== "paid" ? "drafting_quote" : "strategizing";
+  await transition(db, project, next, "research", null, { pendingRequest: null });
   await deps.enqueue(project.id);
+}
+
+async function runQuote(deps: EngineDeps, project: Project) {
+  const order = await projectOrder(deps.db, project.id);
+  if (!order) throw new Error("项目没有订单");
+  const [diagnosis] = await deps.db.select({ output: agentTasks.output }).from(agentTasks)
+    .where(and(eq(agentTasks.projectId, project.id), eq(agentTasks.agent, "research"), eq(agentTasks.status, "succeeded")))
+    .orderBy(desc(agentTasks.finishedAt))
+    .limit(1);
+  const input = {
+    product: productInput(project),
+    diagnosis: diagnosis?.output ?? null,
+    previous_proposal: order.proposal,
+    feedback: await quoteFeedback(deps.db, project.id, order.quoteVersion),
+  };
+  const { output } = await runTask(deps, project, { agent: "quote", input }, () => runAgent({
+    agent: "quote",
+    tier: "flash",
+    thinking: false,
+    system: QUOTE_PROMPT,
+    input,
+    schema: proposalOutput,
+    model: deps.model,
+  }));
+  await saveDraftProposal(deps.db, project, output);
+}
+
+async function runReceipt(deps: EngineDeps, project: Project) {
+  const { db } = deps;
+  const order = await projectOrder(db, project.id);
+  const receipt = order ? await latestReceipt(db, order.id) : null;
+  const image = receipt ? await loadReceiptImage(db, project.id, receipt.id) : null;
+  if (!receipt || !image) throw new Error("没有找到付款截图");
+  const input = { receiptId: receipt.id };
+  let analysis = null;
+  try {
+    const { output } = await runTask(deps, project, { agent: "receipt", input }, () => runAgent({
+      agent: "receipt",
+      tier: "vision",
+      thinking: false,
+      system: RECEIPT_PROMPT,
+      input,
+      userContent: [
+        { type: "image_url", image_url: { url: toDataUrl(image.mimeType, image.data) } },
+        { type: "text", text: "读取这张付款截图里清晰可辨的字段。" },
+      ],
+      schema: receiptOutput,
+      model: (request) => deps.model({ ...request, mimoOnly: true }),
+    }));
+    analysis = output;
+  } catch (error) {
+    if (error instanceof ConflictError) throw error;
+    // Model errors remain in the task log. The founder can verify the original screenshot.
+  }
+  await db.transaction(async (tx) => {
+    await transition(tx, project, "awaiting_payment", "receipt", analysis ? "截图已读取" : "截图读取失败，等待人工核对");
+    await tx.update(paymentReceipts).set({ analysis, analysisStatus: analysis ? "done" : "failed" })
+      .where(eq(paymentReceipts.id, receipt.id));
+  });
 }
 
 async function latestPositioning(db: Db, projectId: string) {
@@ -801,6 +852,8 @@ async function runLaunch(deps: EngineDeps, project: Project) {
     (e) => e.status === "verified",
   );
   const screenshots = await screenshotContext(db, project.id);
+  const [settings] = await db.select({ brand: companySettings.brand, terms: companySettings.forbiddenTerms })
+    .from(companySettings).where(eq(companySettings.id, 1));
 
   let violations: { target: string; message: string }[] | null = null;
   let parentTaskId = pending?.fromTaskId ?? null;
@@ -816,6 +869,8 @@ async function runLaunch(deps: EngineDeps, project: Project) {
       guidance: pending?.guidance ?? null,
       rejection: pending?.route === "rejected" ? pending.request : null,
       founder_note: project.founderNote,
+      brand: settings?.brand || null,
+      forbidden_terms: settings?.terms ?? [],
       violations,
     };
     const { taskId, output } = await runTask<LaunchOutput>(
@@ -830,6 +885,10 @@ async function runLaunch(deps: EngineDeps, project: Project) {
       () =>
         runAgent({
           agent: "launch",
+          tier: "flash",
+          thinking: false,
+          jsonMode: true,
+          maxCompletionTokens: 4000,
           system: LAUNCH_PROMPT,
           input,
           schema: launchOutput,
@@ -856,6 +915,8 @@ async function runLaunch(deps: EngineDeps, project: Project) {
       evidence,
       now: new Date(),
     });
+    found.push(...checkForbiddenTerms(output.page, output.channel.assets, settings?.terms ?? []));
+    found.push(...channelProblems(output.channel.name).map((message) => ({ target: output.channel.name, message })));
     if (found.length === 0) {
       await saveLandingPage(deps, project, positioning.version, output);
       return;
@@ -873,7 +934,7 @@ async function runLaunch(deps: EngineDeps, project: Project) {
     route: "launch->strategy",
     request: {
       missing: (violations ?? []).map((v) => v.target).join("；"),
-      reason: "改写后仍有声明缺少证据",
+      reason: "改写后仍未通过发布检查",
       source_types: [],
     },
     taskId: parentTaskId as string,
@@ -1007,6 +1068,10 @@ async function runGrowth(deps: EngineDeps, project: Project) {
   const { output } = await runTask(deps, project, { agent: "growth", input }, () =>
     runAgent({
       agent: "growth",
+      tier: "flash",
+      thinking: false,
+      jsonMode: true,
+      maxCompletionTokens: 2500,
       system: GROWTH_PROMPT,
       input,
       schema: growthOutput,
@@ -1031,16 +1096,73 @@ async function runGrowth(deps: EngineDeps, project: Project) {
 
 const STEPS: Partial<Record<ProjectStatus, (deps: EngineDeps, project: Project) => Promise<void>>> = {
   researching: runResearch,
+  drafting_quote: runQuote,
+  reading_receipt: runReceipt,
   strategizing: runStrategy,
   preparing_page: runLaunch,
   reviewing: runGrowth,
 };
 
+async function runSupportInbox(deps: EngineDeps, project: Project) {
+  const { db } = deps;
+  const messages = await db.select().from(supportMessages)
+    .where(and(eq(supportMessages.projectId, project.id), eq(supportMessages.status, "queued")))
+    .orderBy(asc(supportMessages.createdAt));
+  if (!messages.length) return false;
+  const [[settings], positioning, evidence, [page], order] = await Promise.all([
+    db.select({ brand: companySettings.brand, service: companySettings.service, operations: companySettings.operations,
+      forbiddenTerms: companySettings.forbiddenTerms })
+      .from(companySettings).where(eq(companySettings.id, 1)),
+    latestPositioning(db, project.id),
+    visibleEvidence(db, project.id),
+    db.select({ status: landingPages.status }).from(landingPages).where(eq(landingPages.projectId, project.id))
+      .orderBy(desc(landingPages.version)).limit(1),
+    projectOrder(db, project.id),
+  ]);
+  for (const message of messages) {
+    const input = {
+      question: message.question,
+      product: productInput(project),
+      status: STATUS_LABELS[project.status as ProjectStatus],
+      positioning: positioning?.chosenOption != null
+        ? (positioning.options as PositioningOption[])[positioning.chosenOption] : null,
+      evidence: evidence.filter((item) => item.status === "verified").slice(0, 12).map(evidenceView),
+      page: page?.status === "published" ? "已公开" : "尚未公开",
+      payment: order?.status === "paid" ? "老板已确认到账" : "尚未记录到账",
+      brand: settings?.brand ?? null,
+      service: settings?.service ?? null,
+      operations: settings?.operations ?? null,
+      forbidden_terms: settings?.forbiddenTerms ?? [],
+    };
+    let outcome: Partial<typeof supportMessages.$inferInsert>;
+    try {
+      const { output } = await runTask(deps, project, { agent: "support", input: { messageId: message.id } }, () => runAgent({
+        agent: "support", tier: "flash", thinking: false, system: SUPPORT_PROMPT,
+        input, schema: supportOutput, model: deps.model,
+      }));
+      const risky = output.risk === "escalated" || needsFounder(output.reply) ||
+        settings?.forbiddenTerms.some((term) => output.reply.toLowerCase().includes(term.toLowerCase()));
+      outcome = risky
+        ? { status: "escalated", risk: "escalated", draft: output.reply }
+        : { status: "replied", risk: output.risk, reply: output.reply };
+    } catch (error) {
+      if (error instanceof ConflictError) break;
+      outcome = { status: "escalated", risk: "escalated", draft: "客服未能生成可靠回复，请核对项目后处理。" };
+    }
+    await db.update(supportMessages).set({ ...outcome, updatedAt: new Date() })
+      .where(and(eq(supportMessages.id, message.id), eq(supportMessages.status, "queued")));
+  }
+  return true;
+}
+
 export async function advanceProject(deps: EngineDeps, projectId: string) {
-  const [project] = await deps.db.select().from(projects).where(eq(projects.id, projectId));
-  if (!project) return;
+  const load = () => deps.db.select().from(projects).where(eq(projects.id, projectId));
+  let [project] = await load();
+  if (!project || project.paused) return;
+  if (await runSupportInbox(deps, project)) [project] = await load();
+  if (!project || project.paused) return;
   const step = STEPS[project.status as ProjectStatus];
-  if (!step || project.paused) return;
+  if (!step) return;
   try {
     await analyzePendingImages(deps, project);
     await step(deps, project);

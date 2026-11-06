@@ -4,12 +4,14 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { pageContent } from "@/agents/schemas";
 import { getDb } from "@/db";
 import { leads, projects } from "@/db/schema";
 import { enqueueAdvance } from "@/jobs/queue";
 import { endAdminSession, passwordMatches, requireAdmin, startAdminSession } from "@/lib/auth";
 import { withinLimit } from "@/lib/request";
-import { readUploadedFiles } from "@/lib/uploads";
+import { readUploadedFiles, readUploadedImage } from "@/lib/uploads";
+import { confirmReceipt, decideQuote, MAX_AMOUNT_FEN, savePaymentCode, uploadReceipt } from "@/workflow/commerce";
 import {
   addManualEvidence,
   addProjectImage,
@@ -27,11 +29,15 @@ import {
   retryProject,
   setFounderMinutes,
   setOwnProduct,
+  setPaused,
+  setLeadTest,
   setQuote,
   skipClarifications,
   startResearch,
   startReview,
 } from "@/workflow/actions";
+import { replyToSupport } from "@/workflow/support";
+import { editLandingPage } from "@/workflow/landing-edits";
 
 export async function loginAction(formData: FormData) {
   const allowed = await withinLimit("admin-login", 10, 600);
@@ -68,8 +74,9 @@ function adminAction(handler: Handler) {
 
 const text = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
 const yuanToFen = (value: string) => {
+  if (!/^\d+(?:\.\d{1,2})?$/.test(value)) throw new Error("金额不正确，请精确到分");
   const amount = Number(value);
-  if (!Number.isFinite(amount) || amount < 0) throw new Error("金额不正确");
+  if (!Number.isFinite(amount) || amount < 0 || amount * 100 > MAX_AMOUNT_FEN) throw new Error("金额不正确");
   return Math.round(amount * 100);
 };
 
@@ -78,6 +85,7 @@ const founderDecisionHandler = adminAction(async (formData, projectId) => {
     .object({
       gate: z.enum(["positioning", "publish", "next_round"]),
       verdict: z.enum(["approve", "reject"]),
+      version: z.coerce.number().int().positive(),
     })
     .parse(Object.fromEntries(formData));
   const option = text(formData, "chosenOption");
@@ -99,7 +107,8 @@ const ownProductConfirmHandler = adminAction(async (formData, projectId) => {
   const db = getDb();
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
   if (!project?.isOwnProduct) throw new Error("只有自有产品才能由老板代为确认");
-  await decide(db, enqueueAdvance, { projectId, gate, actor: "customer", verdict: "approve" });
+  const version = z.coerce.number().int().positive().parse(formData.get("version"));
+  await decide(db, enqueueAdvance, { projectId, gate, version, actor: "customer", verdict: "approve" });
 });
 export async function ownProductConfirm(projectId: string, formData: FormData) {
   return ownProductConfirmHandler(projectId, formData);
@@ -180,16 +189,15 @@ export async function feedbackAction(projectId: string, formData: FormData) {
   return feedbackHandler(projectId, formData);
 }
 
-const quoteHandler = adminAction(async (formData) => {
-  await setQuote(getDb(), text(formData, "orderId"), yuanToFen(text(formData, "yuan")));
+const quoteHandler = adminAction(async (formData, projectId) => {
+  await setQuote(getDb(), projectId, yuanToFen(text(formData, "yuan")));
 });
 export async function quoteAction(projectId: string, formData: FormData) {
   return quoteHandler(projectId, formData);
 }
 
-const paymentHandler = adminAction(async (formData) => {
-  await recordPayment(getDb(), {
-    orderId: text(formData, "orderId"),
+const paymentHandler = adminAction(async (formData, projectId) => {
+  await recordPayment(getDb(), projectId, {
     amountFen: yuanToFen(text(formData, "yuan")),
     method: text(formData, "method") || "人工记录",
     reference: text(formData, "reference") || null,
@@ -199,11 +207,103 @@ export async function paymentAction(projectId: string, formData: FormData) {
   return paymentHandler(projectId, formData);
 }
 
-const minutesHandler = adminAction(async (formData) => {
-  await setFounderMinutes(getDb(), text(formData, "orderId"), Math.max(0, Number(text(formData, "minutes")) || 0));
+const minutesHandler = adminAction(async (formData, projectId) => {
+  await setFounderMinutes(getDb(), projectId, Math.max(0, Number(text(formData, "minutes")) || 0));
 });
 export async function minutesAction(projectId: string, formData: FormData) {
   return minutesHandler(projectId, formData);
+}
+
+const proposalHandler = adminAction(async (formData, projectId) => {
+  const verdict = z.enum(["approve", "reject"]).parse(formData.get("verdict"));
+  await decideQuote(getDb(), enqueueAdvance, {
+    projectId,
+    actor: "founder",
+    version: z.coerce.number().int().positive().parse(formData.get("version")),
+    verdict,
+    reason: text(formData, "reason").slice(0, 500),
+    quoteFen: verdict === "approve" ? yuanToFen(text(formData, "yuan")) : undefined,
+  });
+});
+export async function founderProposalAction(projectId: string, formData: FormData) {
+  return proposalHandler(projectId, formData);
+}
+
+const receiptUploadHandler = adminAction(async (formData, projectId) => {
+  await uploadReceipt(getDb(), enqueueAdvance, { projectId, bytes: await readUploadedImage(formData, "receipt"), actor: "founder" });
+});
+export async function founderReceiptUploadAction(projectId: string, formData: FormData) {
+  return receiptUploadHandler(projectId, formData);
+}
+
+const receiptConfirmationHandler = adminAction(async (formData, projectId) => {
+  await confirmReceipt(getDb(), enqueueAdvance, {
+    projectId,
+    receiptId: z.uuid().parse(formData.get("receiptId")),
+    amountFen: yuanToFen(text(formData, "yuan")),
+    reference: text(formData, "reference").slice(0, 200),
+    reason: text(formData, "reason").slice(0, 500),
+  });
+});
+export async function confirmReceiptAction(projectId: string, formData: FormData) {
+  return receiptConfirmationHandler(projectId, formData);
+}
+
+const pauseHandler = adminAction(async (formData, projectId) => {
+  const paused = z.enum(["1", "0"]).parse(formData.get("paused")) === "1";
+  await setPaused(getDb(), enqueueAdvance, projectId, paused);
+});
+export async function pauseProjectAction(projectId: string, formData: FormData) {
+  return pauseHandler(projectId, formData);
+}
+
+const markTestLeadHandler = adminAction(async (formData, projectId) => {
+  await setLeadTest(getDb(), projectId, z.uuid().parse(formData.get("leadId")), formData.get("test") === "1");
+});
+export async function markTestLeadAction(projectId: string, formData: FormData) {
+  return markTestLeadHandler(projectId, formData);
+}
+
+const landingEditHandler = adminAction(async (formData, projectId) => {
+  const rows = (key: string) => text(formData, key).slice(0, 3000).split("\n").map((value) => value.trim()).filter(Boolean);
+  const field = (key: string) => z.string().min(1).max(600).parse(text(formData, key));
+  const claim = text(formData, "claim");
+  await editLandingPage(getDb(), {
+    projectId,
+    version: z.coerce.number().int().positive().parse(formData.get("version")),
+    image: z.union([z.literal("none"), z.literal("keep"), z.uuid()]).parse(formData.get("image")),
+    content: pageContent.parse({
+      headline: field("headline"), subheadline: field("subheadline"), value_props: rows("value_props"),
+      scenarios: rows("scenarios"), cta_label: field("cta_label"), form_prompt: field("form_prompt"),
+    }),
+    claim: claim ? {
+      text: z.string().max(600).parse(claim), location: "page",
+      kind: z.enum(["metric", "comparison", "pain", "feature"]).parse(formData.get("claim_kind")),
+      evidence_id: z.uuid().parse(formData.get("evidence_id")),
+    } : null,
+  });
+  return "新版本已通过声明检查，等待老板和客户重新审批";
+});
+export async function editLandingAction(projectId: string, formData: FormData) {
+  return landingEditHandler(projectId, formData);
+}
+
+const supportReplyHandler = adminAction(async (formData, projectId) => {
+  await replyToSupport(getDb(), projectId, z.uuid().parse(formData.get("messageId")), text(formData, "reply"));
+});
+export async function replyToSupportAction(projectId: string, formData: FormData) {
+  return supportReplyHandler(projectId, formData);
+}
+
+export async function uploadPaymentCodeAction(formData: FormData) {
+  await requireAdmin();
+  try {
+    await savePaymentCode(getDb(), await readUploadedImage(formData, "paymentCode"));
+  } catch (error) {
+    redirect(`/admin?error=${encodeURIComponent(error instanceof Error ? error.message : "上传失败")}#payment-code`);
+  }
+  revalidatePath("/admin");
+  redirect("/admin#payment-code");
 }
 
 const evidenceHandler = adminAction(async (formData, projectId) => {

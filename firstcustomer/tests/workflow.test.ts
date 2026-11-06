@@ -13,17 +13,26 @@ import {
   campaigns,
   clarifications,
   claims,
+  companyReports,
+  companySettings,
   decisions,
   deliverables,
   events,
   evidenceItems,
   landingPages,
   leads,
+  payments,
   projectImages,
   projects,
   stateTransitions,
 } from "@/db/schema";
 import { loadProjectImage } from "@/workflow/queries";
+import { confirmReceipt, customerPaymentCode, decideQuote, latestReceipt, projectOrder, savePaymentCode, uploadReceipt } from "@/workflow/commerce";
+import { companyDocuments, saveCompanySettings } from "@/workflow/company-context";
+import { decideWeekly, requestCompanyReport, runCompanyReport } from "@/workflow/company-reports";
+import { editLandingPage, loadPublicVersionImage, loadVersionImage } from "@/workflow/landing-edits";
+import { openSupportMessage, projectSupport, replyToSupport } from "@/workflow/support";
+import type { PageContent } from "@/agents/schemas";
 import {
   addManualEvidence,
   addProjectImage,
@@ -39,6 +48,7 @@ import {
   resolveEscalation,
   retryFailedImages,
   retryProject,
+  setPaused,
   skipClarifications,
   startResearch,
   startReview,
@@ -85,6 +95,9 @@ afterAll(async () => {
 beforeEach(async () => {
   await db.delete(projects);
   await db.delete(evidenceItems);
+  await db.delete(companyReports);
+  await db.delete(companySettings);
+  await db.delete(decisions);
 });
 
 // 用队列数组代替 pg-boss，循环执行直到项目停在需要人决定的状态。
@@ -109,6 +122,7 @@ const newProject = (extra = {}) =>
     goal: "找首批用户",
     targetMarket: "北美",
     contact: "dev@example.com",
+    isOwnProduct: true,
     ...extra,
   });
 
@@ -117,6 +131,54 @@ const statusOf = async (id: string) =>
 
 const tasksOf = (id: string) =>
   db.select().from(agentTasks).where(eq(agentTasks.projectId, id)).orderBy(asc(agentTasks.startedAt));
+
+describe("初诊、报价与到账", () => {
+  it("退回报价会生成新版本，到账前不运行 Strategy，重复确认只记一笔", async () => {
+    const h = harness();
+    const { project } = await newProject({ isOwnProduct: false });
+    const { project: other } = await newProject({ isOwnProduct: false });
+    const projectId = project.id;
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    await savePaymentCode(db, png);
+    await startResearch(db, h.enqueue, projectId);
+    await h.drain();
+    expect(await statusOf(projectId)).toBe("awaiting_quote");
+    expect((await projectOrder(db, projectId))?.quoteFen).toBe(29_900);
+    expect(await customerPaymentCode(db, projectId)).toBeNull();
+    await expect(decideQuote(db, h.enqueue, { projectId, version: 1, actor: "customer", verdict: "approve" })).rejects.toThrow();
+
+    const approve = (version: number) => decideQuote(db, h.enqueue, {
+      projectId, version, actor: "founder", verdict: "approve", quoteFen: 29_900,
+    });
+    await approve(1);
+    expect(await customerPaymentCode(db, projectId)).toBeNull();
+    await decideQuote(db, h.enqueue, { projectId, version: 1, actor: "customer", verdict: "reject", reason: "请说明需要我确认几次" });
+    await h.drain();
+    expect((await projectOrder(db, projectId))?.quoteVersion).toBe(2);
+    await expect(approve(1)).rejects.toThrow();
+    await approve(2);
+    await decideQuote(db, h.enqueue, { projectId, version: 2, actor: "customer", verdict: "approve" });
+    expect(await customerPaymentCode(db, projectId)).toMatchObject({ mimeType: "image/png" });
+    expect(await customerPaymentCode(db, other.id)).toBeNull();
+    await uploadReceipt(db, h.enqueue, { projectId, bytes: png, actor: "customer" });
+    await h.drain();
+    expect(await statusOf(projectId)).toBe("awaiting_payment");
+    expect(await db.select().from(payments)).toHaveLength(0);
+    expect((await tasksOf(projectId)).map((task) => task.agent)).toEqual(["research", "quote", "quote", "receipt"]);
+
+    const order = (await projectOrder(db, projectId))!;
+    const receipt = (await latestReceipt(db, order.id))!;
+    await expect(confirmReceipt(db, h.enqueue, { projectId, receiptId: receipt.id, amountFen: 28_900 })).rejects.toThrow("不一致");
+    const confirm = () => confirmReceipt(db, h.enqueue, { projectId, receiptId: receipt.id, amountFen: 29_900 });
+    const confirmations = await Promise.allSettled([confirm(), confirm()]);
+    expect(confirmations.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+    expect(await db.select().from(payments)).toHaveLength(1);
+    expect(await customerPaymentCode(db, projectId)).toBeNull();
+    await h.drain();
+    expect(await statusOf(projectId)).toBe("awaiting_positioning");
+    expect((await tasksOf(projectId)).filter((task) => task.agent === "quote")).toHaveLength(2);
+  });
+});
 
 async function bothApprove(enqueue: (id: string) => Promise<void>, projectId: string, gate: "positioning" | "publish") {
   await decide(db, enqueue, { projectId, gate, actor: "founder", verdict: "approve" });
@@ -134,6 +196,56 @@ async function toPublished() {
   const [page] = await db.select().from(landingPages).where(eq(landingPages.status, "published"));
   return { h, project, token, page };
 }
+
+describe("办公室新增交付能力", () => {
+  it("编辑后需要重新审批，截图只随对应的已发布版本公开", async () => {
+    const { h, project, page } = await toPublished();
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    await addProjectImage(db, { projectId: project.id, kind: "product", bytes: png, uploadedBy: "customer" });
+    const [image] = await db.select().from(projectImages).where(eq(projectImages.projectId, project.id));
+    const content = { ...(page.content as PageContent), headline: "Find what matters in your calls" };
+    await expect(editLandingPage(db, {
+      projectId: project.id, version: page.version, content: { ...content, headline: "Save 99%" }, image: image.id, claim: null,
+    })).rejects.toThrow("数字只能写在已登记的声明里");
+    await editLandingPage(db, { projectId: project.id, version: page.version, content, image: image.id, claim: null });
+    expect(await statusOf(project.id)).toBe("awaiting_publish");
+    const drafts = await db.select().from(landingPages).where(eq(landingPages.projectId, project.id));
+    const next = drafts.find((row) => row.version === page.version + 1)!;
+    expect(drafts.find((row) => row.id === page.id)?.status).toBe("published");
+    expect(await loadVersionImage(db, project.id)).toMatchObject({ mimeType: "image/png" });
+    expect(await loadPublicVersionImage(db, next.slug)).toBeNull();
+    await expect(decide(db, h.enqueue, { projectId: project.id, gate: "publish", actor: "founder", verdict: "approve", version: page.version })).rejects.toThrow("已更新");
+    await bothApprove(h.enqueue, project.id, "publish");
+    expect(await loadPublicVersionImage(db, next.slug)).toMatchObject({ mimeType: "image/png" });
+    expect(await loadPublicVersionImage(db, page.slug)).toBeNull();
+  });
+
+  it("客服升级走人工，周报决定入库，卷宗导出脱敏", async () => {
+    const h = harness();
+    const { project } = await newProject({ contact: "context-qa@example.invalid" });
+    await openSupportMessage(db, h.enqueue, project.id, "我想投诉，要求退款");
+    await openSupportMessage(db, h.enqueue, project.id, "现在进行到哪一步？");
+    await h.drain();
+    const inbox = await projectSupport(db, project.id);
+    const escalated = inbox.find((row) => row.status === "escalated")!;
+    expect(escalated.reply).toBeNull();
+    expect(inbox.find((row) => row.status === "replied")?.reply).toContain("已提交");
+    await replyToSupport(db, project.id, escalated.id, "请通过 context-qa@example.invalid 核对订单。");
+    expect((await projectSupport(db, project.id)).find((row) => row.id === escalated.id)?.status).toBe("resolved");
+    const reportId = await requestCompanyReport(db, async () => {}, "weekly");
+    await runCompanyReport(db, stubModel, reportId);
+    await decideWeekly(db, reportId, "continue", "保持当前服务");
+    const [report] = await db.select().from(companyReports).where(eq(companyReports.id, reportId));
+    expect(report.status).toBe("succeeded");
+    expect(report.input).toMatchObject({ revenueFen: 0, totalTasks: 2 });
+    await saveCompanySettings(db, { charter: "服务有 MVP 的开发者。" }, true);
+    const docs = await companyDocuments(db);
+    expect(docs).toHaveLength(9);
+    expect(docs[0].body).toContain("确认");
+    expect(docs[8].body).toContain("保持当前服务");
+    expect(docs.map((doc) => doc.body).join("\n")).not.toContain("context-qa@example.invalid");
+  });
+});
 
 describe("完整流程", () => {
   it("从研究走到交付，并留下打回、拦截和审批记录", async () => {
@@ -819,6 +931,28 @@ describe("截图上传和图片理解", () => {
     await h.drain();
     const [ok] = await db.select().from(projectImages).where(eq(projectImages.projectId, project.id));
     expect(ok.analysisStatus).toBe("done");
+  });
+
+  it("暂停时完成正在读的截图，恢复前不启动下一张图或初诊", async () => {
+    const { project } = await newProject();
+    let pauseOnFirstImage = true;
+    const h = harness(async (request) => {
+      if (request.agent === "vision" && pauseOnFirstImage) {
+        pauseOnFirstImage = false;
+        await setPaused(db, h.enqueue, project.id, true);
+      }
+      return stubModel(request);
+    });
+    await upload(project.id);
+    await upload(project.id);
+    await startResearch(db, h.enqueue, project.id);
+    await h.drain();
+    expect((await tasksOf(project.id)).map(({ agent, status }) => [agent, status])).toEqual([["vision", "succeeded"]]);
+    expect(await statusOf(project.id)).toBe("researching");
+    await setPaused(db, h.enqueue, project.id, false);
+    await h.drain();
+    expect((await tasksOf(project.id)).filter((task) => task.agent === "vision")).toHaveLength(2);
+    expect(await statusOf(project.id)).toBe("awaiting_positioning");
   });
 
   it("拒绝伪装成图片的文件，并限制数量", async () => {

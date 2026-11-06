@@ -1,4 +1,5 @@
 import type { PageContent } from "@/agents/schemas";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ export function LandingView(props: {
   submitted?: boolean;
   simulated?: boolean;
   formAction?: (formData: FormData) => Promise<void>;
+  screenshotHref?: string;
 }) {
   const { content, claims, formAction } = props;
   const productHref = safeHref(props.productUrl);
@@ -39,6 +41,13 @@ export function LandingView(props: {
         <p className="text-lg text-muted-foreground">{content.subheadline}</p>
         <CtaLink slug={props.slug} label={content.cta_label} enabled={!!formAction} />
       </section>
+
+      {props.screenshotHref ? (
+        <figure className="overflow-hidden rounded-lg border bg-muted">
+          <Image src={props.screenshotHref} alt="Product screenshot" width={1000} height={650}
+            className="h-auto max-h-[500px] w-full object-contain" unoptimized />
+        </figure>
+      ) : null}
 
       <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Why teams try it</h2>

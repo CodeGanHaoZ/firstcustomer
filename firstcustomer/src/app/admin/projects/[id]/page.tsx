@@ -3,9 +3,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { PositioningOption } from "@/agents/schemas";
+import { hasModelListPrice } from "@/ai/call-model";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
+import { LandingEditor } from "@/components/landing-editor";
 import {
   ClarificationSection,
+  DeliverablesSection,
   EvidenceSection,
   GrowthSection,
   PageSection,
@@ -23,29 +27,38 @@ import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db";
 import { orders, payments, projects } from "@/db/schema";
 import type { Gate, GateState } from "@/domain/approval";
-import { STATUS_LABELS, type ProjectStatus } from "@/domain/workflow";
+import { STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
 import { requireAdmin } from "@/lib/auth";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatYuan } from "@/lib/format";
+import { latestReceipt } from "@/workflow/commerce";
 import type { Escalation } from "@/workflow/engine";
 import { loadLeads, loadProjectAudit, loadProjectView } from "@/workflow/queries";
+import { projectSupport } from "@/workflow/support";
 import {
   adminDeleteImageAction,
   adminUploadImagesAction,
   campaignExecutedAction,
   cancelAction,
+  confirmReceiptAction,
   deleteLeadAction,
   deliverAction,
+  editLandingAction,
   escalationAction,
   feedbackAction,
   founderAnswersAction,
   founderDecision,
+  founderProposalAction,
+  founderReceiptUploadAction,
   manualEvidenceAction,
+  markTestLeadAction,
   minutesAction,
   ownProductAction,
   ownProductConfirm,
   paymentAction,
+  pauseProjectAction,
   quoteAction,
   regenerateLinkAction,
+  replyToSupportAction,
   retryAction,
   retryImagesAction,
   skipClarificationsAction,
@@ -57,6 +70,9 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "项目详情", robots: { index: false, follow: false } };
 
 const AGENT_LABELS: Record<string, string> = {
+  quote: "接待报价员",
+  receipt: "票据员",
+  support: "客服",
   vision: "截图读取",
   research: "Research",
   strategy: "Strategy",
@@ -80,6 +96,7 @@ const TRIGGER_LABELS: Record<string, string> = {
 function GateForm(props: {
   projectId: string;
   gate: Gate;
+  version: number;
   state: GateState;
   title: string;
   isOwnProduct: boolean;
@@ -94,6 +111,7 @@ function GateForm(props: {
         {props.isOwnProduct ? (
           <form action={ownProductConfirm.bind(null, projectId)}>
             <input type="hidden" name="gate" value={gate} />
+            <input type="hidden" name="version" value={props.version} />
             <Button type="submit" variant="outline">
               代为确认（自有产品）
             </Button>
@@ -106,6 +124,7 @@ function GateForm(props: {
     <form action={founderDecision.bind(null, projectId)} className="flex flex-col gap-3 text-sm">
       <p>{props.title}</p>
       <input type="hidden" name="gate" value={gate} />
+      <input type="hidden" name="version" value={props.version} />
       {props.options ? (
         <fieldset className="flex flex-col gap-1">
           <legend className="mb-1 font-medium">向客户推荐</legend>
@@ -136,21 +155,25 @@ function GateForm(props: {
 export default async function AdminProjectPage({ params, searchParams }: PageProps<"/admin/projects/[id]">) {
   await requireAdmin();
   const { id } = await params;
-  const { error, notice } = await searchParams;
+  const { error, notice, task } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = getDb();
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) notFound();
-  const view = await loadProjectView(db, project);
-  const audit = await loadProjectAudit(db, id);
-  const projectLeads = await loadLeads(db, id);
-  const [order] = await db.select().from(orders).where(eq(orders.projectId, id));
+  const [view, audit, projectLeads, [order], support] = await Promise.all([
+    loadProjectView(db, project), loadProjectAudit(db, id), loadLeads(db, id),
+    db.select().from(orders).where(eq(orders.projectId, id)), projectSupport(db, id),
+  ]);
   const orderPayments = order
     ? await db.select().from(payments).where(eq(payments.orderId, order.id))
     : [];
+  const receipt = order && usesQuoteFlow(project) ? await latestReceipt(db, order.id) : null;
   const escalation = project.escalation as Escalation | null;
   const bind = <T,>(action: (projectId: string, formData: FormData) => Promise<T>) => action.bind(null, id);
   const canStartNextRound = project.status === "reviewing" && !!view.report?.next_hypothesis;
+  const taskStatuses = [...new Set(audit.tasks.map(({ status }) => status))];
+  const taskFilter = typeof task === "string" && taskStatuses.includes(task) ? task : "";
+  const visibleTasks = taskFilter ? audit.tasks.filter(({ status }) => status === taskFilter) : audit.tasks;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
@@ -159,10 +182,13 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       </Link>
       {view.simulated ? <SimulatedBanner /> : null}
       <ProjectHeader project={project} />
+      {project.paused ? <p className="rounded-md border p-3 text-sm">项目已暂停。正在执行的步骤完成后停下。</p> : null}
       {error ? <p className="text-sm text-destructive">{String(error)}</p> : null}
       {notice ? <p className="break-all rounded-md border p-3 text-sm">{String(notice)}</p> : null}
 
-      <Card className="border-primary">
+      <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#finance" />
+
+      <Card id="decisions" className="border-primary">
         <CardHeader>
           <CardTitle>待我决定</CardTitle>
         </CardHeader>
@@ -180,10 +206,59 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               </Button>
             </form>
           ) : null}
+          {project.status === "awaiting_quote" && order?.proposal ? (
+            <div className="flex flex-col gap-4">
+              <ProposalDetails proposal={order.proposal} version={order.quoteVersion} quoteFen={order.quoteFen} />
+              <form action={bind(founderProposalAction)} className="flex flex-col gap-3 text-sm">
+                <input type="hidden" name="version" value={order.quoteVersion} />
+                <Label htmlFor="approved-quote">报价（元）</Label>
+                <Input id="approved-quote" name="yuan" type="number" min="0.01" step="0.01" defaultValue={(order.quoteFen ?? 29900) / 100} />
+                <Label htmlFor="proposal-reason">退回原因（退回时必填）</Label>
+                <Input id="proposal-reason" name="reason" maxLength={500} />
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" name="verdict" value="approve">确认价格与条款</Button>
+                  <Button type="submit" name="verdict" value="reject" variant="outline">退回重写</Button>
+                </div>
+              </form>
+            </div>
+          ) : null}
+          {project.status === "awaiting_quote_acceptance" && order?.proposal ? (
+            <>
+              <p className="text-sm">报价已确认，等待客户接受。</p>
+              <ProposalDetails proposal={order.proposal} version={order.quoteVersion} quoteFen={order.quoteFen} />
+            </>
+          ) : null}
+          {project.status === "awaiting_payment" && order ? (
+            <>
+              <ReceiptUpload action={bind(founderReceiptUploadAction)} />
+              {receipt && receipt.analysisStatus !== "pending" ? (
+                <form action={bind(confirmReceiptAction)} className="flex flex-col gap-3 border-t pt-4 text-sm">
+                  <input type="hidden" name="receiptId" value={receipt.id} />
+                  <Link href={`/admin/projects/${id}/receipts/${receipt.id}`} target="_blank" rel="noreferrer" className="self-start underline">打开付款截图核对</Link>
+                  <p>已接受的报价 {formatYuan(order.quoteFen ?? 0)}。</p>
+                  {receipt.analysis ? (
+                    <p>截图读取金额 {receipt.analysis.amountFen === null ? "未知" : formatYuan(receipt.analysis.amountFen)} · 时间 {receipt.analysis.paidAtText ?? "未知"} · 付款方 {receipt.analysis.payer ?? "未知"}。{receipt.analysis.unreadable}</p>
+                  ) : <p>截图自动读取未成功，请人工核对。</p>}
+                  {receipt.analysis?.amountFen != null && receipt.analysis.amountFen !== order.quoteFen ? (
+                    <p className="text-destructive">截图金额与报价不一致，请核对后填写实际到账金额及原因。</p>
+                  ) : null}
+                  <Label htmlFor="confirmed-amount">核对后的实际到账金额（元）</Label>
+                  <Input id="confirmed-amount" name="yuan" type="number" min="0.01" step="0.01" required />
+                  <Label htmlFor="payment-reference">凭证号（选填）</Label>
+                  <Input id="payment-reference" name="reference" maxLength={200} />
+                  <Label htmlFor="payment-reason">金额差异原因（实收与报价不同时必填）</Label>
+                  <Input id="payment-reason" name="reason" maxLength={500} />
+                  <Button type="submit" className="self-start">确认实际到账并开始正式服务</Button>
+                </form>
+              ) : <p className="text-sm">{receipt ? "票据员正在读取付款截图。" : "客户已接受报价，等待付款截图。"}</p>}
+              {receipt?.analysisStatus === "pending" ? <AutoRefresh /> : null}
+            </>
+          ) : null}
           {project.status === "awaiting_positioning" && view.positioning ? (
             <GateForm
               projectId={id}
               gate="positioning"
+              version={project.positioningVersion}
               state={view.gates.positioning}
               title="把关定位方案，通过后交给客户确认。"
               isOwnProduct={project.isOwnProduct}
@@ -195,8 +270,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
             <GateForm
               projectId={id}
               gate="publish"
+              version={view.page?.version ?? 0}
               state={view.gates.publish}
-              title="逐条对照声明和证据摘录，通过后交给客户确认。"
+              title={`逐条对照声明和证据摘录。验证仅使用一个免费渠道，额外支出需客户单独确认。${project.budgetNote ? ` 客户预算和时间要求为「${project.budgetNote}」。` : ""}`}
               isOwnProduct={project.isOwnProduct}
             />
           ) : null}
@@ -244,6 +320,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                 <GateForm
                   projectId={id}
                   gate="next_round"
+                  version={project.round}
                   state={view.gates.next_round}
                   title={`开启下一轮实验：${view.report.next_hypothesis}`}
                   isOwnProduct={project.isOwnProduct}
@@ -251,7 +328,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               ) : null}
             </div>
           ) : null}
-          {["researching", "strategizing", "preparing_page"].includes(project.status) ||
+          {["researching", "drafting_quote", "reading_receipt", "strategizing", "preparing_page"].includes(project.status) ||
           (project.status === "reviewing" && !view.report) ? (
             <>
               <AutoRefresh />
@@ -261,13 +338,39 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         </CardContent>
       </Card>
 
+      <Card id="frontdesk">
+        <CardHeader><CardTitle>前台 · 客服收件箱</CardTitle></CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          {support.some((item) => item.status === "queued") && !project.paused ? <AutoRefresh /> : null}
+          {support.length ? support.map((item) => (
+            <article key={item.id} className="space-y-2 border-b pb-3 last:border-b-0">
+              <p className="text-muted-foreground">{formatDateTime(item.createdAt)} · {item.status === "escalated" ? "待老板处理" : item.risk === "complex" ? "疑难" : item.status === "queued" ? "等待客服" : "已回复"}</p>
+              <p className="font-medium whitespace-pre-wrap">{item.question}</p>
+              {item.reply ? <p className="whitespace-pre-wrap">{item.reply}</p> : null}
+              {item.draft && item.status === "escalated" ? <p className="text-muted-foreground">处理建议　{item.draft}</p> : null}
+              {item.status === "escalated" || (item.status === "replied" && item.risk === "complex") ? (
+                <form action={bind(replyToSupportAction)} className="flex flex-col gap-2">
+                  <input type="hidden" name="messageId" value={item.id} />
+                  <Label htmlFor={`support-${item.id}`}>给客户的回复</Label>
+                  <Textarea id={`support-${item.id}`} name="reply" maxLength={1200} required />
+                  <Button type="submit" className="self-start">确认并回复</Button>
+                </form>
+              ) : null}
+            </article>
+          )) : <p className="text-muted-foreground">客户还没有提问。</p>}
+        </CardContent>
+      </Card>
+
       <ClarificationSection
         questions={view.clarifications}
         canAnswer={project.status === "needs_info"}
         answerAction={bind(founderAnswersAction)}
       />
-      <PositioningSection view={view} />
-      <PageSection view={view} previewHref={`/admin/projects/${id}/preview`} />
+      <div id="strategy"><PositioningSection view={view} /></div>
+      <div id="launch" className="flex flex-col gap-3">
+        <PageSection view={view} previewHref={`/admin/projects/${id}/preview`} />
+        {["awaiting_publish", "collecting"].includes(project.status) ? <LandingEditor view={view} action={bind(editLandingAction)} /> : null}
+      </div>
 
       {view.campaign?.status === "approved" ? (
         <Card>
@@ -318,10 +421,15 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                 <TableBody>
                   {projectLeads.map((lead) => (
                     <TableRow key={lead.id}>
-                      <TableCell>{lead.email}</TableCell>
+                      <TableCell>{lead.email}{lead.isTest ? " · 测试" : ""}</TableCell>
                       <TableCell className="whitespace-normal">{lead.message}</TableCell>
                       <TableCell>{formatDateTime(lead.createdAt)}</TableCell>
                       <TableCell>
+                        <form action={bind(markTestLeadAction)}>
+                          <input type="hidden" name="leadId" value={lead.id} />
+                          <input type="hidden" name="test" value={lead.isTest ? "0" : "1"} />
+                          <Button type="submit" variant="outline" size="sm">{lead.isTest ? "恢复计入" : "标记测试"}</Button>
+                        </form>
                         <form action={bind(deleteLeadAction)}>
                           <input type="hidden" name="leadId" value={lead.id} />
                           <Button type="submit" variant="ghost" size="sm">
@@ -338,7 +446,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         </Card>
       ) : null}
 
-      <GrowthSection view={view} />
+      <div id="growth"><GrowthSection view={view} /></div>
       <ScreenshotsSection
         images={view.images}
         hrefFor={(imageId) => `/admin/projects/${id}/images/${imageId}`}
@@ -347,7 +455,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         deleteAction={bind(adminDeleteImageAction)}
         retryAction={bind(retryImagesAction)}
       />
-      <EvidenceSection view={view} />
+      <div id="research"><EvidenceSection view={view} /></div>
 
       <Card>
         <CardHeader>
@@ -387,11 +495,28 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="tasks">
         <CardHeader>
           <CardTitle>Agent 执行记录</CardTitle>
         </CardHeader>
         <CardContent>
+          {taskStatuses.length > 1 ? (
+            <form action={`/admin/projects/${id}#tasks`} method="get" className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+              <Label htmlFor="task-filter">任务状态</Label>
+              <select id="task-filter" name="task" defaultValue={taskFilter} className="rounded-md border bg-background px-2 py-1">
+                <option value="">全部</option>
+                {taskStatuses.map((status) => <option key={status} value={status}>{TASK_STATUS[status] ?? status}</option>)}
+              </select>
+              <Button type="submit" variant="outline" size="sm">筛选</Button>
+            </form>
+          ) : null}
+          {project.status !== "delivered" && project.status !== "cancelled" ? (
+            <form action={bind(pauseProjectAction)} className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+              <input type="hidden" name="paused" value={project.paused ? "0" : "1"} />
+              <Button type="submit" variant="outline">{project.paused ? "恢复项目" : "暂停项目"}</Button>
+              <span className="text-muted-foreground">暂停会在当前步骤结束后生效。</span>
+            </form>
+          ) : null}
           <Table>
             <TableHeader>
               <TableRow>
@@ -405,7 +530,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               </TableRow>
             </TableHeader>
             <TableBody>
-              {audit.tasks.map((task) => (
+              {visibleTasks.map((task) => (
                 <TableRow key={task.id}>
                   <TableCell>{AGENT_LABELS[task.agent] ?? task.agent}</TableCell>
                   <TableCell>{TRIGGER_LABELS[task.trigger] ?? task.trigger}</TableCell>
@@ -414,7 +539,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                   <TableCell>
                     {task.provider ?? "无"} / {task.model ?? "无"}
                   </TableCell>
-                  <TableCell>¥{task.listCostYuan.toFixed(4)}</TableCell>
+                  <TableCell>{task.provider === "stub" ? "模拟" : hasModelListPrice(task.model) ? `¥${task.listCostYuan.toFixed(4)}` : "未计价"}</TableCell>
                   <TableCell>{formatDateTime(task.startedAt)}</TableCell>
                 </TableRow>
               ))}
@@ -432,7 +557,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="finance">
         <CardHeader>
           <CardTitle>订单和项目设置</CardTitle>
         </CardHeader>
@@ -449,7 +574,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                   {p.reference ? `，${p.reference}` : ""}）
                 </p>
               ))}
-              <form action={bind(quoteAction)} className="flex items-end gap-2">
+              {!project.requiresPayment ? <><form action={bind(quoteAction)} className="flex items-end gap-2">
                 <input type="hidden" name="orderId" value={order.id} />
                 <Input name="yuan" type="number" step="0.01" min="0" required placeholder="报价（元）" className="w-40" />
                 <Button type="submit" variant="outline">
@@ -464,7 +589,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                 <Button type="submit" variant="outline">
                   记录真实收款
                 </Button>
-              </form>
+              </form></> : null}
               <form action={bind(minutesAction)} className="flex items-end gap-2">
                 <input type="hidden" name="orderId" value={order.id} />
                 <Input name="minutes" type="number" min="0" defaultValue={order.founderMinutes} className="w-40" />
@@ -475,12 +600,12 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
             </>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <form action={bind(ownProductAction)}>
+            {!project.requiresPayment || project.status === "submitted" ? <form action={bind(ownProductAction)}>
               <input type="hidden" name="value" value={project.isOwnProduct ? "0" : "1"} />
               <Button type="submit" variant="outline">
                 {project.isOwnProduct ? "取消自有产品标记" : "标记为自有产品"}
               </Button>
-            </form>
+            </form> : null}
             <form action={bind(regenerateLinkAction)}>
               <Button type="submit" variant="outline">
                 作废并重新生成项目链接

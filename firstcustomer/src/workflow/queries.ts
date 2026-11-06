@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import type { ResearchOutput } from "@/agents/schemas";
 import type { Db } from "@/db";
 import {
   agentTasks,
@@ -45,6 +46,10 @@ export async function isSimulated(db: Db, projectId: string) {
 }
 
 export async function loadProjectView(db: Db, project: Project) {
+  const [diagnosis] = await db.select({ result: agentTasks.output }).from(agentTasks)
+    .where(and(eq(agentTasks.projectId, project.id), eq(agentTasks.agent, "research"),
+      eq(agentTasks.status, "succeeded"), sql`${agentTasks.output}->>'status' = 'done'`))
+    .orderBy(asc(agentTasks.startedAt)).limit(1);
   const [positioning] = await db
     .select()
     .from(positionings)
@@ -132,6 +137,7 @@ export async function loadProjectView(db: Db, project: Project) {
     .orderBy(asc(projectImages.createdAt));
 
   return {
+    diagnosis: (diagnosis?.result ?? null) as Extract<ResearchOutput, { status: "done" }> | null,
     clarifications: questions,
     images,
     positioning,
@@ -175,6 +181,7 @@ export async function loadLeads(db: Db, projectId: string) {
       id: leads.id,
       email: leads.email,
       message: leads.message,
+      isTest: leads.isTest,
       createdAt: leads.createdAt,
     })
     .from(leads)
@@ -192,11 +199,11 @@ export async function loadProjectImage(db: Db, projectId: string, imageId: strin
   return image ?? null;
 }
 
-export function imageResponse(image: { mimeType: string; data: Buffer }) {
+export function imageResponse(image: { mimeType: string; data: Buffer }, cacheControl = "private, max-age=3600") {
   return new Response(new Uint8Array(image.data), {
     headers: {
       "content-type": image.mimeType,
-      "cache-control": "private, max-age=3600",
+      "cache-control": cacheControl,
       "x-content-type-options": "nosniff",
       "content-security-policy": "default-src 'none'",
       "referrer-policy": "no-referrer",

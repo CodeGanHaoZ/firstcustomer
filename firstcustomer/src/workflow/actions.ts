@@ -28,7 +28,8 @@ import {
 } from "@/domain/approval";
 import { expiresAt, gradeFor, verifyQuote, type EvidenceKind } from "@/domain/evidence";
 import type { ProjectStatus } from "@/domain/workflow";
-import { reportFor, transition, type Escalation, type PendingRequest } from "./engine";
+import { reportFor, type Escalation, type PendingRequest } from "./engine";
+import { transition } from "./transitions";
 
 export type Enqueue = (projectId: string) => Promise<void>;
 
@@ -65,12 +66,14 @@ export async function createProject(
   },
 ) {
   const token = newToken();
-  const [project] = await db
-    .insert(projects)
-    .values({ ...input, tokenHash: hashToken(token) })
-    .returning();
-  await db.insert(orders).values({ projectId: project.id, sku: "首客启动包" });
-  return { project, token };
+  return db.transaction(async (tx) => {
+    const [project] = await tx
+      .insert(projects)
+      .values({ ...input, requiresPayment: true, tokenHash: hashToken(token) })
+      .returning();
+    await tx.insert(orders).values({ projectId: project.id, sku: "首客启动包" });
+    return { project, token };
+  });
 }
 
 export async function regenerateProjectLink(db: Db, projectId: string) {
@@ -83,10 +86,15 @@ export async function regenerateProjectLink(db: Db, projectId: string) {
 }
 
 export async function setOwnProduct(db: Db, projectId: string, isOwnProduct: boolean) {
-  await db
+  const project = await getProject(db, projectId);
+  const changed = await db
     .update(projects)
     .set({ isOwnProduct, updatedAt: new Date() })
-    .where(eq(projects.id, projectId));
+    .where(project.requiresPayment
+      ? and(eq(projects.id, projectId), eq(projects.status, "submitted"))
+      : eq(projects.id, projectId))
+    .returning({ id: projects.id });
+  if (!changed.length) throw new Error("请在开始初诊前标记自有产品");
 }
 
 export async function startResearch(db: Db, enqueue: Enqueue, projectId: string) {
@@ -223,55 +231,63 @@ export async function decide(
     verdict: Verdict;
     reason?: string | null;
     chosenOption?: number | null;
+    version?: number;
   },
 ) {
-  const { projectId, gate, actor, verdict } = input;
-  const project = await getProject(db, projectId);
-  if (project.status !== GATE_STATUS[gate]) {
-    throw new Error("当前阶段不能做这个决定");
-  }
-  if (verdict === "reject" && !input.reason?.trim()) {
-    throw new Error("退回时必须写明原因");
-  }
-  const report = gate === "next_round" ? await reportFor(db, project) : null;
-  const nextHypothesis = (report?.content as { next_hypothesis?: string | null } | undefined)
-    ?.next_hypothesis;
-  if (gate === "next_round" && !nextHypothesis) {
-    throw new Error("没有达到判定样本或没有下一轮假设，不能开启下一轮");
-  }
+  let needsWork = false;
+  const stageEnqueue: Enqueue = async () => { needsWork = true; };
+  await db.transaction(async (tx) => {
+    const { projectId, gate, actor, verdict } = input;
+    const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
+    if (!project) throw new Error("项目不存在");
+    if (project.status !== GATE_STATUS[gate]) {
+      throw new Error("当前阶段不能做这个决定");
+    }
+    if (verdict === "reject" && !input.reason?.trim()) {
+      throw new Error("退回时必须写明原因");
+    }
+    const report = gate === "next_round" ? await reportFor(tx, project) : null;
+    const nextHypothesis = (report?.content as { next_hypothesis?: string | null } | undefined)
+      ?.next_hypothesis;
+    if (gate === "next_round" && !nextHypothesis) {
+      throw new Error("没有达到判定样本或没有下一轮假设，不能开启下一轮");
+    }
 
-  const { version, state } = await gateStatusFor(db, project, gate);
-  const blocked = decisionError(state, actor);
-  if (blocked) throw new Error(blocked);
+    const { version, state } = await gateStatusFor(tx, project, gate);
+    if (input.version !== undefined && input.version !== version) throw new Error("这个版本已更新，请刷新后确认");
+    const blocked = decisionError(state, actor);
+    if (blocked) throw new Error(blocked);
 
-  const positioning = gate === "positioning" ? await latestPositioning(db, projectId) : null;
-  if (positioning && actor === "founder" && verdict === "approve") {
-    const options = positioning.options as PositioningOption[];
-    const chosen = input.chosenOption ?? positioning.recommendedOption;
-    if (!options[chosen]) throw new Error("选择的方案不存在");
-    await db
-      .update(positionings)
-      .set({ chosenOption: chosen })
-      .where(eq(positionings.id, positioning.id));
-  }
+    const positioning = gate === "positioning" ? await latestPositioning(tx, projectId) : null;
+    if (positioning && actor === "founder" && verdict === "approve") {
+      const options = positioning.options as PositioningOption[];
+      const chosen = input.chosenOption ?? positioning.recommendedOption;
+      if (!options[chosen]) throw new Error("选择的方案不存在");
+      await tx
+        .update(positionings)
+        .set({ chosenOption: chosen })
+        .where(eq(positionings.id, positioning.id));
+    }
 
-  await db.insert(decisions).values({
-    projectId,
-    gate,
-    subjectVersion: version,
-    actorRole: actor,
-    verdict,
-    reason: input.reason ?? null,
+    await tx.insert(decisions).values({
+      projectId,
+      gate,
+      subjectVersion: version,
+      actorRole: actor,
+      verdict,
+      reason: input.reason ?? null,
+    });
+
+    if (verdict === "reject") {
+      await applyRejection(tx, stageEnqueue, project, gate, actor, input.reason as string);
+      return;
+    }
+    const after = await gateStatusFor(tx, project, gate);
+    if (after.state.complete) {
+      await applyApproval(tx, stageEnqueue, project, gate, nextHypothesis ?? null);
+    }
   });
-
-  if (verdict === "reject") {
-    await applyRejection(db, enqueue, project, gate, actor, input.reason as string);
-    return;
-  }
-  const after = await gateStatusFor(db, project, gate);
-  if (after.state.complete) {
-    await applyApproval(db, enqueue, project, gate, nextHypothesis ?? null);
-  }
+  if (needsWork) await enqueue(input.projectId);
 }
 
 async function applyRejection(
@@ -322,7 +338,9 @@ async function applyApproval(
   }
   if (gate === "publish") {
     const page = await latestPage(db, project.id);
-    if (!page) throw new Error("没有可发布的页面");
+    if (!page || page.status !== "checked" || page.positioningVersion !== project.positioningVersion) {
+      throw new Error("当前没有通过声明检查的页面版本");
+    }
     await db.transaction(async (tx) => {
       await tx
         .update(landingPages)
@@ -363,17 +381,18 @@ export async function startReview(db: Db, enqueue: Enqueue, projectId: string) {
 }
 
 export async function setPaused(db: Db, enqueue: Enqueue, projectId: string, paused: boolean) {
-  const project = await getProject(db, projectId);
-  if (project.paused === paused) return;
-  await db.update(projects).set({ paused, updatedAt: new Date() }).where(eq(projects.id, projectId));
-  await db.insert(stateTransitions).values({
-    projectId,
-    fromStatus: project.status,
-    toStatus: project.status,
-    actor: "founder",
-    reason: paused ? "老板暂停项目" : "老板恢复项目",
+  const changed = await db.transaction(async (tx) => {
+    const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
+    if (!project || ["delivered", "cancelled"].includes(project.status)) throw new Error("该项目无法暂停或恢复");
+    if (project.paused === paused) return false;
+    await tx.update(projects).set({ paused, updatedAt: new Date() }).where(eq(projects.id, projectId));
+    await tx.insert(stateTransitions).values({
+      projectId, fromStatus: project.status, toStatus: project.status, actor: "founder",
+      reason: paused ? "老板暂停项目" : "老板恢复项目",
+    });
+    return true;
   });
-  if (!paused) await enqueue(projectId);
+  if (changed && !paused) await enqueue(projectId);
 }
 
 // 交付后由客户验收；验收不改变项目状态，只记录决定和订单的交付状态。
@@ -381,21 +400,19 @@ export async function acceptDelivery(
   db: Db,
   input: { projectId: string; verdict: Verdict; reason?: string | null },
 ) {
-  const project = await getProject(db, input.projectId);
-  if (project.status !== "delivered") throw new Error("项目交付后才能验收");
   if (input.verdict === "reject" && !input.reason?.trim()) throw new Error("请写明哪里需要改");
-  await db.insert(decisions).values({
-    projectId: project.id,
-    gate: "acceptance",
-    subjectVersion: project.round,
-    actorRole: "customer",
-    verdict: input.verdict,
-    reason: input.reason ?? null,
+  await db.transaction(async (tx) => {
+    const [project] = await tx.select().from(projects).where(eq(projects.id, input.projectId)).for("update");
+    if (project?.status !== "delivered") throw new Error("项目交付后才能验收");
+    const [order] = await tx.select().from(orders).where(eq(orders.projectId, project.id));
+    if (!order || order.deliveryStatus === "accepted") throw new Error("项目已完成验收或没有订单");
+    await tx.insert(decisions).values({
+      projectId: project.id, gate: "acceptance", subjectVersion: project.round, actorRole: "customer",
+      verdict: input.verdict, reason: input.reason ?? null,
+    });
+    await tx.update(orders).set({ deliveryStatus: input.verdict === "approve" ? "accepted" : "changes_requested" })
+      .where(eq(orders.id, order.id));
   });
-  await db
-    .update(orders)
-    .set({ deliveryStatus: input.verdict === "approve" ? "accepted" : "changes_requested" })
-    .where(eq(orders.projectId, project.id));
 }
 
 export async function setLeadTest(db: Db, projectId: string, leadId: string, isTest: boolean) {
@@ -409,8 +426,10 @@ export async function setLeadTest(db: Db, projectId: string, leadId: string, isT
 export async function deliverProject(db: Db, projectId: string) {
   const project = await getProject(db, projectId);
   if (!(await reportFor(db, project))) throw new Error("复盘报告还没有生成");
-  await transition(db, project, "delivered", "founder", "老板确认交付");
-  await db.update(orders).set({ deliveryStatus: "delivered" }).where(eq(orders.projectId, projectId));
+  await db.transaction(async (tx) => {
+    await transition(tx, project, "delivered", "founder", "老板确认交付");
+    await tx.update(orders).set({ deliveryStatus: "delivered" }).where(eq(orders.projectId, projectId));
+  });
 }
 
 export async function retryProject(db: Db, enqueue: Enqueue, projectId: string) {
@@ -479,22 +498,31 @@ export async function recordFeedback(
   });
 }
 
-export async function setQuote(db: Db, orderId: string, quoteFen: number) {
-  await db.update(orders).set({ quoteFen, status: "quoted" }).where(eq(orders.id, orderId));
+export async function setQuote(db: Db, projectId: string, quoteFen: number) {
+  await db.transaction(async (tx) => {
+    const project = await getProject(tx, projectId);
+    if (project.requiresPayment) throw new Error("请通过项目报价审批确认报价");
+    await tx.update(orders).set({ quoteFen, status: "quoted" }).where(eq(orders.projectId, projectId));
+  });
 }
 
 export async function recordPayment(
   db: Db,
-  input: { orderId: string; amountFen: number; method: string; reference?: string | null },
+  projectId: string,
+  input: { amountFen: number; method: string; reference?: string | null },
 ) {
   await db.transaction(async (tx) => {
-    await tx.insert(payments).values(input);
-    await tx.update(orders).set({ status: "paid" }).where(eq(orders.id, input.orderId));
+    const project = await getProject(tx, projectId);
+    if (project.requiresPayment) throw new Error("请通过项目到账审批记录实收");
+    const [order] = await tx.select().from(orders).where(eq(orders.projectId, projectId));
+    if (!order) throw new Error("项目没有订单");
+    await tx.insert(payments).values({ ...input, orderId: order.id });
+    await tx.update(orders).set({ status: "paid" }).where(eq(orders.id, order.id));
   });
 }
 
-export async function setFounderMinutes(db: Db, orderId: string, minutes: number) {
-  await db.update(orders).set({ founderMinutes: minutes }).where(eq(orders.id, orderId));
+export async function setFounderMinutes(db: Db, projectId: string, minutes: number) {
+  await db.update(orders).set({ founderMinutes: minutes }).where(eq(orders.projectId, projectId));
 }
 
 // 老板人工补充证据，同样要过第一道证据闸门。

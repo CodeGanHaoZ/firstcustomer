@@ -31,6 +31,12 @@ export type ClaimViolation = { target: string; message: string };
 const DIGITS = /[\p{Nd}%％]/u;
 const USABLE_LICENSES = ["public_reference", "customer_authorized", "permitted"];
 
+export function checkForbiddenTerms(page: PageSlots, assets: Asset[], terms: string[]): ClaimViolation[] {
+  const copy = [...Object.values(page).flat(), ...assets.flatMap((asset) => [asset.title, asset.body])];
+  return terms.flatMap((term) => copy.some((item) => item.toLowerCase().includes(term.toLowerCase()))
+    ? [{ target: term, message: "包含公司卷宗登记的禁用词" }] : []);
+}
+
 // 第二道证据闸门：页面和素材送审前由程序检查，不依赖模型判断。
 export function checkClaims(input: {
   projectId: string;

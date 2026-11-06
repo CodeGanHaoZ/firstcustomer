@@ -21,6 +21,9 @@ const LIST_PRICES: Record<string, { input: number; output: number }> = {
 };
 const WEB_SEARCH_YUAN_PER_CALL = 16 / 1000;
 
+export const hasModelListPrice = (model: string | null) =>
+  model !== null && model.split("+").every((name) => Object.hasOwn(LIST_PRICES, name));
+
 export function listCostYuan(model: string, usage: ModelUsage) {
   const price = LIST_PRICES[model];
   const tokens = price
@@ -52,7 +55,7 @@ function toResponse(
   completion: OpenAI.Chat.Completions.ChatCompletion,
   provider: string,
 ): ModelResponse {
-  const choice = completion.choices[0];
+  const choice = completion?.choices?.[0];
   if (!choice) throw new Error("模型没有返回内容");
   const raw = choice.message as unknown as RawMessage;
   const usage = completion.usage as unknown as RawUsage | undefined;
@@ -95,10 +98,11 @@ async function callEndpoint(endpoint: Endpoint, request: ModelRequest) {
       limit: 5,
     });
   }
-  const completion = await endpoint.client.chat.completions.create({
+  const payload = {
     model: endpoint.models[request.tier],
     messages: request.messages,
     max_completion_tokens: request.maxCompletionTokens ?? 8000,
+    stream: false,
     ...(tools.length ? { tools: tools as OpenAI.Chat.ChatCompletionTool[] } : {}),
     ...(request.jsonMode
       ? { response_format: { type: "json_object" as const } }
@@ -107,8 +111,40 @@ async function callEndpoint(endpoint: Endpoint, request: ModelRequest) {
     ...(endpoint.provider === "mimo" && request.thinking === false
       ? ({ thinking: { type: "disabled" } } as Record<string, unknown>)
       : {}),
-  } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
-  return toResponse(completion, endpoint.provider);
+  } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
+  if (endpoint.provider === "mimo" && !tools.length && request.preferStreaming) {
+    return streamMimoCompletion(endpoint, payload);
+  }
+  const { data, response } = await endpoint.client.chat.completions.create(payload).withResponse();
+  if (!Array.isArray(data?.choices)) {
+    throw responseFormatError(endpoint.provider, response);
+  }
+  return toResponse(data, endpoint.provider);
+}
+
+async function streamMimoCompletion(endpoint: Endpoint, payload: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming) {
+  const { data, response } = await endpoint.client.chat.completions.create({
+    ...payload,
+    stream: true,
+    stream_options: { include_usage: true },
+  }).withResponse();
+  let content = "";
+  let model = payload.model;
+  let usage: OpenAI.Completions.CompletionUsage | undefined;
+  for await (const chunk of data) {
+    model = chunk.model || model;
+    usage = chunk.usage ?? usage;
+    content += chunk.choices?.[0]?.delta?.content ?? "";
+  }
+  if (!content.trim()) throw responseFormatError(endpoint.provider, response);
+  return toResponse({
+    model, usage, choices: [{ message: { role: "assistant", content } }],
+  } as OpenAI.Chat.ChatCompletion, endpoint.provider);
+}
+
+function responseFormatError(provider: string, response: Response) {
+  const media = response.headers.get("content-type")?.split(";")[0] ?? "未知格式";
+  return new Error(`${provider} 返回了非聊天响应（HTTP ${response.status}，${media}）`);
 }
 
 const client = (apiKey: string, baseURL: string) =>
@@ -171,11 +207,12 @@ export function createModelClient(
   }
   const { primary, fallback } = endpointsFromEnv(env);
   return async (request) => {
+    if (request.mimoOnly && primary.provider !== "mimo") throw new Error("付款截图读取需要 MiMo");
     try {
       return await callEndpoint(primary, request);
     } catch (error) {
       // 备用模型只在主力服务商故障时启用，实际使用的 provider 会写入 agent_tasks。
-      if (!fallback || request.webSearch) throw error;
+      if (!fallback || request.webSearch || request.mimoOnly) throw error;
       console.error(`${primary.provider} 调用失败，切换备用模型`, error);
       return callEndpoint(fallback, request);
     }

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { GRADE_LABELS, type Grade } from "@/domain/evidence";
-import { MAIN_FLOW, STATUS_LABELS, type ProjectStatus } from "@/domain/workflow";
+import { MAIN_FLOW, STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { safeHref } from "@/lib/request";
 import type { Project, ProjectView } from "@/workflow/queries";
@@ -50,13 +50,17 @@ export function SimulatedBanner() {
   );
 }
 
-export function StatusFlow({ status }: { status: string }) {
-  const index = MAIN_FLOW.indexOf(status as ProjectStatus);
+export function StatusFlow({ status, quoteFlow }: { status: string; quoteFlow: boolean }) {
+  const flow: ProjectStatus[] = quoteFlow
+    ? [...MAIN_FLOW.slice(0, 2), "drafting_quote", "awaiting_quote", "awaiting_quote_acceptance", "awaiting_payment", ...MAIN_FLOW.slice(2)]
+    : MAIN_FLOW;
+  const current = status === "reading_receipt" ? "awaiting_payment" : status;
+  const index = flow.indexOf(current as ProjectStatus);
   return (
     <ol className="flex flex-wrap gap-2 text-sm">
-      {MAIN_FLOW.map((step, i) => (
+      {flow.map((step, i) => (
         <li key={step}>
-          <Badge variant={step === status ? "default" : i < index ? "secondary" : "outline"}>
+          <Badge variant={step === current ? "default" : i < index ? "secondary" : "outline"}>
             {STATUS_LABELS[step]}
           </Badge>
         </li>
@@ -69,6 +73,47 @@ export function StatusFlow({ status }: { status: string }) {
         </li>
       ) : null}
     </ol>
+  );
+}
+
+export function DeliverablesSection({ view, deliveryStatus, closingHref }: {
+  view: ProjectView;
+  deliveryStatus?: string;
+  closingHref: string;
+}) {
+  const { positioning, gates, evidence, page, campaign, report } = view;
+  const verified = evidence.filter((item) => item.status === "verified").length;
+  const closing = deliveryStatus === "accepted" ? "客户已验收"
+    : deliveryStatus === "changes_requested" ? "客户要求修改"
+      : deliveryStatus === "delivered" ? "已交付，等待客户验收" : null;
+  const items = [
+    { label: "定位卡", href: positioning ? "#strategy" : null,
+      state: positioning ? `第 ${positioning.version} 版 · ${gates.positioning.complete ? "已确认" : gates.positioning.founder === "approved" ? "待客户确认" : "待老板把关"}` : "待生成" },
+    { label: "商业证据卡", href: "#research",
+      state: evidence.length ? `已验证 ${verified} 条 · 待验证 ${evidence.length - verified} 条` : "待收集" },
+    { label: "英文验证页", href: page ? "#launch" : null,
+      state: page ? `第 ${page.version} 版 · ${page.status === "published" ? "已发布" : gates.publish.founder === "approved" ? "待客户确认" : "待老板把关"}` : "待生成" },
+    { label: "渠道行动卡", href: campaign ? "#campaign" : null,
+      state: campaign?.status === "executed" ? "已记录执行凭证" : campaign?.status === "approved" ? "已批准，等待执行" : campaign ? "等待发布审批" : "待生成" },
+    { label: "增长复盘卡", href: report ? "#growth" : null,
+      state: report ? `已复盘 · ${report.verdict_label}` : "待复盘" },
+    { label: "结案记录", href: closing ? closingHref : null, state: closing ?? "待交付" },
+  ];
+
+  return (
+    <Card id="deliverables">
+      <CardHeader><CardTitle>交付清单</CardTitle></CardHeader>
+      <CardContent>
+        <dl className="divide-y text-sm">
+          {items.map(({ label, href, state }) => (
+            <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2 first:pt-0 last:pb-0" key={label}>
+              <dt className="font-medium">{href ? <a href={href} className="underline underline-offset-4">{label}</a> : label}</dt>
+              <dd className="text-muted-foreground">{state}</dd>
+            </div>
+          ))}
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -390,7 +435,7 @@ export function PageSection({ view, previewHref }: { view: ProjectView; previewH
           )}
         </div>
         {campaign ? (
-          <div className="flex flex-col gap-2">
+          <div id="campaign" className="flex flex-col gap-2">
             <h3 className="font-medium">渠道任务：{campaign.channel}</h3>
             <p className="text-muted-foreground">{campaign.reason}</p>
             {assets.map((asset) => (
@@ -506,7 +551,7 @@ export function ProjectHeader({ project }: { project: Project }) {
         {project.targetMarket ? ` · ${project.targetMarket}` : ""}
         {project.isOwnProduct ? " · 自有产品" : ""}
       </p>
-      <StatusFlow status={project.status} />
+      <StatusFlow status={project.status} quoteFlow={usesQuoteFlow(project)} />
     </header>
   );
 }

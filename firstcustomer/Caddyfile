@@ -4,9 +4,10 @@
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
-		Referrer-Policy "strict-origin-when-cross-origin"
 	}
-	@private path /p/* /admin*
+	@public not path /p/* /admin /admin/*
+	header @public Referrer-Policy "strict-origin-when-cross-origin"
+	@private path /p/* /admin /admin/*
 	header @private {
 		Referrer-Policy "no-referrer"
 		X-Robots-Tag "noindex, nofollow"

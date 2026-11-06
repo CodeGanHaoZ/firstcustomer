@@ -1,5 +1,39 @@
 import { z } from "zod";
 
+export const proposalOutput = z.object({
+  scope: z.string().trim().min(1).max(500),
+  deliverables: z.array(z.string().trim().min(1).max(180)).min(1).max(6),
+  timing: z.string().trim().min(1).max(180),
+  terms: z.string().trim().min(1).max(500),
+});
+export type ProposalOutput = z.infer<typeof proposalOutput>;
+
+export const receiptOutput = z.object({
+  amountFen: z.number().int().positive().max(2_147_483_647).nullable(),
+  paidAtText: z.string().max(100).nullable(),
+  payer: z.string().max(100).nullable(),
+  unreadable: z.string().max(350).nullable(),
+});
+export type ReceiptOutput = z.infer<typeof receiptOutput>;
+
+export const supportOutput = z.object({
+  risk: z.enum(["normal", "complex", "escalated"]),
+  reply: z.string().trim().min(1).max(1200),
+});
+
+export const weeklyOutput = z.object({
+  summary: z.string().trim().min(1).max(1000),
+  recommendations: z.array(z.string().trim().min(1).max(250)).length(3),
+});
+export type WeeklyOutput = z.infer<typeof weeklyOutput>;
+
+export const standupOutput = z.object({
+  yesterday: z.string().trim().min(1).max(300),
+  today: z.string().trim().min(1).max(300),
+  blockers: z.string().trim().min(1).max(300),
+});
+export type StandupOutput = z.infer<typeof standupOutput>;
+
 export const researchOutput = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("need_info"),

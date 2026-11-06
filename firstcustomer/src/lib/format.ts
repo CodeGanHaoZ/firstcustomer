@@ -19,3 +19,4 @@ const dateTimeFormat = new Intl.DateTimeFormat("zh-CN", {
 
 export const formatDate = (date: Date) => dateFormat.format(date);
 export const formatDateTime = (date: Date) => dateTimeFormat.format(date);
+export const formatYuan = (fen: number) => `¥${(fen / 100).toFixed(2)}`;

@@ -113,6 +113,8 @@ export async function runAgent<T>(options: {
   model: ModelClient;
   maxTurns?: number;
   thinking?: boolean;
+  jsonMode?: boolean;
+  maxCompletionTokens?: number;
   validate?: (output: T) => Promise<string[]> | string[];
 }): Promise<{ output: T; summary: RunSummary }> {
   const { agent, schema, model, tools = {}, tier = "pro", maxTurns = 12 } = options;
@@ -141,6 +143,7 @@ export async function runAgent<T>(options: {
       agent: `${agent}:repair`,
       tier: "flash",
       jsonMode: true,
+      preferStreaming: true,
       thinking: false,
       messages: [
         {
@@ -172,6 +175,9 @@ export async function runAgent<T>(options: {
         agent,
         tier,
         messages,
+        ...(!toolSpecs.length ? { preferStreaming: true } : {}),
+        ...(options.jsonMode && !toolSpecs.length ? { jsonMode: true } : {}),
+        ...(options.maxCompletionTokens ? { maxCompletionTokens: options.maxCompletionTokens } : {}),
         ...(options.thinking === false ? { thinking: false } : {}),
         ...(toolSpecs.length && !wrapUp ? { tools: toolSpecs } : {}),
       });

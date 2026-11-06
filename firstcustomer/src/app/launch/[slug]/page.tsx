@@ -5,6 +5,7 @@ import { LandingView } from "@/components/landing-view";
 import { VisitTracker } from "@/components/tracker";
 import { getDb } from "@/db";
 import { loadPublishedPage } from "@/workflow/queries";
+import { hasVersionImage } from "@/workflow/landing-edits";
 import { submitLead } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function LaunchPage({ params, searchParams }: PageProps<"/l
   const { submitted } = await searchParams;
   const data = await loadPublishedPage(getDb(), slug);
   if (!data) notFound();
+  const hasImage = await hasVersionImage(getDb(), data.page.id);
   return (
     <>
       <VisitTracker slug={slug} />
@@ -33,6 +35,7 @@ export default async function LaunchPage({ params, searchParams }: PageProps<"/l
         submitted={submitted === "1"}
         simulated={data.simulated}
         formAction={submitLead.bind(null, slug)}
+        screenshotHref={hasImage ? `/launch/${slug}/image` : undefined}
       />
     </>
   );

@@ -3,6 +3,7 @@ import { PgBoss } from "pg-boss";
 export const ADVANCE_QUEUE = "advance-project";
 
 export type AdvanceJob = { projectId: string };
+export type CompanyJob = { reportId: string } | { dailyStandup: true };
 
 let starting: Promise<PgBoss> | undefined;
 
@@ -30,4 +31,9 @@ export async function enqueueAdvance(projectId: string) {
     retryLimit: 0,
     expireInSeconds: 3600,
   });
+}
+
+export async function enqueueCompanyReport(reportId: string) {
+  const boss = await getBoss();
+  await boss.send(ADVANCE_QUEUE, { reportId } satisfies CompanyJob, { retryLimit: 0, expireInSeconds: 3600 });
 }

@@ -33,6 +33,13 @@ export const EXPERIMENT_LIMITS = { maxMinVisits: 300, maxPassLeads: 10 };
 const PAID_CHANNEL = /\bads?\b|advertis|sponsor|paid|广告|付费|赞助|投放|推广位/i;
 const CHANNEL_SEPARATOR = /\s\+\s|\+|、|，|,|；|;|\band\b|以及|和|及/;
 
+export function channelProblems(channel: string) {
+  const problems: string[] = [];
+  if (CHANNEL_SEPARATOR.test(channel)) problems.push("只能选择一个渠道");
+  if (PAID_CHANNEL.test(channel)) problems.push("付费投放需要另行授权，请选择免费渠道");
+  return problems;
+}
+
 export function experimentProblems(plan: { channel: string; min_visits: number; pass_leads: number }) {
   const problems: string[] = [];
   if (plan.min_visits > EXPERIMENT_LIMITS.maxMinVisits) {
@@ -42,8 +49,7 @@ export function experimentProblems(plan: { channel: string; min_visits: number; 
     problems.push(`pass_leads 不能超过 ${EXPERIMENT_LIMITS.maxPassLeads}`);
   }
   if (plan.pass_leads > plan.min_visits) problems.push("pass_leads 不能大于 min_visits");
-  if (CHANNEL_SEPARATOR.test(plan.channel)) problems.push("experiment.channel 只能写一个渠道");
-  if (PAID_CHANNEL.test(plan.channel)) problems.push("experiment.channel 不能用付费广告或赞助，付费投放需要老板另外授权");
+  problems.push(...channelProblems(plan.channel).map((problem) => `experiment.channel ${problem}`));
   return problems;
 }
 

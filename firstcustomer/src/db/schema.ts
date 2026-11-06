@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { ProposalOutput, ReceiptOutput } from "@/agents/schemas";
 import {
   boolean,
   customType,
@@ -29,6 +30,7 @@ export const projects = pgTable("projects", {
   budgetNote: text("budget_note"),
   contact: text("contact").notNull(),
   isOwnProduct: boolean("is_own_product").notNull().default(false),
+  requiresPayment: boolean("requires_payment").notNull().default(false),
   paused: boolean("paused").notNull().default(false),
   status: text("status").notNull().default("submitted"),
   failedFrom: text("failed_from"),
@@ -105,6 +107,8 @@ export const orders = pgTable("orders", {
     .references(() => projects.id, { onDelete: "cascade" }),
   sku: text("sku").notNull(),
   quoteFen: integer("quote_fen"),
+  quoteVersion: integer("quote_version").notNull().default(0),
+  proposal: jsonb("proposal").$type<ProposalOutput>(),
   status: text("status").notNull().default("inquiry"),
   deliveryStatus: text("delivery_status").notNull().default("not_started"),
   founderMinutes: integer("founder_minutes").notNull().default(0),
@@ -120,6 +124,71 @@ export const payments = pgTable("payments", {
   method: text("method").notNull(),
   reference: text("reference"),
   paidAt: timestamp("paid_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const paymentCode = pgTable("payment_code", {
+  id: integer("id").primaryKey(),
+  mimeType: text("mime_type").notNull(),
+  data: bytea("data").notNull(),
+});
+
+export const paymentReceipts = pgTable(
+  "payment_receipts",
+  {
+    id: id(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    mimeType: text("mime_type").notNull(),
+    data: bytea("data").notNull(),
+    uploadedBy: text("uploaded_by").notNull(),
+    analysisStatus: text("analysis_status").notNull().default("pending"),
+    analysis: jsonb("analysis").$type<ReceiptOutput>(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("payment_receipts_order_idx").on(t.orderId, t.createdAt)],
+);
+
+export const supportMessages = pgTable(
+  "support_messages",
+  {
+    id: id(),
+    projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    status: text("status").notNull().default("queued"),
+    risk: text("risk"),
+    reply: text("reply"),
+    draft: text("draft"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("support_messages_project_idx").on(t.projectId, t.createdAt)],
+);
+
+export const companySettings = pgTable("company_settings", {
+  id: integer("id").primaryKey(),
+  charter: text("charter").notNull().default(""),
+  brand: text("brand").notNull().default(""),
+  service: text("service").notNull().default(""),
+  operations: text("operations").notNull().default(""),
+  forbiddenTerms: jsonb("forbidden_terms").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  charterVersion: integer("charter_version").notNull().default(0),
+  charterConfirmedAt: timestamp("charter_confirmed_at", { withTimezone: true }),
+});
+
+export const companyReports = pgTable("company_reports", {
+  id: id(),
+  kind: text("kind").notNull(),
+  dedupeKey: text("dedupe_key").unique(),
+  status: text("status").notNull().default("queued"),
+  input: jsonb("input"),
+  output: jsonb("output"),
+  provider: text("provider"),
+  model: text("model"),
+  listCostYuan: doublePrecision("list_cost_yuan").notNull().default(0),
+  error: text("error"),
+  createdAt: createdAt(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
 });
 
 export const agentTasks = pgTable(
@@ -244,9 +313,8 @@ export const decisions = pgTable(
   "decisions",
   {
     id: id(),
-    projectId: uuid("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+    subjectId: uuid("subject_id"),
     gate: text("gate").notNull(),
     subjectVersion: integer("subject_version").notNull(),
     actorRole: text("actor_role").notNull(),
@@ -269,6 +337,12 @@ export const landingPages = pgTable("landing_pages", {
   status: text("status").notNull().default("draft"),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   createdAt: createdAt(),
+});
+
+export const landingPageImages = pgTable("landing_page_images", {
+  landingPageId: uuid("landing_page_id").primaryKey().references(() => landingPages.id, { onDelete: "cascade" }),
+  mimeType: text("mime_type").notNull(),
+  data: bytea("data").notNull(),
 });
 
 export const claims = pgTable("claims", {
