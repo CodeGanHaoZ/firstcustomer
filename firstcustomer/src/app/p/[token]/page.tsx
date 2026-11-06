@@ -22,11 +22,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db";
 import type { Gate } from "@/domain/approval";
+import { customerProgress } from "@/domain/customer-progress";
 import { usesQuoteFlow } from "@/domain/workflow";
 import { isAdmin } from "@/lib/auth";
+import { formatDateTime, formatYuan } from "@/lib/format";
 import { findProjectByToken } from "@/workflow/actions";
-import { hasPaymentCode, latestReceipt, projectOrder } from "@/workflow/commerce";
-import { loadProjectView } from "@/workflow/queries";
+import { confirmedOrderPayment, hasPaymentCode, latestReceipt, projectOrder } from "@/workflow/commerce";
+import { loadProjectView, runningProjectAgents } from "@/workflow/queries";
 import { projectSupport } from "@/workflow/support";
 import { customerAcceptanceAction, customerAnswers, customerDecision, customerDeleteImage, customerProposalAction, customerReceiptAction, customerSupportAction, customerUploadImages } from "./actions";
 
@@ -50,16 +52,20 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
   const db = getDb();
   const project = await findProjectByToken(db, token);
   if (!project) notFound();
-  const [view, order, support] = await Promise.all([
-    loadProjectView(db, project), projectOrder(db, project.id), projectSupport(db, project.id),
+  const [view, order, support, runningAgents] = await Promise.all([
+    loadProjectView(db, project), projectOrder(db, project.id), projectSupport(db, project.id), runningProjectAgents(db, project),
   ]);
   const commercialOrder = usesQuoteFlow(project) ? order : null;
+  const visibleProposal = commercialOrder && ["quoted", "accepted", "paid"].includes(commercialOrder.status)
+    ? commercialOrder.proposal : null;
   const founderIntake = intake === "admin" && await isAdmin();
   const awaitingPayment = !!commercialOrder && commercialOrder.status === "accepted" &&
     ["awaiting_payment", "reading_receipt"].includes(project.status);
-  const [codeReady, receipt] = order && awaitingPayment
-    ? await Promise.all([hasPaymentCode(db), latestReceipt(db, order.id)])
-    : [false, null];
+  const [codeReady, receipt, confirmedPayment] = await Promise.all([
+    awaitingPayment ? hasPaymentCode(db) : false,
+    commercialOrder && awaitingPayment ? latestReceipt(db, commercialOrder.id) : null,
+    commercialOrder?.status === "paid" ? confirmedOrderPayment(db, commercialOrder.id) : null,
+  ]);
 
   const openGate: Gate | null =
     project.status === "awaiting_positioning" &&
@@ -75,6 +81,12 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
             view.gates.next_round.customer === "pending"
           ? "next_round"
           : null;
+  const progress = customerProgress({
+    status: project.status, paused: project.paused, runningAgents, openGate, reportReady: !!view.report,
+    quoteVisible: !!visibleProposal, awaitingPayment, receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus,
+  });
+  const supportPending = !project.paused && support.some((item) => item.status === "queued");
+  const refresh = supportPending ? 3 : progress.refreshSeconds;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-10">
@@ -88,27 +100,23 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         这是你的项目专属链接，请不要转发给无关的人。如需作废，请联系首客。
       </p>
 
-      {project.status === "submitted" ? (
-        <Card>
-          <CardContent className="pt-6 text-sm">项目已提交，等待首客老板确认后开始研究。</CardContent>
-        </Card>
-      ) : null}
+      {refresh ? <AutoRefresh seconds={refresh} /> : null}
+      <Card aria-labelledby="customer-progress-title">
+        <CardHeader><CardTitle><h2 id="customer-progress-title">当前进度</h2></CardTitle></CardHeader>
+        <CardContent className="flex flex-col gap-2 text-sm">
+          <div role="status">
+            <p className="font-semibold">{progress.title}</p>
+            <p className="text-muted-foreground">{progress.detail}</p>
+          </div>
+          {progress.action ? <a className="self-start font-medium underline underline-offset-4" href={progress.action.href}>{progress.action.label}</a> : null}
+        </CardContent>
+      </Card>
 
-      {["researching", "drafting_quote", "reading_receipt", "strategizing", "preparing_page"].includes(project.status) ||
-      (project.status === "reviewing" && !view.report) ? (
-        <Card>
-          <CardContent className="pt-6 text-sm">
-            <AutoRefresh />
-            首客的 Agent 正在工作，页面会自动更新。
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {commercialOrder?.proposal && ["quoted", "accepted", "paid"].includes(commercialOrder.status) ? (
-        <Card>
+      {commercialOrder && visibleProposal ? (
+        <Card id="proposal">
           <CardHeader><CardTitle>首客服务提案</CardTitle></CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <ProposalDetails proposal={commercialOrder.proposal} version={commercialOrder.quoteVersion} quoteFen={commercialOrder.quoteFen} />
+            <ProposalDetails proposal={visibleProposal} version={commercialOrder.quoteVersion} quoteFen={commercialOrder.quoteFen} />
             {project.status === "awaiting_quote_acceptance" ? (
               <form action={customerProposalAction.bind(null, token)} className="flex flex-col gap-3">
                 <input type="hidden" name="version" value={commercialOrder.quoteVersion} />
@@ -120,7 +128,12 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
                 </div>
               </form>
             ) : null}
-            {commercialOrder.status === "paid" ? <p className="text-sm">首客已确认到账，正式服务已开始。</p> : null}
+            {commercialOrder.status === "paid" ? (
+              <div className="space-y-1 rounded-md border p-3 text-sm">
+                <p className="font-medium">首客已确认到账，正式服务已开始。</p>
+                {confirmedPayment ? <p>实际到账 {formatYuan(confirmedPayment.amountFen)} · {formatDateTime(confirmedPayment.paidAt)}</p> : null}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
@@ -139,24 +152,31 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
       ) : null}
 
       {awaitingPayment ? (
-        <Card>
+        <Card id="payment">
           <CardHeader><CardTitle>付款与到账确认</CardTitle></CardHeader>
           <CardContent className="flex flex-col gap-4 text-sm">
-            {codeReady ? <PaymentCodeImage token={token} /> : <p>首客正在准备收款码，请稍后刷新。</p>}
-            {receipt ? <p>付款截图已收到，等待首客核对实际到账。<a className="underline" href={`/p/${token}/receipts/${receipt.id}`}>查看截图</a></p> : <p>扫码后请上传付款截图。</p>}
+            {receipt ? <p>付款截图已收到，等待首客核对实际到账。 <a className="underline" href={`/p/${token}/receipts/${receipt.id}`}>查看截图</a></p> : (
+              codeReady ? <><PaymentCodeImage token={token} /><p>扫码后请上传付款截图。</p></>
+                : <p>首客正在准备收款码，收款码配置后会在这里显示。</p>
+            )}
             {project.status === "awaiting_payment" ? <ReceiptUpload action={customerReceiptAction.bind(null, token)} /> : null}
           </CardContent>
         </Card>
       ) : null}
 
       {openGate ? (
-        <Card className="border-primary">
+        <Card id="approval" className="border-primary">
           <CardHeader>
             <CardTitle>待你确认</CardTitle>
           </CardHeader>
           <CardContent>
             <form action={customerDecision.bind(null, token)} className="flex flex-col gap-3">
               <p className="text-sm">{GATE_TEXT[openGate]}</p>
+              {openGate === "publish" && view.page ? (
+                <a href={`/p/${token}/preview?version=${view.page.version}`} target="_blank" rel="noreferrer" className="self-start text-sm underline">
+                  预览待确认的第 {view.page.version} 版
+                </a>
+              ) : null}
               {openGate === "publish" ? <p className="text-sm">实验使用一个免费渠道。额外付费推广需要单独确认。{project.budgetNote ? `你提交的预算和时间要求为「${project.budgetNote}」。` : ""}</p> : null}
               <input type="hidden" name="gate" value={openGate} />
               <input type="hidden" name="version" value={openGate === "publish" ? view.page?.version : openGate === "positioning" ? project.positioningVersion : project.round} />
@@ -177,11 +197,11 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         </Card>
       ) : null}
 
-      <ClarificationSection
+      <div id="clarifications" hidden={!view.clarifications.length}><ClarificationSection
         questions={view.clarifications}
         canAnswer={project.status === "needs_info"}
         answerAction={customerAnswers.bind(null, token)}
-      />
+      /></div>
       <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#delivery" />
       <div id="strategy"><PositioningSection view={view} /></div>
       <div id="launch"><PageSection view={view} previewHref={`/p/${token}/preview`} /></div>
@@ -204,10 +224,9 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           </CardContent>
         </Card>
       ) : null}
-      <Card>
+      <Card id="support">
         <CardHeader><CardTitle>问首客客服</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-4 text-sm">
-          {support.some((item) => item.status === "queued") && !project.paused ? <AutoRefresh /> : null}
           <form action={customerSupportAction.bind(null, token)} className="flex flex-col gap-2">
             <Label htmlFor="support-question">你的问题</Label>
             <Textarea id="support-question" name="question" required maxLength={1000} />

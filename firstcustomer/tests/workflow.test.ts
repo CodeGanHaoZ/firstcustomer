@@ -26,8 +26,8 @@ import {
   projects,
   stateTransitions,
 } from "@/db/schema";
-import { loadProjectImage } from "@/workflow/queries";
-import { confirmReceipt, customerPaymentCode, decideQuote, latestReceipt, projectOrder, savePaymentCode, uploadReceipt } from "@/workflow/commerce";
+import { loadLandingPreview, loadProjectImage, loadProjectView } from "@/workflow/queries";
+import { confirmedOrderPayment, confirmReceipt, customerPaymentCode, decideQuote, latestReceipt, projectOrder, savePaymentCode, uploadReceipt } from "@/workflow/commerce";
 import { companyDocuments, saveCompanySettings } from "@/workflow/company-context";
 import { decideWeekly, requestCompanyReport, runCompanyReport } from "@/workflow/company-reports";
 import { loadCoo, loadDepartments, officeRevision, projectAttention } from "@/workflow/office";
@@ -171,10 +171,11 @@ describe("初诊、报价与到账", () => {
     const order = (await projectOrder(db, projectId))!;
     const receipt = (await latestReceipt(db, order.id))!;
     await expect(confirmReceipt(db, h.enqueue, { projectId, receiptId: receipt.id, amountFen: 28_900 })).rejects.toThrow("不一致");
-    const confirm = () => confirmReceipt(db, h.enqueue, { projectId, receiptId: receipt.id, amountFen: 29_900 });
+    const confirm = () => confirmReceipt(db, h.enqueue, { projectId, receiptId: receipt.id, amountFen: 28_900, reason: "已核对实付差额" });
     const confirmations = await Promise.allSettled([confirm(), confirm()]);
     expect(confirmations.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
     expect(await db.select().from(payments)).toHaveLength(1);
+    expect(await confirmedOrderPayment(db, order.id)).toMatchObject({ amountFen: 28_900 });
     expect(await customerPaymentCode(db, projectId)).toBeNull();
     await h.drain();
     expect(await statusOf(projectId)).toBe("awaiting_positioning");
@@ -202,6 +203,7 @@ async function toPublished() {
 describe("办公室新增交付能力", () => {
   it("编辑后需要重新审批，截图只随对应的已发布版本公开", async () => {
     const { h, project, page } = await toPublished();
+    await db.insert(events).values({ landingPageId: page.id, type: "visit", visitorHash: "demo-visitor" });
     const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
     await addProjectImage(db, { projectId: project.id, kind: "product", bytes: png, uploadedBy: "customer" });
     const [image] = await db.select().from(projectImages).where(eq(projectImages.projectId, project.id));
@@ -214,10 +216,17 @@ describe("办公室新增交付能力", () => {
     const drafts = await db.select().from(landingPages).where(eq(landingPages.projectId, project.id));
     const next = drafts.find((row) => row.version === page.version + 1)!;
     expect(drafts.find((row) => row.id === page.id)?.status).toBe("published");
+    const [current] = await db.select().from(projects).where(eq(projects.id, project.id));
+    expect(await loadProjectView(db, current)).toMatchObject({ page: { id: next.id }, publishedPage: { id: page.id }, metrics: { visits: 1 } });
+    expect(await loadLandingPreview(db, project.id, page.version)).toMatchObject({ page: { id: page.id }, hasImage: false });
+    expect(await loadLandingPreview(db, project.id, next.version)).toMatchObject({ page: { id: next.id, content }, hasImage: true });
+    expect(await loadVersionImage(db, project.id, page.version)).toBeNull();
+    expect(await loadVersionImage(db, project.id, next.version)).toMatchObject({ mimeType: "image/png" });
     expect(await loadVersionImage(db, project.id)).toMatchObject({ mimeType: "image/png" });
     expect(await loadPublicVersionImage(db, next.slug)).toBeNull();
     await expect(decide(db, h.enqueue, { projectId: project.id, gate: "publish", actor: "founder", verdict: "approve", version: page.version })).rejects.toThrow("已更新");
     await bothApprove(h.enqueue, project.id, "publish");
+    expect(await loadLandingPreview(db, project.id, page.version)).toBeNull();
     expect(await loadPublicVersionImage(db, next.slug)).toMatchObject({ mimeType: "image/png" });
     expect(await loadPublicVersionImage(db, page.slug)).toBeNull();
   });

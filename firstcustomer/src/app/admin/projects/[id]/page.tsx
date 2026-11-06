@@ -79,12 +79,14 @@ function GateForm(props: {
   isOwnProduct: boolean;
   options?: PositioningOption[];
   recommended?: number;
+  previewHref?: string;
 }) {
   const { projectId, gate, state } = props;
   if (state.founder === "approved") {
     return (
       <div className="flex flex-col gap-2 text-sm">
         <p>你已把关，等待客户确认。</p>
+        {props.previewHref ? <a href={props.previewHref} className="self-start underline" target="_blank" rel="noreferrer">预览第 {props.version} 版</a> : null}
         {props.isOwnProduct ? (
           <form action={ownProductConfirm.bind(null, projectId)}>
             <input type="hidden" name="gate" value={gate} />
@@ -100,6 +102,7 @@ function GateForm(props: {
   return (
     <form action={founderDecision.bind(null, projectId)} className="flex flex-col gap-3 text-sm">
       <p>{props.title}</p>
+      {props.previewHref ? <a href={props.previewHref} className="self-start underline" target="_blank" rel="noreferrer">预览待审批的第 {props.version} 版</a> : null}
       <input type="hidden" name="gate" value={gate} />
       <input type="hidden" name="version" value={props.version} />
       {props.options ? (
@@ -252,6 +255,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               gate="publish"
               version={view.page?.version ?? 0}
               state={view.gates.publish}
+              previewHref={view.page ? `/admin/projects/${id}/preview?version=${view.page.version}` : undefined}
               title={`逐条对照声明和证据摘录。验证仅使用一个免费渠道，额外支出需客户单独确认。${project.budgetNote ? ` 客户预算和时间要求为「${project.budgetNote}」。` : ""}`}
               isOwnProduct={project.isOwnProduct}
             />

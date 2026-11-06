@@ -6,33 +6,34 @@ import { LandingView } from "@/components/landing-view";
 import { getDb } from "@/db";
 import { projects } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
-import { hasVersionImage } from "@/workflow/landing-edits";
-import { loadProjectView } from "@/workflow/queries";
+import { parseLandingVersion } from "@/workflow/landing-edits";
+import { loadLandingPreview } from "@/workflow/queries";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { robots: { index: false, follow: false }, referrer: "no-referrer" };
 
-export default async function AdminPreviewPage({ params }: PageProps<"/admin/projects/[id]/preview">) {
+export default async function AdminPreviewPage({ params, searchParams }: PageProps<"/admin/projects/[id]/preview">) {
   await requireAdmin();
-  const { id } = await params;
-  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const [{ id }, { version: rawVersion }] = await Promise.all([params, searchParams]);
+  const version = parseLandingVersion(rawVersion);
+  if (!/^[0-9a-f-]{36}$/i.test(id) || version === null) notFound();
   const db = getDb();
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) notFound();
-  const view = await loadProjectView(db, project);
-  if (!view.page) notFound();
-  const hasImage = await hasVersionImage(db, view.page.id);
+  const preview = await loadLandingPreview(db, project.id, version);
+  if (!preview) notFound();
+  const { page, claims, simulated, hasImage } = preview;
   return (
     <>
-      <p className="bg-muted px-6 py-2 text-center text-sm">预览：页面还没有公开，表单不会提交。</p>
+      <p className="bg-muted px-6 py-2 text-center text-sm">第 {page.version} 版预览 · {page.status === "published" ? "已公开" : "未公开"}。预览中的表单不会提交。</p>
       <LandingView
-        content={view.page.content as PageContent}
-        claims={view.pageClaims.filter((c) => c.location === "page")}
+        content={page.content as PageContent}
+        claims={claims}
         productName={project.productName}
         productUrl={project.productUrl}
-        slug={view.page.slug}
-        simulated={view.simulated}
-        screenshotHref={hasImage ? `/admin/projects/${id}/preview/image` : undefined}
+        slug={page.slug}
+        simulated={simulated}
+        screenshotHref={hasImage ? `/admin/projects/${id}/preview/image?version=${page.version}` : undefined}
       />
     </>
   );

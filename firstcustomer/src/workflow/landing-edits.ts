@@ -65,10 +65,23 @@ export async function editLandingPage(db: Db, input: {
   });
 }
 
-export async function loadVersionImage(db: Db, projectId: string) {
-  const [page] = await db.select({ id: landingPages.id }).from(landingPages)
-    .where(and(eq(landingPages.projectId, projectId), ne(landingPages.status, "superseded")))
+export function parseLandingVersion(raw: string | string[] | undefined) {
+  const values = Array.isArray(raw) ? raw : raw === undefined ? [] : [raw];
+  if (!values.length) return undefined;
+  if (values.length !== 1 || !/^[1-9]\d{0,9}$/.test(values[0]) || Number(values[0]) > 2_147_483_647) return null;
+  return Number(values[0]);
+}
+
+export async function loadLandingVersion(db: Db, projectId: string, version?: number) {
+  const [page] = await db.select().from(landingPages)
+    .where(and(eq(landingPages.projectId, projectId), ne(landingPages.status, "superseded"),
+      version === undefined ? undefined : eq(landingPages.version, version)))
     .orderBy(desc(landingPages.version)).limit(1);
+  return page ?? null;
+}
+
+export async function loadVersionImage(db: Db, projectId: string, version?: number) {
+  const page = await loadLandingVersion(db, projectId, version);
   if (!page) return null;
   const [image] = await db.select().from(landingPageImages).where(eq(landingPageImages.landingPageId, page.id));
   return image ?? null;

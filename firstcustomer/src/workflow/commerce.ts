@@ -17,6 +17,12 @@ export async function projectOrder(db: Db, projectId: string) {
   return order ?? null;
 }
 
+export async function confirmedOrderPayment(db: Db, orderId: string) {
+  const [payment] = await db.select({ amountFen: payments.amountFen, paidAt: payments.paidAt }).from(payments)
+    .where(eq(payments.orderId, orderId)).orderBy(desc(payments.paidAt), desc(payments.id)).limit(1);
+  return payment ?? null;
+}
+
 async function lockOrder(db: Db, projectId: string) {
   // Serialize decisions, uploads and payment confirmation per project.
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).for("update");

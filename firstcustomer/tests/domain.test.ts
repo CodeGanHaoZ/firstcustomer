@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { decisionError, gateState } from "@/domain/approval";
 import { checkClaims, type ClaimEvidence, type PageSlots } from "@/domain/claims";
 import { candidatesWithoutCounterSearch, unansweredCounterEvidence } from "@/domain/counter";
+import { customerProgress } from "@/domain/customer-progress";
 import { expiresAt, gradeFor, verifyQuote } from "@/domain/evidence";
 import { evaluateExperiment } from "@/domain/experiment";
 import { canTransition, sendBackAllowed } from "@/domain/workflow";
@@ -44,6 +45,30 @@ describe("状态机", () => {
     expect(sendBackAllowed("strategy->research", 1)).toBe(true);
     expect(sendBackAllowed("strategy->research", 2)).toBe(false);
     expect(sendBackAllowed("growth->strategy", 1)).toBe(false);
+  });
+});
+
+describe("客户项目进度", () => {
+  const progress = (input: Partial<Parameters<typeof customerProgress>[0]> = {}) => customerProgress({
+    status: "researching", paused: false, runningAgents: [], openGate: null, reportReady: false,
+    quoteVisible: false, awaitingPayment: false, receiptUploaded: false, ...input,
+  });
+
+  it("区分排队、正在工作的员工和暂停收尾", () => {
+    expect(progress({ runningAgents: ["support"] }).detail).toContain("等待研究员");
+    expect(progress({ runningAgents: ["research"] }).detail).toContain("研究员正在收集");
+    expect(progress({ runningAgents: ["vision"] }).detail).toContain("截图读取员正在");
+    expect(progress({ runningAgents: ["research"], paused: true })).toMatchObject({ title: "项目已暂停", detail: expect.stringContaining("已开始的步骤") });
+    expect(progress({ paused: true })).toMatchObject({ title: "项目已暂停", refreshSeconds: 12 });
+  });
+
+  it("只在客户能处理时指向对应事项，上传截图后等待核对", () => {
+    expect(progress({ status: "awaiting_publish" }).action).toBeUndefined();
+    expect(progress({ status: "awaiting_publish", openGate: "publish" }).action?.href).toBe("#approval");
+    expect(progress({ status: "awaiting_quote_acceptance", quoteVisible: true }).action?.href).toBe("#proposal");
+    expect(progress({ status: "awaiting_payment", awaitingPayment: true }).action?.href).toBe("#payment");
+    expect(progress({ status: "awaiting_payment", awaitingPayment: true, receiptUploaded: true }).title).toBe("待首客确认到账");
+    expect(progress({ status: "delivered", deliveryStatus: "changes_requested" }).action?.href).toBe("#delivery");
   });
 });
 

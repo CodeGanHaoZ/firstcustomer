@@ -20,6 +20,7 @@ import {
 import { gateState, type Gate } from "@/domain/approval";
 import type { ExperimentPlan, ExperimentVerdict, Metrics } from "@/domain/experiment";
 import { pageMetrics, reportFor } from "./engine";
+import { hasVersionImage, loadLandingVersion } from "./landing-edits";
 
 export type Project = typeof projects.$inferSelect;
 
@@ -45,6 +46,24 @@ export async function isSimulated(db: Db, projectId: string) {
   return !!row;
 }
 
+export async function loadLandingPreview(db: Db, projectId: string, version?: number) {
+  const page = await loadLandingVersion(db, projectId, version);
+  if (!page) return null;
+  const [pageClaims, hasImage, simulated] = await Promise.all([
+    db.select({ text: claims.text, kind: claims.kind }).from(claims)
+      .where(and(eq(claims.landingPageId, page.id), eq(claims.location, "page"))),
+    hasVersionImage(db, page.id),
+    isSimulated(db, projectId),
+  ]);
+  return { page, claims: pageClaims, hasImage, simulated };
+}
+
+export async function runningProjectAgents(db: Db, project: Pick<Project, "id" | "round">) {
+  const rows = await db.selectDistinct({ agent: agentTasks.agent }).from(agentTasks)
+    .where(and(eq(agentTasks.projectId, project.id), eq(agentTasks.round, project.round), eq(agentTasks.status, "running")));
+  return rows.map(({ agent }) => agent);
+}
+
 export async function loadProjectView(db: Db, project: Project) {
   const [diagnosis] = await db.select({ result: agentTasks.output }).from(agentTasks)
     .where(and(eq(agentTasks.projectId, project.id), eq(agentTasks.agent, "research"),
@@ -57,12 +76,11 @@ export async function loadProjectView(db: Db, project: Project) {
     .orderBy(desc(positionings.version))
     .limit(1);
 
-  const [page] = await db
-    .select()
-    .from(landingPages)
+  const activePages = await db.select().from(landingPages)
     .where(and(eq(landingPages.projectId, project.id), ne(landingPages.status, "superseded")))
-    .orderBy(desc(landingPages.version))
-    .limit(1);
+    .orderBy(desc(landingPages.version));
+  const [page] = activePages;
+  const publishedPage = activePages.find(({ status }) => status === "published");
 
   const evidence = await db
     .select()
@@ -110,7 +128,7 @@ export async function loadProjectView(db: Db, project: Project) {
     ? await db.select().from(campaigns).where(eq(campaigns.landingPageId, page.id)).limit(1)
     : [];
 
-  const metrics = page?.status === "published" ? await pageMetrics(db, page.id) : null;
+  const metrics = publishedPage ? await pageMetrics(db, publishedPage.id) : null;
   const report = await reportFor(db, project);
 
   const allDecisions = await db.select().from(decisions).where(eq(decisions.projectId, project.id));
@@ -142,6 +160,7 @@ export async function loadProjectView(db: Db, project: Project) {
     images,
     positioning,
     page,
+    publishedPage,
     evidence,
     searches,
     responses,

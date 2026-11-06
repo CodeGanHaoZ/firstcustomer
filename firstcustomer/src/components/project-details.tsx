@@ -59,14 +59,14 @@ export function StatusFlow({ status, quoteFlow }: { status: string; quoteFlow: b
   return (
     <ol className="flex flex-wrap gap-2 text-sm">
       {flow.map((step, i) => (
-        <li key={step}>
+        <li key={step} aria-current={step === current ? "step" : undefined}>
           <Badge variant={step === current ? "default" : i < index ? "secondary" : "outline"}>
             {STATUS_LABELS[step]}
           </Badge>
         </li>
       ))}
       {index < 0 ? (
-        <li>
+        <li aria-current="step">
           <Badge variant={status === "failed" || status === "cancelled" ? "destructive" : "secondary"}>
             {STATUS_LABELS[status as ProjectStatus] ?? status}
           </Badge>
@@ -383,7 +383,7 @@ export function PositioningSection({ view }: { view: ProjectView }) {
 }
 
 export function PageSection({ view, previewHref }: { view: ProjectView; previewHref: string }) {
-  const { page, pageClaims, campaign } = view;
+  const { page, publishedPage, pageClaims, campaign } = view;
   if (!page) return null;
   const published = page.status === "published";
   const assets = (campaign?.assets ?? []) as { title: string; body: string }[];
@@ -400,11 +400,16 @@ export function PageSection({ view, previewHref }: { view: ProjectView; previewH
               公开地址：/launch/{page.slug}
             </a>
           ) : (
-            <a className="underline" href={previewHref} target="_blank" rel="noreferrer">
-              预览页面（未公开）
+            <a className="underline" href={`${previewHref}?version=${page.version}`} target="_blank" rel="noreferrer">
+              预览第 {page.version} 版（未公开）
             </a>
           )}
         </p>
+        {!published && publishedPage ? (
+          <a className="w-fit underline" href={`/launch/${publishedPage.slug}`} target="_blank" rel="noreferrer">
+            查看当前公开的第 {publishedPage.version} 版
+          </a>
+        ) : null}
         <div>
           <h3 className="font-medium">事实声明与证据对照</h3>
           {pageClaims.length ? (
