@@ -1,9 +1,19 @@
 import { and, desc, eq, ne } from "drizzle-orm";
 import type { PageContent } from "@/agents/schemas";
 import type { Db } from "@/db";
-import { campaigns, claims, companySettings, evidenceItems, landingPageImages, landingPages, projectImages, projects } from "@/db/schema";
+import { campaigns, claims, companySettings, decisions, evidenceItems, landingPageImages, landingPages, projectImages, projects } from "@/db/schema";
+import type { Verdict } from "@/domain/approval";
 import { checkClaims, checkForbiddenTerms, type Asset, type ClaimInput } from "@/domain/claims";
 import { transition } from "./transitions";
+
+export async function recordClaimCheck(db: Db, input: {
+  projectId: string; version: number; subjectId?: string; verdict: Verdict; reason: string;
+}) {
+  await db.insert(decisions).values({
+    projectId: input.projectId, gate: "claim_check", subjectVersion: input.version, subjectId: input.subjectId,
+    actorRole: "system", verdict: input.verdict, reason: input.reason,
+  });
+}
 
 export async function editLandingPage(db: Db, input: {
   projectId: string;
@@ -12,7 +22,7 @@ export async function editLandingPage(db: Db, input: {
   image: string;
   claim: ClaimInput | null;
 }) {
-  await db.transaction(async (tx) => {
+  const rejection = await db.transaction(async (tx) => {
     const [project] = await tx.select().from(projects).where(eq(projects.id, input.projectId)).for("update");
     if (!project || !["awaiting_publish", "collecting"].includes(project.status)) throw new Error("项目当前无法修改验证页");
     const [latest] = await tx.select().from(landingPages).where(eq(landingPages.projectId, project.id))
@@ -36,7 +46,12 @@ export async function editLandingPage(db: Db, input: {
       ...checkClaims({ projectId: project.id, page: input.content, claims: bindings, assets, evidence, now: new Date() }),
       ...checkForbiddenTerms(input.content, [...assets, ...bindings.map((item) => ({ title: "", body: item.text }))], settings?.terms ?? []),
     ];
-    if (errors.length) throw new Error(errors.map(({ target, message }) => `${target}：${message}`).join("；"));
+    const version = latest.version + 1;
+    if (errors.length) {
+      const reason = errors.map(({ target, message }) => `${target}：${message}`).join("；");
+      await recordClaimCheck(tx, { projectId: project.id, version, verdict: "reject", reason });
+      return reason;
+    }
 
     const [image] = input.image === "none" ? [] : input.image === "keep"
       ? await tx.select({ mimeType: landingPageImages.mimeType, data: landingPageImages.data }).from(landingPageImages)
@@ -45,7 +60,6 @@ export async function editLandingPage(db: Db, input: {
         .where(and(eq(projectImages.id, input.image), eq(projectImages.projectId, project.id), eq(projectImages.kind, "product")));
     if (!image && !["none", "keep"].includes(input.image)) throw new Error("没有找到所选的产品截图");
 
-    const version = latest.version + 1;
     const slug = `${latest.slug.replace(/-rev-\d+$/, "")}-rev-${version}`;
     const [saved] = await tx.insert(landingPages).values({
       projectId: project.id, version, slug, positioningVersion: project.positioningVersion,
@@ -61,8 +75,11 @@ export async function editLandingPage(db: Db, input: {
       projectId: project.id, landingPageId: saved.id, channel: campaign.channel, reason: campaign.reason,
       checklist: campaign.checklist, assets: campaign.assets,
     });
+    await recordClaimCheck(tx, { projectId: project.id, version, subjectId: saved.id, verdict: "approve", reason: "修改后的文案与声明通过检查" });
     await transition(tx, project, "awaiting_publish", "founder", `编辑验证页第 ${version} 版，已通过声明检查，等待重新审批`);
+    return null;
   });
+  if (rejection) throw new Error(rejection);
 }
 
 export function parseLandingVersion(raw: string | string[] | undefined) {

@@ -2,7 +2,7 @@ import { rmSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import EmbeddedPostgres from "embedded-postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createStubSources, stubModel } from "@/ai/stub-model";
@@ -36,6 +36,7 @@ import { editLandingPage, loadPublicVersionImage, loadVersionImage } from "@/wor
 import { openSupportMessage, projectSupport, replyToSupport } from "@/workflow/support";
 import type { PageContent } from "@/agents/schemas";
 import {
+  acceptDelivery,
   addManualEvidence,
   addProjectImage,
   answerClarifications,
@@ -215,6 +216,10 @@ describe("办公室新增交付能力", () => {
     expect(await statusOf(project.id)).toBe("awaiting_publish");
     const drafts = await db.select().from(landingPages).where(eq(landingPages.projectId, project.id));
     const next = drafts.find((row) => row.version === page.version + 1)!;
+    const editorChecks = await db.select().from(decisions).where(and(eq(decisions.projectId, project.id),
+      eq(decisions.gate, "claim_check"), eq(decisions.subjectVersion, next.version)));
+    expect(editorChecks.find(({ verdict }) => verdict === "reject")?.reason).toContain("Save 99%");
+    expect(editorChecks.find(({ verdict }) => verdict === "approve")?.subjectId).toBe(next.id);
     expect(drafts.find((row) => row.id === page.id)?.status).toBe("published");
     const [current] = await db.select().from(projects).where(eq(projects.id, project.id));
     expect(await loadProjectView(db, current)).toMatchObject({ page: { id: next.id }, publishedPage: { id: page.id }, metrics: { visits: 1 } });
@@ -249,10 +254,13 @@ describe("办公室新增交付能力", () => {
     const [report] = await db.select().from(companyReports).where(eq(companyReports.id, reportId));
     expect(report.status).toBe("succeeded");
     expect(report.input).toMatchObject({ revenueFen: 0, totalTasks: 2 });
-    await saveCompanySettings(db, { charter: "服务有 MVP 的开发者。" }, true);
+    await saveCompanySettings(db, { charter: "服务对象\n有 MVP 的开发者。" }, true);
+    await saveCompanySettings(db, { charter: "服务对象\r\n有 MVP 的开发者。" }, false);
+    const charterDecisions = await db.select().from(decisions).where(eq(decisions.gate, "charter"));
+    expect(charterDecisions).toHaveLength(1);
     const docs = await companyDocuments(db);
     expect(docs).toHaveLength(9);
-    expect(docs[0].body).toContain("确认");
+    expect(docs[0].body).toContain("闸门① 第 1 版于");
     expect(docs[8].body).toContain("保持当前服务");
     expect(docs.map((doc) => doc.body).join("\n")).not.toContain("context-qa@example.invalid");
   });
@@ -295,12 +303,20 @@ describe("完整流程", () => {
 
     // AC-19：两道审批分开记录。
     const recorded = await db.select().from(decisions).where(eq(decisions.projectId, project.id));
-    expect(recorded.map((d) => `${d.gate}:${d.actorRole}`).sort()).toEqual([
+    expect(recorded.filter(({ gate }) => gate !== "claim_check").map((d) => `${d.gate}:${d.actorRole}`).sort()).toEqual([
       "positioning:customer",
       "positioning:founder",
       "publish:customer",
       "publish:founder",
     ]);
+    const checks = recorded.filter(({ gate }) => gate === "claim_check");
+    expect(checks).toHaveLength(2);
+    expect(checks.find(({ verdict }) => verdict === "reject")).toMatchObject({
+      subjectId: launch[0].id, subjectVersion: page.version, actorRole: "system", reason: expect.stringContaining("Saves 5 hours every week"),
+    });
+    expect(checks.find(({ verdict }) => verdict === "approve")).toMatchObject({
+      subjectId: page.id, subjectVersion: page.version, actorRole: "system",
+    });
 
     // AC-06：批准后的活动才能标记已执行。
     const [campaign] = await db.select().from(campaigns).where(eq(campaigns.landingPageId, page.id));
@@ -319,8 +335,21 @@ describe("完整流程", () => {
       decide(db, h.enqueue, { projectId: project.id, gate: "next_round", actor: "founder", verdict: "approve" }),
     ).rejects.toThrow("不能开启下一轮");
 
-    await deliverProject(db, project.id);
+    const deliveries = await Promise.allSettled([deliverProject(db, project.id), deliverProject(db, project.id)]);
+    expect(deliveries.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
     expect(await statusOf(project.id)).toBe("delivered");
+    await acceptDelivery(db, { projectId: project.id, verdict: "reject", reason: "请说明有效线索口径" });
+    await acceptDelivery(db, { projectId: project.id, verdict: "approve" });
+    const acceptance = await db.select().from(decisions).where(and(eq(decisions.projectId, project.id), eq(decisions.gate, "acceptance")));
+    expect(acceptance).toHaveLength(3);
+    expect(acceptance).toEqual(expect.arrayContaining([
+        expect.objectContaining({ actorRole: "founder", verdict: "approve", subjectId: report.id, subjectVersion: report.round }),
+        expect.objectContaining({ actorRole: "customer", verdict: "reject", subjectId: report.id, reason: "请说明有效线索口径" }),
+        expect.objectContaining({ actorRole: "customer", verdict: "approve", subjectId: report.id }),
+      ]));
+    const log = (await companyDocuments(db)).find(({ name }) => name === "07-log.md")?.body;
+    expect(log).toContain("② 声明检查");
+    expect(log).toContain("⑨ 交付验收");
 
     const history = await db
       .select({ to: stateTransitions.toStatus })

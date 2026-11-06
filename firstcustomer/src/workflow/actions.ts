@@ -406,8 +406,9 @@ export async function acceptDelivery(
     if (project?.status !== "delivered") throw new Error("项目交付后才能验收");
     const [order] = await tx.select().from(orders).where(eq(orders.projectId, project.id));
     if (!order || order.deliveryStatus === "accepted") throw new Error("项目已完成验收或没有订单");
+    const report = await reportFor(tx, project);
     await tx.insert(decisions).values({
-      projectId: project.id, gate: "acceptance", subjectVersion: project.round, actorRole: "customer",
+      projectId: project.id, subjectId: report?.id, gate: "acceptance", subjectVersion: project.round, actorRole: "customer",
       verdict: input.verdict, reason: input.reason ?? null,
     });
     await tx.update(orders).set({ deliveryStatus: input.verdict === "approve" ? "accepted" : "changes_requested" })
@@ -424,11 +425,17 @@ export async function setLeadTest(db: Db, projectId: string, leadId: string, isT
 }
 
 export async function deliverProject(db: Db, projectId: string) {
-  const project = await getProject(db, projectId);
-  if (!(await reportFor(db, project))) throw new Error("复盘报告还没有生成");
   await db.transaction(async (tx) => {
+    const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
+    if (!project) throw new Error("项目不存在");
+    const report = await reportFor(tx, project);
+    if (!report) throw new Error("复盘报告还没有生成");
     await transition(tx, project, "delivered", "founder", "老板确认交付");
     await tx.update(orders).set({ deliveryStatus: "delivered" }).where(eq(orders.projectId, projectId));
+    await tx.insert(decisions).values({
+      projectId, subjectId: report.id, gate: "acceptance", subjectVersion: project.round,
+      actorRole: "founder", verdict: "approve", reason: "老板确认交付",
+    });
   });
 }
 

@@ -26,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db";
 import { orders, payments, projects } from "@/db/schema";
-import type { Gate, GateState } from "@/domain/approval";
+import { DECISION_LABELS, type Gate, type GateState } from "@/domain/approval";
 import { AGENT_LABELS, TASK_STATUS_LABELS, TASK_TRIGGER_LABELS } from "@/domain/office";
 import { STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
 import { requireAdmin } from "@/lib/auth";
@@ -157,6 +157,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   const acceptanceNote = order?.deliveryStatus === "changes_requested" ? view.decisions
     .filter(({ gate, verdict, subjectVersion }) => gate === "acceptance" && verdict === "reject" && subjectVersion === project.round)
     .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] : null;
+  const decisionHistory = [...view.decisions].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
@@ -539,6 +540,28 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               </li>
             ))}
           </ul>
+        </CardContent>
+      </Card>
+
+      <Card id="approval-history">
+        <CardHeader><CardTitle>闸门记录</CardTitle></CardHeader>
+        <CardContent>
+          {decisionHistory.length ? <Table aria-label="项目闸门记录">
+            <TableHeader><TableRow>
+              <TableHead>事项</TableHead><TableHead>版本或轮次</TableHead><TableHead>决定人</TableHead>
+              <TableHead>结果</TableHead><TableHead>理由</TableHead><TableHead>时间</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {decisionHistory.map((decision) => <TableRow key={decision.id}>
+                <TableCell>{DECISION_LABELS[decision.gate] ?? decision.gate}</TableCell>
+                <TableCell>{decision.subjectVersion}</TableCell>
+                <TableCell>{decision.actorRole === "founder" ? "老板" : decision.actorRole === "customer" ? "客户" : "程序"}</TableCell>
+                <TableCell>{decision.verdict === "approve" ? "通过" : "退回"}</TableCell>
+                <TableCell className="min-w-32 max-w-72 whitespace-normal break-words">{decision.reason || "无"}</TableCell>
+                <TableCell>{formatDateTime(decision.createdAt)}</TableCell>
+              </TableRow>)}
+            </TableBody>
+          </Table> : <p className="text-sm text-muted-foreground">还没有闸门记录。</p>}
         </CardContent>
       </Card>
 

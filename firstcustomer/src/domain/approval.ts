@@ -2,6 +2,20 @@ export type Gate = "positioning" | "publish" | "next_round";
 export type ActorRole = "founder" | "customer";
 export type Verdict = "approve" | "reject";
 
+export const DECISION_LABELS: Record<string, string> = {
+  charter: "① 公司宪章",
+  claim_check: "② 声明检查",
+  positioning: "③ 定位确认",
+  publish: "④ 发布确认",
+  quote: "⑤ 报价确认",
+  payment: "⑥ 到账确认",
+  support: "⑦ 客服升级处理",
+  weekly: "⑧ 周报决策",
+  acceptance: "⑨ 交付验收",
+  next_round: "⑨ 下一轮实验",
+  escalation: "老板裁决",
+};
+
 export type DecisionRecord = {
   gate: string;
   subjectVersion: number;

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, asc, count, countDistinct, desc, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, gt, inArray, max } from "drizzle-orm";
 import {
   GROWTH_PROMPT,
   LAUNCH_PROMPT,
@@ -76,6 +76,7 @@ import {
 
 import { ConflictError, transition } from "./transitions";
 import { latestReceipt, loadReceiptImage, projectOrder, quoteFeedback, saveDraftProposal } from "./commerce";
+import { recordClaimCheck } from "./landing-edits";
 import { needsFounder } from "./support";
 
 export type EngineDeps = {
@@ -854,6 +855,9 @@ async function runLaunch(deps: EngineDeps, project: Project) {
   const screenshots = await screenshotContext(db, project.id);
   const [settings] = await db.select({ brand: companySettings.brand, terms: companySettings.forbiddenTerms })
     .from(companySettings).where(eq(companySettings.id, 1));
+  const [{ latestVersion }] = await db.select({ latestVersion: max(landingPages.version) }).from(landingPages)
+    .where(eq(landingPages.projectId, project.id));
+  const version = (latestVersion ?? 0) + 1;
 
   let violations: { target: string; message: string }[] | null = null;
   let parentTaskId = pending?.fromTaskId ?? null;
@@ -918,15 +922,15 @@ async function runLaunch(deps: EngineDeps, project: Project) {
     found.push(...checkForbiddenTerms(output.page, output.channel.assets, settings?.terms ?? []));
     found.push(...channelProblems(output.channel.name).map((message) => ({ target: output.channel.name, message })));
     if (found.length === 0) {
-      await saveLandingPage(deps, project, positioning.version, output);
+      await saveLandingPage(deps, project, positioning.version, version, output);
       return;
     }
 
     violations = found;
-    await markTask(db, taskId, {
-      status: "rejected",
-      output: { ...output, violations: found },
-      sendBackReason: found.map((v) => `${v.target}：${v.message}`).join("；"),
+    const reason = found.map((v) => `${v.target}：${v.message}`).join("；");
+    await db.transaction(async (tx) => {
+      await markTask(tx, taskId, { status: "rejected", output: { ...output, violations: found }, sendBackReason: reason });
+      await recordClaimCheck(tx, { projectId: project.id, version, subjectId: taskId, verdict: "reject", reason });
     });
   }
 
@@ -946,19 +950,21 @@ async function saveLandingPage(
   deps: EngineDeps,
   project: Project,
   positioningVersion: number,
+  version: number,
   output: Extract<LaunchOutput, { status: "done" }>,
 ) {
   const { db } = deps;
-  const [{ pages }] = await db
-    .select({ pages: count() })
-    .from(landingPages)
-    .where(eq(landingPages.projectId, project.id));
   await db.transaction(async (tx) => {
+    const [current] = await tx.select({ status: projects.status, positioningVersion: projects.positioningVersion })
+      .from(projects).where(eq(projects.id, project.id)).for("update");
+    if (current?.status !== project.status || current.positioningVersion !== positioningVersion) {
+      throw new ConflictError("项目状态或定位版本已更新");
+    }
     const [page] = await tx
       .insert(landingPages)
       .values({
         projectId: project.id,
-        version: pages + 1,
+        version,
         positioningVersion,
         slug: slugify(project.productName),
         content: output.page,
@@ -985,10 +991,11 @@ async function saveLandingPage(
       checklist: output.channel.checklist,
       assets: output.channel.assets,
     });
-  });
-  await transition(db, project, "awaiting_publish", "launch", `页面第 ${pages + 1} 版通过声明检查`, {
-    pendingRequest: null,
-    founderNote: null,
+    await recordClaimCheck(tx, { projectId: project.id, version, subjectId: page.id, verdict: "approve", reason: "验证页与渠道素材通过声明检查" });
+    await transition(tx, project, "awaiting_publish", "launch", `页面第 ${version} 版通过声明检查`, {
+      pendingRequest: null,
+      founderNote: null,
+    });
   });
 }
 

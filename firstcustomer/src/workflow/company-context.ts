@@ -1,10 +1,12 @@
 import { desc, eq, sql } from "drizzle-orm";
 import type { WeeklyOutput } from "@/agents/schemas";
+import { hasModelListPrice } from "@/ai/call-model";
 import type { Db } from "@/db";
 import {
   agentTasks, campaigns, companyReports, companySettings, decisions, deliverables, evidenceItems,
   landingPages, leads, orders, payments, projects, stateTransitions, supportMessages,
 } from "@/db/schema";
+import { DECISION_LABELS } from "@/domain/approval";
 import { STATUS_LABELS, type ProjectStatus } from "@/domain/workflow";
 import { formatDateTime, formatYuan } from "@/lib/format";
 import { operatingMetrics } from "./operating-metrics";
@@ -22,8 +24,8 @@ export async function saveCompanySettings(db: Db, input: SettingsInput, confirm:
   await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(23110802)`);
     const previous = await getCompanySettings(tx);
-    const charter = input.charter?.trim() ?? "";
-    const charterChanged = previous?.charter !== charter;
+    const charter = input.charter?.replace(/\r\n?/g, "\n").trim() ?? "";
+    const charterChanged = (previous?.charter ?? "").replace(/\r\n?/g, "\n").trim() !== charter;
     const charterVersion = (previous?.charterVersion ?? 0) + (charterChanged ? 1 : 0);
     if (confirm && !charter) throw new Error("先填写公司宪章，再确认闸门①");
     const addDecision = confirm && (charterChanged || !previous?.charterConfirmedAt);
@@ -70,7 +72,7 @@ export async function companyDocuments(db: Db) {
   const projectName = (id: string | null) => id ? (projectById.get(id)?.name ?? "已删除项目") : "首客";
   const hiddenContacts = new Set([...allProjects.map((item) => item.contact), ...leadRows.map((item) => item.email)]);
   const approvalsFor = (gates: string[]) => lines(approvals.filter((item) => gates.includes(item.gate))
-    .map((item) => `${formatDateTime(item.createdAt)} · ${projectName(item.projectId)} · ${item.gate} · ${item.reason ?? item.verdict}`));
+    .map((item) => `${formatDateTime(item.createdAt)} · ${projectName(item.projectId)} · ${DECISION_LABELS[item.gate] ?? item.gate} · ${item.reason ?? item.verdict}`));
 
   const docs = [
     {
@@ -101,7 +103,7 @@ export async function companyDocuments(db: Db) {
       name: "06-finance.md", body: title("财务", `确认的外部客户实收 ${formatYuan(metrics.revenueFen)}。老板人工 ${metrics.founderMinutes} 分钟。已计价模型标价 ¥${metrics.modelCost.toFixed(2)}，${metrics.unpricedTasks} 个任务未计价。人工成本和其他支出未入账，毛利未知。\n\n## 到账\n\n${lines(cash.map((item) => `${projectName(item.projectId)} · ${formatYuan(item.amount)} · ${formatDateTime(item.at)}${projectById.get(item.projectId)?.own ? " · 自有产品，不计入首客实收" : ""}`))}`),
     },
     {
-      name: "07-log.md", body: title("执行日志", `## 任务\n\n${lines(tasks.map((item) => `${formatDateTime(item.at)} · ${projectName(item.projectId)} · ${item.agent}/${item.status} · ${item.provider ?? "未返回"}/${item.model ?? "未知"} · ${item.provider === "mimo" || item.provider === "stub" ? `¥${item.cost.toFixed(4)}` : "未计价"}${item.sendBack || item.error ? ` · ${item.sendBack ?? item.error}` : ""}`))}\n\n## 状态变化\n\n${lines(transitions.map((item) => `${formatDateTime(item.createdAt)} · ${projectName(item.projectId)} · ${item.fromStatus} → ${item.toStatus} · ${item.actor}${item.reason ? ` · ${item.reason}` : ""}`))}\n\n## 审批\n\n${lines(approvals.map((item) => `${formatDateTime(item.createdAt)} · ${projectName(item.projectId)} · ${item.gate}/第 ${item.subjectVersion} 版 · ${item.actorRole}/${item.verdict}${item.reason ? ` · ${item.reason}` : ""}`))}`),
+      name: "07-log.md", body: title("执行日志", `## 任务\n\n${lines(tasks.map((item) => `${formatDateTime(item.at)} · ${projectName(item.projectId)} · ${item.agent}/${item.status} · ${item.provider ?? "未返回"}/${item.model ?? "未知"} · ${item.provider === "stub" ? "模拟" : hasModelListPrice(item.model) ? `¥${item.cost.toFixed(4)}` : "未计价"}${item.sendBack || item.error ? ` · ${item.sendBack ?? item.error}` : ""}`))}\n\n## 状态变化\n\n${lines(transitions.map((item) => `${formatDateTime(item.createdAt)} · ${projectName(item.projectId)} · ${item.fromStatus} → ${item.toStatus} · ${item.actor}${item.reason ? ` · ${item.reason}` : ""}`))}\n\n## 闸门记录\n\n${lines(approvals.map((item) => `${formatDateTime(item.createdAt)} · ${projectName(item.projectId)} · ${DECISION_LABELS[item.gate] ?? item.gate}/第 ${item.subjectVersion} 版 · ${item.actorRole}/${item.verdict}${item.reason ? ` · ${item.reason}` : ""}`))}`),
     },
     {
       name: "08-review.md", body: title("经营复盘", `## 周报\n\n${lines(weekly.map((item) => `${formatDateTime(item.createdAt)} · ${(item.output as WeeklyOutput | null)?.summary ?? item.status}`))}\n\n## 增长复盘\n\n${lines(reviews.map((item) => `${projectName(item.projectId)} · 第 ${item.round} 轮 · ${(item.content as ReportContent).summary}`))}\n\n## 决策\n\n${approvalsFor(["weekly", "acceptance", "next_round"])}`),
