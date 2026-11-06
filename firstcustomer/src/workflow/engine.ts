@@ -11,8 +11,9 @@ import {
 import {
   growthOutput,
   launchOutput,
-  researchOutput,
   researchPlan,
+  researchSelection,
+  type ResearchOutput,
   strategyOutput,
   visionOutput,
   type LaunchOutput,
@@ -21,8 +22,9 @@ import {
 } from "@/agents/schemas";
 import type { SourceClient } from "@/agents/sources";
 import { gatherSources } from "@/agents/gather";
-import { LIBRARY_CATEGORIES, libraryEvidence } from "@/agents/library";
-import { cacheDocument, createResearchTools } from "@/agents/tools";
+import { copyLibraryEvidence, LIBRARY_CATEGORIES, libraryEvidence } from "@/agents/library";
+import { cacheDocument, storeEvidence } from "@/agents/tools";
+import { vendorCopyProblem, verifyQuote, type EvidenceKind } from "@/domain/evidence";
 import { listCostYuan } from "@/ai/call-model";
 import { AgentRunError, runAgent, type RunSummary } from "@/ai/run-agent";
 import type { ModelClient } from "@/ai/types";
@@ -36,17 +38,17 @@ import {
   deliverables,
   events,
   evidenceItems,
-  evidenceSearches,
   landingPages,
   leads,
   positionings,
   projectImages,
   projects,
+  sourceDocuments,
   stateTransitions,
 } from "@/db/schema";
 import { toDataUrl } from "@/domain/images";
 import { checkClaims } from "@/domain/claims";
-import { candidatesWithoutCounterSearch, unansweredCounterEvidence } from "@/domain/counter";
+import { unansweredCounterEvidence } from "@/domain/counter";
 import {
   evaluateExperiment,
   experimentProblems,
@@ -392,7 +394,7 @@ async function runResearch(deps: EngineDeps, project: Project) {
     deps,
     project,
     { agent: "research", input, ...triggerFor(pending) },
-    async ({ addSearchCalls }) => {
+    async ({ addSearchCalls }): Promise<{ output: ResearchOutput; summary: RunSummary }> => {
       const summaries: RunSummary[] = [];
       try {
         // 第一步：程序先读产品页，由模型规划检索词。
@@ -438,60 +440,142 @@ async function runResearch(deps: EngineDeps, project: Project) {
           url: e.url,
         }));
 
-        // 第三步：模型从已有资料里挑证据，只在缺口处少量补查。
-        const result = await runAgent({
-          agent: "research",
-          system: RESEARCH_PROMPT,
-          maxTurns: 10,
-          input: {
-            ...input,
-            candidates_hint: plan.output.candidates,
-            product_page: productPage,
-            library,
-            prefetched: gathered.results.slice(0, 40).map((r) => ({
-              url: r.url,
-              title: r.title,
-              source: r.source,
-              purpose: r.purpose,
-              candidate: r.candidate,
-              published_at: r.publishedAt,
-              text: r.text.slice(0, 1200),
-            })),
-            search_failures: gathered.failures.map((f) => `${f.source}:${f.query}`),
-          },
-          schema: researchOutput,
-          model: deps.model,
-          tools: createResearchTools({
+        // 第三步：模型一次输出全部选择，不调用工具；程序核对摘录后统一保存。
+        const libraryIds = new Set(library.map((e) => e.library_id));
+        const docs = new Map(gathered.results.map((r) => [r.url, r.text]));
+        if (productPage && "text" in productPage && productPage.text) docs.set(productPage.url, productPage.text);
+        const view = (results: typeof gathered.results) =>
+          results.slice(0, 40).map((r) => ({
+            url: r.url,
+            title: r.title,
+            source: r.source,
+            purpose: r.purpose,
+            candidate: r.candidate,
+            published_at: r.publishedAt,
+            text: r.text.slice(0, 1200),
+          }));
+        const pickProblem = (pick: { url: string; quote: string; kind: EvidenceKind }) => {
+          const text = docs.get(pick.url);
+          if (!text) return "这个网址不在资料里";
+          const vendor = vendorCopyProblem(pick.kind, pick.url, pick.quote);
+          if (vendor) return vendor;
+          const check = verifyQuote(pick.quote, text);
+          return check.status === "rejected" ? check.reason ?? "摘录对不上" : null;
+        };
+        // 重复的检索词会被跳过，模型可能引用以前检索过的资料：从缓存里补齐原文再核对。
+        const loadCachedDocs = async (urls: string[]) => {
+          const missing = [...new Set(urls)].filter((u) => !docs.has(u));
+          if (!missing.length) return;
+          const rows = await db
+            .select({ url: sourceDocuments.url, text: sourceDocuments.text })
+            .from(sourceDocuments)
+            .where(inArray(sourceDocuments.url, missing));
+          for (const row of rows) docs.set(row.url, row.text);
+        };
+        const select = (extra: Record<string, unknown>) =>
+          runAgent({
+            agent: "research",
+            system: RESEARCH_PROMPT,
+            input: {
+              ...input,
+              candidates_hint: plan.output.candidates,
+              product_page: productPage,
+              library,
+              prefetched: view(gathered.results),
+              search_failures: gathered.failures.map((f) => `${f.source}:${f.query}`),
+              ...extra,
+            },
+            schema: researchSelection,
+            model: deps.model,
+            validate: async (output) => {
+              if (output.status === "need_info") {
+                return asked.length || pending
+                  ? ["这个项目不能再追问客户了，请继续研究，把不确定的内容写进 unknowns"]
+                  : [];
+              }
+              await loadCachedDocs(output.candidates.flatMap((c) => c.picks.map((p) => p.url)));
+              const problems: string[] = [];
+              for (const c of output.candidates) {
+                if (!plan.output.candidates.includes(c.name)) {
+                  problems.push(`候选人群“${c.name}”不在 candidates_hint 里，请用原来的名字`);
+                }
+                const usable =
+                  c.library_ids.filter((id) => libraryIds.has(id)).length +
+                  c.picks.filter((pick) => !pickProblem(pick)).length;
+                if (!usable) {
+                  const reasons = c.picks
+                    .map((pick) => pickProblem(pick))
+                    .filter(Boolean)
+                    .slice(0, 3);
+                  problems.push(
+                    `候选人群“${c.name}”没有一条可用的证据${reasons.length ? `（${[...new Set(reasons)].join("；")}）` : ""}；quote 要从资料原文复制`,
+                  );
+                }
+              }
+              return problems;
+            },
+          });
+
+        let selection = await select({});
+        summaries.push(selection.summary);
+        const more = selection.output.status === "done" ? selection.output.more_queries ?? [] : [];
+        if (more.length) {
+          // 只补查一次，补查结果合并后再让模型输出最终选择。
+          const extra = await gatherSources(
             db,
-            projectId: project.id,
-            sources: deps.sources,
-            onSearchCalls: addSearchCalls,
-            searchLimit: 6,
-          }),
-          validate: async (output) => {
-            if (output.status === "need_info") {
-              return asked.length || pending
-                ? ["这个项目不能再追问客户了，请继续研究，把不确定的内容写进 unknowns"]
-                : [];
+            deps.sources,
+            more.filter((q) => plan.output.candidates.includes(q.candidate)),
+            { projectId: project.id },
+          );
+          addSearchCalls(extra.searchCalls);
+          for (const r of extra.results) {
+            if (!docs.has(r.url)) {
+              docs.set(r.url, r.text);
+              gathered.results.push(r);
             }
-            const searches = await db
-              .select({ candidate: evidenceSearches.candidate, purpose: evidenceSearches.purpose })
-              .from(evidenceSearches)
-              .where(eq(evidenceSearches.projectId, project.id));
-            const known = new Set((await visibleEvidence(db, project.id)).map((e) => e.id));
-            const missing = candidatesWithoutCounterSearch(
-              output.candidates.map((c) => c.name),
-              searches,
-            ).map((c) => `候选人群“${c}”还没有做反向检索（purpose=counter）；名字请沿用 candidates_hint`);
-            const unknown = output.candidates
-              .flatMap((c) => c.evidence_ids)
-              .filter((id) => !known.has(id))
-              .map((id) => `证据 ${id} 不存在`);
-            return [...missing, ...unknown];
-          },
-        });
-        summaries.push(result.summary);
-        return { output: result.output, summary: mergeSummaries(summaries) };
+          }
+          if (extra.results.length) {
+            selection = await select({ no_more_queries: true, prefetched: view([...extra.results, ...gathered.results]) });
+            summaries.push(selection.summary);
+          }
+        }
+
+        const output = selection.output;
+        if (output.status === "need_info") return { output, summary: mergeSummaries(summaries) };
+        const dropped: string[] = [];
+        const candidates = [];
+        for (const c of output.candidates) {
+          const ids: string[] = [];
+          const copied = await copyLibraryEvidence(
+            db,
+            project.id,
+            c.library_ids.filter((id) => libraryIds.has(id)),
+            c.name,
+          );
+          ids.push(...copied.map((x) => x.evidence_id));
+          for (const pick of c.picks) {
+            const problem = pickProblem(pick);
+            if (problem) {
+              dropped.push(`${pick.url}：${problem}`);
+              continue;
+            }
+            try {
+              const saved = await storeEvidence(db, project.id, { ...pick, candidate: c.name, category: null });
+              ids.push(saved.evidence_id);
+            } catch (error) {
+              dropped.push(`${pick.url}：${error instanceof Error ? error.message : error}`);
+            }
+          }
+          candidates.push({ name: c.name, why: c.why, evidence_ids: [...new Set(ids)] });
+        }
+        const result: ResearchOutput & { dropped?: string[] } = {
+          status: "done",
+          summary: output.summary,
+          candidates,
+          unknowns: output.unknowns,
+          ...(dropped.length ? { dropped } : {}),
+        };
+        return { output: result, summary: mergeSummaries(summaries) };
       } catch (error) {
         if (error instanceof AgentRunError) summaries.push(error.summary);
         throw new AgentRunError(error instanceof Error ? error.message : String(error), mergeSummaries(summaries));

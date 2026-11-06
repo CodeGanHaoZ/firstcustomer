@@ -65,13 +65,6 @@ const respond = (content: string | null, toolCalls: ToolCall[] = []) => ({
   usage: { inputTokens: 0, outputTokens: 0, searchCalls: 0 },
 });
 
-let callCounter = 0;
-const call = (name: string, args: unknown): ToolCall => ({
-  id: `stub_${++callCounter}`,
-  type: "function",
-  function: { name, arguments: JSON.stringify(args) },
-});
-
 const userInput = (request: ModelRequest) => {
   const message = request.messages.find((m) => m.role === "user");
   return JSON.parse(String(message?.content ?? "{}"));
@@ -80,25 +73,48 @@ const userInput = (request: ModelRequest) => {
 const CONSULTING = "远程咨询团队";
 const SMB = "全部中小企业";
 
-const search = (query: string, purpose: string, candidate: string) =>
-  call("search_evidence", { query, source: "stub", purpose, candidate });
+const pick = (doc: SourceResult, quote: string, kind: string, stance: string) => ({
+  url: doc.url,
+  quote,
+  kind,
+  stance,
+  product: null,
+  number_value: null,
+  metric: null,
+});
 
-const save = (doc: SourceResult, quote: string, kind: string, stance: string, candidate: string) =>
-  call("save_evidence", {
-    url: doc.url,
-    quote,
-    kind,
-    stance,
-    candidate,
-    product: null,
-    category: "示例",
-    number_value: null,
-    metric: null,
-  });
+const query = (q: string, purpose: string, candidate: string) => ({ source: "stub", query: q, purpose, candidate });
+
+function researchPlanStep(request: ModelRequest) {
+  const input = userInput(request);
+  if (input.request) {
+    return respond(
+      JSON.stringify({
+        categories: [],
+        candidates: [CONSULTING],
+        queries: [
+          query("competitor pricing", "support", CONSULTING),
+          query("consultants meeting notes complaint", "counter", CONSULTING),
+        ],
+      }),
+    );
+  }
+  return respond(
+    JSON.stringify({
+      categories: [],
+      candidates: [CONSULTING, SMB],
+      queries: [
+        query("consultants meeting notes", "support", CONSULTING),
+        query("consultants meeting notes complaint", "counter", CONSULTING),
+        query("smb meeting notes", "support", SMB),
+        query("smb meeting notes complaint", "counter", SMB),
+      ],
+    }),
+  );
+}
 
 function researchStep(request: ModelRequest) {
   const input = userInput(request);
-  const toolMessages = request.messages.filter((m) => m.role === "tool");
   // 没填目标市场时追问一次，用来演示“等待补充信息”。
   if (!input.product.target_market && !input.clarifications?.length && !input.request) {
     return respond(
@@ -112,49 +128,45 @@ function researchStep(request: ModelRequest) {
     );
   }
   if (input.request) {
-    if (toolMessages.length === 0) {
-      return respond(null, [search("competitor pricing", "support", CONSULTING)]);
-    }
-    if (toolMessages.length === 1) {
-      return respond(null, [
-        save(DOCS.pricing, "the competitor sells a Business plan at $19 per seat per month", "pricing", "support", CONSULTING),
-      ]);
-    }
     return respond(
       JSON.stringify({
         status: "done",
         summary: "【模拟数据】已补查定价。",
-        candidates: [{ name: CONSULTING, why: "【模拟数据】补查后有付费信号", evidence_ids: [] }],
+        candidates: [
+          {
+            name: CONSULTING,
+            why: "【模拟数据】补查后有付费信号",
+            library_ids: [],
+            picks: [pick(DOCS.pricing, "the competitor sells a Business plan at $19 per seat per month", "pricing", "support")],
+          },
+        ],
         unknowns: ["竞品的真实收入未公开"],
       }),
     );
   }
-  if (toolMessages.length === 0) {
-    return respond(null, [
-      search("consultants meeting notes", "support", CONSULTING),
-      search("consultants meeting notes complaint", "counter", CONSULTING),
-      search("smb meeting notes", "support", SMB),
-      search("smb meeting notes complaint", "counter", SMB),
-    ]);
-  }
-  if (toolMessages.length === 4) {
-    return respond(null, [
-      save(DOCS.pain, "we rewrite meeting notes for clients after every weekly call", "pain", "support", CONSULTING),
-      save(DOCS.against, "per-seat meeting note tools feel too expensive", "pain", "against", CONSULTING),
-      save(DOCS.smb, "small businesses want notes but rarely pay", "pain", "support", SMB),
-      save(DOCS.smbAgainst, "use the free notes built into their video app", "pain", "against", SMB),
-    ]);
-  }
-  const ids = toolMessages
-    .slice(4)
-    .map((m) => JSON.parse(String(m.content)).evidence_id as string);
   return respond(
     JSON.stringify({
       status: "done",
       summary: "【模拟数据】找到两个候选人群，付费意愿证据还不足。",
       candidates: [
-        { name: CONSULTING, why: "【模拟数据】痛点具体", evidence_ids: ids.slice(0, 2) },
-        { name: SMB, why: "【模拟数据】人群更大，但付费弱", evidence_ids: ids.slice(2) },
+        {
+          name: CONSULTING,
+          why: "【模拟数据】痛点具体",
+          library_ids: [],
+          picks: [
+            pick(DOCS.pain, "we rewrite meeting notes for clients after every weekly call", "pain", "support"),
+            pick(DOCS.against, "per-seat meeting note tools feel too expensive", "pain", "against"),
+          ],
+        },
+        {
+          name: SMB,
+          why: "【模拟数据】人群更大，但付费弱",
+          library_ids: [],
+          picks: [
+            pick(DOCS.smb, "small businesses want notes but rarely pay", "pain", "support"),
+            pick(DOCS.smbAgainst, "use the free notes built into their video app", "pain", "against"),
+          ],
+        },
       ],
       unknowns: ["付费意愿"],
     }),
@@ -296,19 +308,7 @@ export const stubModel: ModelClient = async (request) => {
     case "vision":
       return visionStep();
     case "research:plan":
-      // 预检索用和后面 Research 步骤相同的检索词，模拟流程不变。
-      return respond(
-        JSON.stringify({
-          categories: [],
-          candidates: [CONSULTING, SMB],
-          queries: [
-            { source: "stub", query: "consultants meeting notes", purpose: "support", candidate: CONSULTING },
-            { source: "stub", query: "consultants meeting notes complaint", purpose: "counter", candidate: CONSULTING },
-            { source: "stub", query: "smb meeting notes", purpose: "support", candidate: SMB },
-            { source: "stub", query: "smb meeting notes complaint", purpose: "counter", candidate: SMB },
-          ],
-        }),
-      );
+      return researchPlanStep(request);
     case "research":
       return researchStep(request);
     case "strategy":

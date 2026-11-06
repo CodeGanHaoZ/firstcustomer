@@ -25,6 +25,52 @@ export const researchOutput = z.discriminatedUnion("status", [
 ]);
 export type ResearchOutput = z.infer<typeof researchOutput>;
 
+const evidencePick = z.object({
+  url: z.string(),
+  quote: z.string(),
+  kind: z.enum(["pain", "pricing", "revenue", "signal", "channel", "product"]),
+  stance: z.enum(["support", "against", "neutral"]),
+  product: z.string().nullable(),
+  number_value: z.string().nullable(),
+  metric: z.string().nullable(),
+});
+
+const plannedQuery = z.object({
+  source: z.string(),
+  query: z.string(),
+  purpose: z.enum(["support", "counter"]),
+  candidate: z.string(),
+});
+
+// Research 一次输出全部选择，由程序核对摘录并保存。
+export const researchSelection = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("need_info"),
+    questions: z
+      .array(z.object({ question: z.string(), why: z.string() }))
+      .min(1)
+      .max(3),
+  }),
+  z.object({
+    status: z.literal("done"),
+    summary: z.string(),
+    candidates: z
+      .array(
+        z.object({
+          name: z.string(),
+          why: z.string(),
+          library_ids: z.array(z.string()),
+          picks: z.array(evidencePick).max(15),
+        }),
+      )
+      .min(1)
+      .max(2),
+    unknowns: z.array(z.string()),
+    more_queries: z.array(plannedQuery).max(4).optional(),
+  }),
+]);
+export type ResearchSelection = z.infer<typeof researchSelection>;
+
 export const researchPlan = z.object({
   categories: z.array(z.string()).max(2),
   candidates: z.array(z.string()).min(1).max(2),

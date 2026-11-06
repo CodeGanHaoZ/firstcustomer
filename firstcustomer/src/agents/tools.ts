@@ -153,50 +153,67 @@ export function createResearchTools(context: {
         number_value: string | null;
         metric: string | null;
       }) => {
-        const [doc] = await db
-          .select()
-          .from(sourceDocuments)
-          .where(eq(sourceDocuments.url, args.url));
-        if (!doc) throw new Error("这个网址还没有读取过，不能保存为证据");
-        const vendor = vendorCopyProblem(args.kind, args.url, args.quote);
-        if (vendor) throw new Error(vendor);
-        const check = verifyQuote(args.quote, doc.text);
-        if (check.status === "rejected") throw new Error(check.reason);
-        // 同一项目里同一网址、同一摘录只存一次。
-        const sameUrl = await db
-          .select({ id: evidenceItems.id, excerpt: evidenceItems.excerpt, grade: evidenceItems.grade, status: evidenceItems.status })
-          .from(evidenceItems)
-          .where(and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.url, args.url)));
-        const duplicate = sameUrl.find((e) => normalizeText(e.excerpt) === normalizeText(args.quote));
-        if (duplicate) {
-          return { evidence_id: duplicate.id, status: duplicate.status, grade: duplicate.grade, note: "已经保存过，直接复用" };
-        }
-        const collectedAt = new Date();
-        const [row] = await db
-          .insert(evidenceItems)
-          .values({
-            projectId,
-            candidate: args.candidate,
-            product: args.product,
-            category: args.category,
-            kind: args.kind,
-            stance: args.stance,
-            numberValue: args.number_value,
-            metric: args.metric,
-            url: args.url,
-            sourceName: sourceName(args.url),
-            excerpt: args.quote,
-            grade: gradeFor(args.kind, args.url),
-            status: check.status,
-            matchScore: check.score,
-            licenseStatus: "public_reference",
-            createdBy: "agent",
-            collectedAt,
-            expiresAt: expiresAt(args.kind, collectedAt),
-          })
-          .returning({ id: evidenceItems.id, grade: evidenceItems.grade, status: evidenceItems.status });
-        return { evidence_id: row.id, status: row.status, grade: row.grade, note: check.reason };
+        return storeEvidence(db, projectId, args);
       },
     },
   };
+}
+
+export type EvidencePick = {
+  url: string;
+  quote: string;
+  kind: EvidenceKind;
+  stance: "support" | "against" | "neutral";
+  candidate: string;
+  product: string | null;
+  category: string | null;
+  number_value: string | null;
+  metric: string | null;
+};
+
+// 保存一条证据：网址必须读取过，摘录由程序核对，等级由程序决定；同一项目里同一摘录只存一次。
+export async function storeEvidence(db: Db, projectId: string, args: EvidencePick) {
+  const [doc] = await db
+    .select()
+    .from(sourceDocuments)
+    .where(eq(sourceDocuments.url, args.url));
+  if (!doc) throw new Error("这个网址还没有读取过，不能保存为证据");
+  const vendor = vendorCopyProblem(args.kind, args.url, args.quote);
+  if (vendor) throw new Error(vendor);
+  const check = verifyQuote(args.quote, doc.text);
+  if (check.status === "rejected") throw new Error(check.reason);
+  // 同一项目里同一网址、同一摘录只存一次。
+  const sameUrl = await db
+    .select({ id: evidenceItems.id, excerpt: evidenceItems.excerpt, grade: evidenceItems.grade, status: evidenceItems.status })
+    .from(evidenceItems)
+    .where(and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.url, args.url)));
+  const duplicate = sameUrl.find((e) => normalizeText(e.excerpt) === normalizeText(args.quote));
+  if (duplicate) {
+    return { evidence_id: duplicate.id, status: duplicate.status, grade: duplicate.grade, note: "已经保存过，直接复用" };
+  }
+  const collectedAt = new Date();
+  const [row] = await db
+    .insert(evidenceItems)
+    .values({
+      projectId,
+      candidate: args.candidate,
+      product: args.product,
+      category: args.category,
+      kind: args.kind,
+      stance: args.stance,
+      numberValue: args.number_value,
+      metric: args.metric,
+      url: args.url,
+      sourceName: sourceName(args.url),
+      excerpt: args.quote,
+      grade: gradeFor(args.kind, args.url),
+      status: check.status,
+      matchScore: check.score,
+      licenseStatus: "public_reference",
+      createdBy: "agent",
+      collectedAt,
+      expiresAt: expiresAt(args.kind, collectedAt),
+    })
+    .returning({ id: evidenceItems.id, grade: evidenceItems.grade, status: evidenceItems.status });
+  return { evidence_id: row.id, status: row.status, grade: row.grade, note: check.reason };
 }

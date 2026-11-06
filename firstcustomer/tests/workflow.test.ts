@@ -512,30 +512,33 @@ describe("Agent 输出检查", () => {
       if (request.agent !== "research" || turn > 1) return stubModel(request);
       turn++;
       if (turn === 1) {
-        const toolCalls = [
-          {
-            id: "x1",
-            type: "function" as const,
-            function: {
-              name: "save_evidence",
-              arguments: JSON.stringify({
-                url: "https://evil.example/made-up",
-                quote: "Revenue doubled to one million dollars",
-                kind: "revenue",
-                stance: "support",
-                candidate: "x",
-                product: null,
-                category: null,
-                number_value: "1000000",
-                metric: "ARR",
-              }),
+        const content = JSON.stringify({
+          status: "done",
+          summary: "s",
+          candidates: [
+            {
+              name: "远程咨询团队",
+              why: "w",
+              library_ids: ["not-a-library-id"],
+              picks: [
+                {
+                  url: "https://evil.example/made-up",
+                  quote: "Revenue doubled to one million dollars",
+                  kind: "revenue",
+                  stance: "support",
+                  product: null,
+                  number_value: "1000000",
+                  metric: "ARR",
+                },
+              ],
             },
-          },
-        ];
+          ],
+          unknowns: [],
+        });
         return {
-          message: { role: "assistant", content: null, tool_calls: toolCalls } as ChatMessage,
-          content: null,
-          toolCalls,
+          message: { role: "assistant", content } as ChatMessage,
+          content,
+          toolCalls: [],
           citations: [],
           provider: "stub",
           model: "stub-model",
@@ -550,9 +553,38 @@ describe("Agent 输出检查", () => {
     const { project } = await newProject();
     await startResearch(db, h.enqueue, project.id);
     await h.drain();
-    expect(results[0]).toContain("还没有读取过");
+    expect(results[0]).toContain("不在资料里");
+    expect(await statusOf(project.id)).toBe("awaiting_positioning");
     const fabricated = await db.select().from(evidenceItems).where(eq(evidenceItems.url, "https://evil.example/made-up"));
     expect(fabricated).toHaveLength(0);
+  });
+
+  it("对不上原文的摘录被丢掉并记下原因，其余证据照常保存", async () => {
+    const model: ModelClient = async (request) => {
+      const response = await stubModel(request);
+      if (request.agent !== "research") return response;
+      const output = JSON.parse(String(response.content));
+      if (output.status !== "done") return response;
+      output.candidates[0].picks.push({
+        url: "https://example.com/sample/consultants-notes",
+        quote: "this sentence was never written on that page",
+        kind: "pain",
+        stance: "support",
+        product: null,
+        number_value: null,
+        metric: null,
+      });
+      const content = JSON.stringify(output);
+      return { ...response, content, message: { role: "assistant", content } as ChatMessage };
+    };
+    const h = harness(model);
+    const { project } = await newProject();
+    await startResearch(db, h.enqueue, project.id);
+    await h.drain();
+    const [task] = (await tasksOf(project.id)).filter((t) => t.agent === "research");
+    const output = task.output as { dropped?: string[]; candidates: { evidence_ids: string[] }[] };
+    expect(output.dropped?.[0]).toContain("找不到");
+    expect(output.candidates[0].evidence_ids).toHaveLength(2);
   });
 });
 
