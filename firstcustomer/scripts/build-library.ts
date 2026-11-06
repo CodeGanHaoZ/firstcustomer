@@ -11,7 +11,7 @@ import { createModelClient } from "../src/ai/call-model";
 import { runAgent } from "../src/ai/run-agent";
 import { closeDb, getDb } from "../src/db";
 import { evidenceItems } from "../src/db/schema";
-import { expiresAt, gradeFor, normalizeText, verifyQuote } from "../src/domain/evidence";
+import { expiresAt, gradeFor, normalizeText, vendorCopyProblem, verifyQuote } from "../src/domain/evidence";
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
@@ -83,7 +83,7 @@ async function buildCategory(category: LibraryCategory) {
     const doc = byUrl.get(item.url);
     const check = doc ? verifyQuote(item.quote, doc.text.slice(0, MAX_DOC_CHARS_FOR_MODEL)) : null;
     const key = `${item.url}|${normalizeText(item.quote)}`;
-    if (!doc || !check || check.status === "rejected" || known.has(key)) {
+    if (!doc || !check || check.status === "rejected" || known.has(key) || vendorCopyProblem(item.kind, item.url, item.quote)) {
       rejected++;
       continue;
     }

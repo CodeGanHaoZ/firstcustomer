@@ -49,6 +49,8 @@ import { checkClaims } from "@/domain/claims";
 import { candidatesWithoutCounterSearch, unansweredCounterEvidence } from "@/domain/counter";
 import {
   evaluateExperiment,
+  experimentProblems,
+  unsupportedFigures,
   VERDICT_LABELS,
   type ExperimentPlan,
   type Metrics,
@@ -599,6 +601,23 @@ async function runStrategy(deps: EngineDeps, project: Project) {
           );
           if (result.recommended_option >= result.options.length) {
             problems.push("recommended_option 超出了方案数量");
+          }
+          problems.push(...experimentProblems(result.experiment));
+          const written = [
+            result.rationale,
+            result.experiment.hypothesis,
+            ...result.options.flatMap((o) => [o.audience, o.problem, o.value_prop, o.why]),
+          ].join(" \n ");
+          const figures = unsupportedFigures(written, [
+            JSON.stringify(input.evidence),
+            JSON.stringify(input.product),
+            JSON.stringify(input.clarifications),
+            JSON.stringify(input.screenshots),
+          ]);
+          if (figures.length) {
+            problems.push(
+              `这些价格或百分比在证据里找不到：${figures.join("、")}。删掉，或改成证据里的原数字`,
+            );
           }
           return problems;
         },

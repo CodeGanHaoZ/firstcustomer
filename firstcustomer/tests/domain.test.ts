@@ -1,3 +1,5 @@
+import { experimentProblems, unsupportedFigures } from "@/domain/experiment";
+import { vendorCopyProblem } from "@/domain/evidence";
 import { describe, expect, it } from "vitest";
 import { decisionError, gateState } from "@/domain/approval";
 import { checkClaims, type ClaimEvidence, type PageSlots } from "@/domain/claims";
@@ -183,5 +185,42 @@ describe("实验判定（AC-18）", () => {
   it("达到样本后按预设标准判定", () => {
     expect(evaluateExperiment(plan, { ...metrics, visits: 50, leads: 3 })).toBe("passed");
     expect(evaluateExperiment(plan, { ...metrics, visits: 50, leads: 2 })).toBe("failed");
+  });
+});
+
+describe("实验方案检查", () => {
+  const ok = { channel: "Hacker News 的 Show HN", min_visits: 100, pass_leads: 3 };
+  it("周末规模、一个免费渠道可以通过", () => {
+    expect(experimentProblems(ok)).toEqual([]);
+    expect(experimentProblems({ ...ok, channel: "Reddit r/consulting" })).toEqual([]);
+  });
+  it("门槛过高、多个渠道、付费广告都要改", () => {
+    expect(experimentProblems({ ...ok, min_visits: 1200, pass_leads: 25 })).toHaveLength(2);
+    expect(experimentProblems({ ...ok, channel: "LinkedIn + Reddit" }).join()).toContain("一个渠道");
+    expect(experimentProblems({ ...ok, channel: "LinkedIn Ads" }).join()).toContain("付费");
+    expect(experimentProblems({ ...ok, channel: "顾问 newsletter 赞助位" }).join()).toContain("付费");
+  });
+});
+
+describe("Strategy 里的价格和百分比", () => {
+  const evidence = ['{"excerpt":"In 73% of cases clients showed hesitation"}', '{"excerpt":"ProFor teams$18$10per seat / month"}'];
+  it("证据里有的数字可以写", () => {
+    expect(unsupportedFigures("73% 的客户犹豫，竞品每席位 $10", evidence)).toEqual([]);
+  });
+  it("证据里没有的价格和百分比会被找出来，普通数字不管", () => {
+    expect(unsupportedFigures("Otter 约 $16.99，转化提升 40%，每周 3 次会议", evidence)).toEqual(["$16.99", "40%"]);
+  });
+});
+
+describe("厂商文案", () => {
+  const appPage = "https://apps.apple.com/us/app/otter/id1276437113?uo=4";
+  it("应用介绍不能当痛点或付费信号", () => {
+    expect(vendorCopyProblem("pain", appPage, "The most important conversations happen anywhere")).not.toBeNull();
+    expect(vendorCopyProblem("signal", appPage, "Trusted by over 10 million people")).not.toBeNull();
+  });
+  it("评分数、产品事实、用户评价不受限制", () => {
+    expect(vendorCopyProblem("signal", appPage, "App Store user rating count: 88284.")).toBeNull();
+    expect(vendorCopyProblem("product", appPage, "Records meetings")).toBeNull();
+    expect(vendorCopyProblem("pain", "https://apps.apple.com/us/app/id1?see-all=reviews", "charged me twice")).toBeNull();
   });
 });

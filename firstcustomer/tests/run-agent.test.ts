@@ -97,6 +97,15 @@ describe("runAgent", () => {
     expect(requests[1].messages.some((m) => String(m.content).includes("这是结果"))).toBe(true);
   });
 
+  it("结果被包在 JSON Schema 外壳里时取出里面的结果", async () => {
+    const { model, requests } = scripted([
+      reply('{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"answer":"ok"}}'),
+    ]);
+    const { output } = await runAgent({ ...base, model });
+    expect(output.answer).toBe("ok");
+    expect(requests).toHaveLength(1);
+  });
+
   it("两次重写都不行才交给 Flash，而且不把报错信息交给它", async () => {
     const { model, requests } = scripted([
       reply("文字一"),
@@ -139,6 +148,30 @@ describe("runAgent", () => {
     };
     const { model } = scripted(Array.from({ length: 5 }, () => reply(null, [toolCall("loop", {})])));
     await expect(runAgent({ ...base, model, tools, maxTurns: 3 })).rejects.toThrow("最大轮数");
+  });
+
+  it("模型把工具调用写成文字时，照样执行", async () => {
+    const seen: unknown[] = [];
+    const tools: Record<string, AgentTool> = {
+      pick: {
+        description: "选",
+        parameters: z.object({ ids: z.array(z.string()), who: z.string() }),
+        execute: async (args: never) => {
+          seen.push(args);
+          return { ok: true };
+        },
+      },
+    };
+    const { model, requests } = scripted([
+      reply('<tool_call><function=pick><parameter=who>顾问</parameter><parameter=ids>["a", "b"]</parameter></function></tool_call>'),
+      reply('{"answer":"ok"}'),
+    ]);
+    const { output } = await runAgent({ ...base, model, tools });
+    expect(output.answer).toBe("ok");
+    expect(seen).toEqual([{ who: "顾问", ids: ["a", "b"] }]);
+    const assistant = requests[1].messages.at(-2) as { tool_calls?: unknown[] };
+    expect(assistant.tool_calls).toHaveLength(1);
+    expect(requests[1].messages.at(-1)).toMatchObject({ role: "tool" });
   });
 
   it("最后三轮不给工具，让模型用已有资料收尾", async () => {

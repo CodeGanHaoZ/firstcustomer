@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { AgentTool } from "@/ai/run-agent";
 import type { Db } from "@/db";
 import { evidenceItems, evidenceSearches, sourceDocuments } from "@/db/schema";
-import { expiresAt, gradeFor, normalizeText, verifyQuote, type EvidenceKind } from "@/domain/evidence";
+import { expiresAt, gradeFor, normalizeText, vendorCopyProblem, verifyQuote, type EvidenceKind } from "@/domain/evidence";
 import { copyLibraryEvidence } from "./library";
 import type { SourceClient, SourceResult } from "./sources";
 
@@ -158,6 +158,8 @@ export function createResearchTools(context: {
           .from(sourceDocuments)
           .where(eq(sourceDocuments.url, args.url));
         if (!doc) throw new Error("这个网址还没有读取过，不能保存为证据");
+        const vendor = vendorCopyProblem(args.kind, args.url, args.quote);
+        if (vendor) throw new Error(vendor);
         const check = verifyQuote(args.quote, doc.text);
         if (check.status === "rejected") throw new Error(check.reason);
         // 同一项目里同一网址、同一摘录只存一次。

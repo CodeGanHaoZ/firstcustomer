@@ -1,7 +1,7 @@
 import type { ChatCompletionContentPart } from "openai/resources/chat/completions";
 import { z } from "zod";
 import { listCostYuan } from "./call-model";
-import type { ChatMessage, ModelClient, ModelResponse, ModelTool, ModelUsage } from "./types";
+import type { ChatMessage, ModelClient, ModelResponse, ModelTool, ModelUsage, ToolCall } from "./types";
 
 export type AgentTool = {
   description: string;
@@ -40,6 +40,41 @@ function extractJson(content: string | null) {
   const end = content.lastIndexOf("}");
   if (start < 0 || end <= start) throw new Error("返回内容里没有 JSON 对象");
   return JSON.parse(content.slice(start, end + 1));
+}
+
+// 有的模型会把结果包进 JSON Schema 的外壳里：{"$schema": ..., "properties": {真正的结果}}。
+function parseOutput<T>(schema: z.ZodType<T>, content: string | null): T {
+  const value = extractJson(content);
+  const direct = schema.safeParse(value);
+  if (direct.success) return direct.data;
+  const inner = (value as { properties?: unknown } | null)?.properties;
+  if (inner && typeof inner === "object") {
+    const unwrapped = schema.safeParse(inner);
+    if (unwrapped.success) return unwrapped.data;
+  }
+  throw direct.error;
+}
+
+// MiMo 偶尔把工具调用写成文字：<tool_call><function=名字><parameter=参数>值</parameter></function></tool_call>。
+export function parseTextToolCalls(content: string | null): ToolCall[] {
+  if (!content?.includes("<tool_call>")) return [];
+  const calls: ToolCall[] = [];
+  const blocks = content.match(/<tool_call>[\s\S]*?(?:<\/tool_call>|$)/g) ?? [];
+  for (const [index, block] of blocks.entries()) {
+    const name = block.match(/<function=([\w:-]+)>/)?.[1];
+    if (!name) continue;
+    const args: Record<string, unknown> = {};
+    for (const m of block.matchAll(/<parameter=([\w-]+)>([\s\S]*?)<\/parameter>/g)) {
+      const raw = m[2].trim();
+      try {
+        args[m[1]] = JSON.parse(raw);
+      } catch {
+        args[m[1]] = raw;
+      }
+    }
+    calls.push({ id: `text_call_${Date.now()}_${index}`, type: "function", function: { name, arguments: JSON.stringify(args) } });
+  }
+  return calls;
 }
 
 class Recorder {
@@ -114,7 +149,7 @@ export async function runAgent<T>(options: {
       ],
     });
     recorder.add(repaired);
-    return schema.parse(extractJson(repaired.content));
+    return parseOutput(schema, repaired.content);
   };
 
   try {
@@ -138,10 +173,17 @@ export async function runAgent<T>(options: {
         ...(toolSpecs.length && !wrapUp ? { tools: toolSpecs } : {}),
       });
       recorder.add(response);
-      messages.push(response.message);
+      const textCalls = response.toolCalls.length ? [] : parseTextToolCalls(response.content);
+      const toolCalls = response.toolCalls.length ? response.toolCalls : textCalls;
+      // 文字形式的工具调用改写成标准格式，后面的工具结果才能对上。
+      messages.push(
+        textCalls.length
+          ? ({ role: "assistant", content: null, tool_calls: textCalls } as ChatMessage)
+          : response.message,
+      );
 
-      if (response.toolCalls.length) {
-        for (const call of response.toolCalls) {
+      if (toolCalls.length) {
+        for (const call of toolCalls) {
           const content = wrapUp
             ? JSON.stringify({ error: "工具已停用，请直接输出最终 JSON" })
             : await runTool(tools, call.function);
@@ -156,7 +198,7 @@ export async function runAgent<T>(options: {
 
       let output: T;
       try {
-        output = schema.parse(extractJson(response.content));
+        output = parseOutput(schema, response.content);
       } catch (error) {
         // 先让同一个模型在原对话里重写，它能看到全部上下文。
         if (formatRetries < MAX_FORMAT_RETRIES) {

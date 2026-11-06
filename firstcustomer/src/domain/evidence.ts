@@ -88,6 +88,21 @@ export function gradeFor(
   return "D";
 }
 
+// 应用商店的应用介绍是厂商自己写的：只能当产品事实或标价；评分数是接口给出的数字，可以当信号。
+export function vendorCopyProblem(kind: EvidenceKind, url: string, quote: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const appPage = parsed.hostname === "apps.apple.com" && parsed.searchParams.get("see-all") !== "reviews";
+  if (!appPage) return null;
+  if (kind === "product" || kind === "pricing") return null;
+  if (kind === "signal" && /rating count|^price:/i.test(quote.trim())) return null;
+  return "应用介绍是厂商自己写的，只能存成 kind=product（评分数可以存成 signal）";
+}
+
 const DAY_MS = 86_400_000;
 const VALID_DAYS: Record<EvidenceKind, number> = {
   pricing: 7,
