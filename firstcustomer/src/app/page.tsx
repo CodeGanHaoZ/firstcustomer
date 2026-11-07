@@ -34,6 +34,7 @@ export default async function Home() {
             <BrandMark />
           </Link>
           <nav className="nav__menu" aria-label={copy.nav.label}>
+            <a href="#top" className="nav__link">{copy.nav.homeLink}</a>
             <a href="#office" className="nav__link">{copy.nav.office}</a>
             <a href="#plans" className="nav__link">{copy.nav.plans}</a>
             <a href="#service-flow" className="nav__link">{copy.nav.flow}</a>
