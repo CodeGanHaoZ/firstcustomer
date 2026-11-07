@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { and, asc, count, desc, eq, inArray, isNull, lt, max, min, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, lt, max, min, or, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { agentTasks, clarifications, companyReports, decisions, landingPages, leads, payments, projects, supportMessages } from "@/db/schema";
+import { agentTasks, clarifications, companyReports, decisions, landingPages, leads, payments, projects, stateTransitions, supportMessages } from "@/db/schema";
 import { gateState } from "@/domain/approval";
-import { departmentViews } from "@/domain/office";
+import { departmentViews, OFFICE_TRANSFER_STEPS, type OfficeTransfer } from "@/domain/office";
 import type { ProjectStatus } from "@/domain/workflow";
 import { gateStatusFor } from "./actions";
 import { latestReceipt, projectOrder } from "./commerce";
@@ -12,6 +12,17 @@ import { reportFor } from "./engine";
 const WAITING_OWNER_STATUSES = ["submitted", "awaiting_quote", "awaiting_payment", "awaiting_positioning", "awaiting_publish", "awaiting_founder", "reviewing", "failed"];
 export const OWNER_REMINDER_HOURS = 24;
 const reminderCutoff = (now: Date) => new Date(now.getTime() - OWNER_REMINDER_HOURS * 3_600_000);
+
+export async function loadOfficeTransfer(db: Db, projectId: string): Promise<OfficeTransfer | null> {
+  const [event] = await db.select({
+    id: stateTransitions.id, from: stateTransitions.fromStatus, to: stateTransitions.toStatus, at: stateTransitions.createdAt,
+  }).from(stateTransitions).where(and(eq(stateTransitions.projectId, projectId), or(...OFFICE_TRANSFER_STEPS.map((step) =>
+    and(eq(stateTransitions.fromStatus, step.phaseFrom), eq(stateTransitions.toStatus, step.phaseTo)),
+  )))).orderBy(desc(stateTransitions.createdAt), desc(stateTransitions.id)).limit(1);
+  if (!event) return null;
+  const step = OFFICE_TRANSFER_STEPS.find(({ phaseFrom, phaseTo }) => phaseFrom === event.from && phaseTo === event.to);
+  return step ? { id: event.id, from: step.from, to: step.to, at: event.at.toISOString() } : null;
+}
 
 export type OfficeAttention = { action: string; owner: boolean; anchor: string; since: Date | null };
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { BrandMark } from "@/components/brand-mark";
 import { PaymentCodeImage, ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
 import { ClearProjectDraft } from "@/components/project-draft";
 import {
@@ -90,6 +91,10 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-10">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+        <BrandMark />
+        <span className="text-sm text-muted-foreground">客户专属链接</span>
+      </div>
       {intake === "public" || founderIntake ? <ClearProjectDraft intake={founderIntake ? "admin" : "public"} /> : null}
       {founderIntake ? <Link className="self-start underline" href={`/admin/projects/${project.id}`}>项目已创建 · 返回经营台详情</Link> : null}
       {view.simulated ? <SimulatedBanner /> : null}
@@ -101,7 +106,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
       </p>
 
       {refresh ? <AutoRefresh seconds={refresh} /> : null}
-      <Card aria-labelledby="customer-progress-title">
+      <Card className="bg-secondary" aria-labelledby="customer-progress-title">
         <CardHeader><CardTitle><h2 id="customer-progress-title">当前进度</h2></CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-2 text-sm">
           <div role="status">

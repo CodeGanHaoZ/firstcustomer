@@ -49,38 +49,38 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --background: #faf7ef;
+  --foreground: #243b2d;
+  --card: #fffdf6;
+  --card-foreground: #243b2d;
+  --popover: #fffdf6;
+  --popover-foreground: #243b2d;
+  --primary: #456447;
+  --primary-foreground: #fffdf6;
+  --secondary: #edf0e2;
+  --secondary-foreground: #2e4c36;
+  --muted: #eeeadf;
+  --muted-foreground: #586552;
+  --accent: #e8edda;
+  --accent-foreground: #243b2d;
+  --destructive: #a14334;
+  --border: #d8cfbc;
+  --input: #cbc1ac;
+  --ring: #59734e;
+  --chart-1: #456447;
+  --chart-2: #a3653f;
+  --chart-3: #758447;
+  --chart-4: #a84a3b;
+  --chart-5: #517383;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #ebe6d9;
+  --sidebar-foreground: #243b2d;
+  --sidebar-primary: #456447;
+  --sidebar-primary-foreground: #fffdf6;
+  --sidebar-accent: #edf0e2;
+  --sidebar-accent-foreground: #243b2d;
+  --sidebar-border: #d8cfbc;
+  --sidebar-ring: #59734e;
 }
 
 .dark {
@@ -128,3 +128,9 @@
     @apply font-sans;
   }
 }
+
+.brand-mark { display: inline-flex; align-items: center; gap: .42rem; width: max-content; color: var(--foreground); white-space: nowrap; }
+.brand-mark strong { font-weight: 800; }
+.brand-mark small { color: var(--muted-foreground); font-size: .7rem; font-weight: 640; }
+.brand-icon { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: .45rem; background: var(--primary); color: var(--primary-foreground); }
+::selection { background: #d9e5c5; color: #243b2d; }

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { PageContent } from "@/agents/schemas";
-import { LandingView } from "@/components/landing-view";
+import { LandingPreviewBar, LandingView } from "@/components/landing-view";
 import { getDb } from "@/db";
 import { projects } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
@@ -25,7 +25,7 @@ export default async function AdminPreviewPage({ params, searchParams }: PagePro
   const { page, claims, simulated, hasImage } = preview;
   return (
     <>
-      <p className="bg-muted px-6 py-2 text-center text-sm">第 {page.version} 版预览 · {page.status === "published" ? "已公开" : "未公开"}。预览中的表单不会提交。</p>
+      <LandingPreviewBar returnHref={`/admin/projects/${id}`} version={page.version} published={page.status === "published"} />
       <LandingView
         content={page.content as PageContent}
         claims={claims}

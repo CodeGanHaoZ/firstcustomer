@@ -18,8 +18,8 @@ import { requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { hasPaymentCode } from "@/workflow/commerce";
 import { operatingMetrics } from "@/workflow/operating-metrics";
-import { loadCoo, loadDepartments, officeRevision, OWNER_REMINDER_HOURS, projectAttention } from "@/workflow/office";
-import { logoutAction, uploadPaymentCodeAction } from "./actions";
+import { loadCoo, loadDepartments, loadOfficeTransfer, officeRevision, OWNER_REMINDER_HOURS, projectAttention } from "@/workflow/office";
+import { uploadPaymentCodeAction } from "./actions";
 import { createStandupReport } from "./reports/actions";
 import "./office.css";
 
@@ -51,8 +51,9 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   ]);
   const selected = all.find(({ id }) => id === selectedId) ?? all[0] ?? null;
   const names = new Map(all.map(({ id, productName }) => [id, productName]));
-  const [departments, pending] = await Promise.all([
+  const [departments, transfer, pending] = await Promise.all([
     selected ? loadDepartments(db, selected) : [],
+    selected ? loadOfficeTransfer(db, selected.id) : null,
     Promise.all(all.map(async (project) => {
       const attention = await projectAttention(db, project);
       return attention ? {
@@ -81,25 +82,9 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const standupRunning = coo.standup?.status === "queued" || coo.standup?.status === "running";
 
   return (
-    <main className="office-shell"><div className="office-container">
-      <header className="office-nav">
-        <p className="office-brand">FIRSTCUSTOMER <small>首客经营台</small></p>
-        <nav className="office-nav-links" aria-label="经营台导航">
-          <Link href="/admin/projects/new">新建项目</Link>
-          <Link href="#projects">全部项目</Link>
-          <Link href="/admin/tasks">任务板</Link>
-          <Link href="#metrics">经营报表</Link>
-          <Link href="/admin/reports">周报</Link>
-          <Link href="/admin/context">公司卷宗</Link>
-          <Link href="#payment-code">收款设置</Link>
-        </nav>
-        <form action={logoutAction}>
-          <Button type="submit" variant="ghost">
-            退出
-          </Button>
-        </form>
-      </header>
+    <main className="office-shell office-container">
       <OfficeBoard project={selected} allProjects={all} departments={departments} todo={todo}
+        transfer={transfer} cooWorking={coo.standup?.status === "running"}
         waitingCount={waiting.length} overdueCount={overdue.length} stalled={stalled}
         firstPaymentAt={metrics.firstPaymentAt ? new Date(metrics.firstPaymentAt) : null}
         firstLeadAt={metrics.firstLeadAt ? new Date(metrics.firstLeadAt) : null}
@@ -216,6 +201,6 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         </CardContent>
       </Card>
       </div>
-    </div></main>
+    </main>
   );
 }

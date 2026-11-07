@@ -3,6 +3,22 @@ import type { ProjectStatus } from "./workflow";
 
 export type DepartmentKey = "frontdesk" | "research" | "strategy" | "finance" | "launch" | "growth";
 
+export type OfficeTransfer = { id: string; from: DepartmentKey; to: DepartmentKey; at: string };
+
+export const OFFICE_TRANSFER_STEPS: {
+  phaseFrom: ProjectStatus; phaseTo: ProjectStatus; from: DepartmentKey; to: DepartmentKey;
+}[] = [
+  { phaseFrom: "researching", phaseTo: "drafting_quote", from: "research", to: "frontdesk" },
+  { phaseFrom: "researching", phaseTo: "strategizing", from: "research", to: "strategy" },
+  { phaseFrom: "awaiting_quote_acceptance", phaseTo: "awaiting_payment", from: "frontdesk", to: "finance" },
+  { phaseFrom: "awaiting_payment", phaseTo: "strategizing", from: "finance", to: "strategy" },
+  { phaseFrom: "awaiting_positioning", phaseTo: "preparing_page", from: "strategy", to: "launch" },
+  { phaseFrom: "published", phaseTo: "collecting", from: "launch", to: "growth" },
+  { phaseFrom: "reviewing", phaseTo: "strategizing", from: "growth", to: "strategy" },
+  { phaseFrom: "strategizing", phaseTo: "researching", from: "strategy", to: "research" },
+  { phaseFrom: "preparing_page", phaseTo: "strategizing", from: "launch", to: "strategy" },
+];
+
 export type AgentState =
   | "idle"
   | "scheduled"

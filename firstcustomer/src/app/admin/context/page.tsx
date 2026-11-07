@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { ChevronDown, Download, Pencil } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,14 +17,27 @@ export default async function ContextPage({ searchParams }: PageProps<"/admin/co
   const db = getDb();
   const [settings, docs] = await Promise.all([getCompanySettings(db), companyDocuments(db)]);
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-8">
-      <Link href="/admin" className="self-start text-sm underline">返回办公室</Link>
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div><h1 className="text-2xl font-semibold">公司卷宗</h1><p className="mt-1 text-sm text-muted-foreground">从当前数据库生成的 00–08 卷宗，导出时联系方式已脱敏。</p></div>
-        <a href="/admin/context/export" className="rounded-md border px-3 py-2 text-sm font-medium">导出 Markdown ZIP</a>
+    <main className="admin-section max-w-4xl">
+      <header className="admin-section-heading">
+        <div><h1>公司卷宗</h1><p>从当前数据库生成的 00–08 卷宗，导出时联系方式已脱敏。</p></div>
+        <div className="flex flex-wrap gap-2">
+          <a href="#company-settings" className={buttonVariants({ variant: "outline" })}><Pencil aria-hidden="true" />编辑设置</a>
+          <a href="/admin/context/export" className={buttonVariants()}><Download aria-hidden="true" />导出 Markdown ZIP</a>
+        </div>
       </header>
-      {error ? <p className="text-destructive">{String(error)}</p> : null}
-      <Card>
+      {error ? <p role="alert" className="text-sm text-destructive">{String(error)}</p> : null}
+      <section aria-label="九份卷宗" className="divide-y overflow-hidden rounded-xl border bg-card">
+        {docs.map((doc) => (
+          <details key={doc.name} className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold hover:bg-secondary">
+              {doc.name}
+              <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-muted-foreground group-open:rotate-180" />
+            </summary>
+            <pre className="border-t px-4 py-3 font-sans text-sm leading-relaxed break-words whitespace-pre-wrap">{doc.body}</pre>
+          </details>
+        ))}
+      </section>
+      <Card id="company-settings" className="scroll-mt-4">
         <CardHeader><CardTitle>公司设置与宪章</CardTitle></CardHeader>
         <CardContent>
           <form action={saveCompanyContext} className="grid gap-3 text-sm">
@@ -46,14 +59,6 @@ export default async function ContextPage({ searchParams }: PageProps<"/admin/co
           </form>
         </CardContent>
       </Card>
-      <section aria-label="九份卷宗" className="grid gap-2">
-        {docs.map((doc) => (
-          <details key={doc.name} className="rounded-lg border p-3">
-            <summary className="cursor-pointer font-medium">{doc.name}</summary>
-            <pre className="mt-3 whitespace-pre-wrap break-words font-sans text-sm">{doc.body}</pre>
-          </details>
-        ))}
-      </section>
     </main>
   );
 }

@@ -550,7 +550,7 @@ export function GrowthSection({ view }: { view: ProjectView }) {
 export function ProjectHeader({ project }: { project: Project }) {
   return (
     <header className="flex flex-col gap-3">
-      <h1 className="text-2xl font-semibold">{project.productName}</h1>
+      <h1 className="text-3xl font-bold tracking-tight break-words">{project.productName}</h1>
       <p className="text-sm text-muted-foreground">
         {project.stage} · {project.goal}
         {project.targetMarket ? ` · ${project.targetMarket}` : ""}

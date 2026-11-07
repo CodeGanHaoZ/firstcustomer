@@ -16,6 +16,14 @@ export function ProjectIntake({ action, founder = false }: {
           <Label htmlFor="website">网站</Label>
           <Input id="website" name="website" tabIndex={-1} autoComplete="off" />
         </div>
+        <div className="flex flex-col gap-2 sm:col-span-2">
+          <Label htmlFor="productName">产品名称或想法</Label>
+          <Textarea id="productName" name="productName" required maxLength={500} placeholder="一两句话即可" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="productUrl">产品网址（选填）</Label>
+          <Input id="productUrl" name="productUrl" type="url" placeholder="https://" />
+        </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="stage">当前阶段</Label>
           <select id="stage" name="stage" required className={selectClass} defaultValue="已有 MVP">
@@ -24,14 +32,6 @@ export function ProjectIntake({ action, founder = false }: {
             <option>已有 MVP</option>
             <option>已上线</option>
           </select>
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="productName">产品名称或想法</Label>
-          <Textarea id="productName" name="productName" required maxLength={500} placeholder="一两句话即可" />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="productUrl">产品网址（选填）</Label>
-          <Input id="productUrl" name="productUrl" type="url" placeholder="https://" />
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="targetMarket">希望进入的市场（选填）</Label>
@@ -54,17 +54,15 @@ export function ProjectIntake({ action, founder = false }: {
           <Label htmlFor="contact">联系方式</Label>
           <Input id="contact" name="contact" required maxLength={200} placeholder="微信或邮箱，用于交付与必要联系" />
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2 sm:col-span-2">
           <Label htmlFor="screenshots">产品截图（选填，最多 3 张，每张不超过 5 MB）</Label>
           <Input id="screenshots" name="screenshots" type="file" multiple accept="image/png,image/jpeg,image/webp" />
         </div>
-        {founder ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="own" value="1" /> 这是首客自有产品</label> : null}
-        <Button type="submit" className="self-start">
-          提交项目
-        </Button>
-        <p className="text-sm text-muted-foreground">
-          提交后会生成项目专属链接。文本草稿保存在此浏览器。
-        </p>
+        {founder ? <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" name="own" value="1" /> 这是首客自有产品</label> : null}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:col-span-2">
+          <Button type="submit">提交项目</Button>
+          <p className="text-sm text-muted-foreground">提交后会生成项目专属链接。文本草稿保存在此浏览器。</p>
+        </div>
       </ProjectDraftForm>
   );
 }

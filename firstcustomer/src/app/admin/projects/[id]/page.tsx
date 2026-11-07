@@ -160,21 +160,20 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   const decisionHistory = [...view.decisions].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
-      <Link className="text-sm underline" href="/admin">
-        返回经营台
-      </Link>
+    <main className="admin-section max-w-5xl">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium">
+        <Link className="underline underline-offset-4" href="/admin">返回经营台</Link>
+        <a className="underline underline-offset-4" href="#deliverables">查看交付清单</a>
+      </div>
       {view.simulated ? <SimulatedBanner /> : null}
       <ProjectHeader project={project} />
       {project.paused ? <p className="rounded-md border p-3 text-sm">项目已暂停。正在执行的步骤完成后停下。</p> : null}
       {error ? <p className="text-sm text-destructive">{String(error)}</p> : null}
       {notice ? <p className="break-all rounded-md border p-3 text-sm">{String(notice)}</p> : null}
 
-      <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#finance" />
-
-      <Card id="decisions" className="border-primary">
+      <Card id="decisions" className="scroll-mt-4 bg-secondary">
         <CardHeader>
-          <CardTitle>待我决定</CardTitle>
+          <CardTitle className="font-semibold">待我决定</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {project.status === "submitted" ? (
@@ -322,6 +321,8 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           ) : null}
         </CardContent>
       </Card>
+
+      <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#finance" />
 
       <Card id="frontdesk">
         <CardHeader><CardTitle>前台 · 客服收件箱</CardTitle></CardHeader>

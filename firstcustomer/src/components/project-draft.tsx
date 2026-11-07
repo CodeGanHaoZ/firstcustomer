@@ -39,7 +39,7 @@ export function ProjectDraftForm({ action, intake, children }: {
       // The form can still be submitted.
     }
   };
-  return <form ref={form} action={action} onChange={save} className="flex flex-col gap-4">{children}</form>;
+  return <form ref={form} action={action} onChange={save} className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 sm:p-6">{children}</form>;
 }
 
 export function ClearProjectDraft({ intake }: { intake: Intake }) {
