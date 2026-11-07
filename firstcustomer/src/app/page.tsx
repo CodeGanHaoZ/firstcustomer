@@ -1,5 +1,4 @@
 import { ArrowDown, ArrowRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { BackToTop } from "@/components/back-to-top";
 import { BrandMark } from "@/components/brand-mark";
@@ -7,6 +6,7 @@ import { EditorialMotion } from "@/components/editorial-motion";
 import { LumiChat } from "@/components/lumi-chat";
 import { OfficeShowcase } from "@/components/office-showcase";
 import { LanguageSwitch } from "@/components/language-switch";
+import { SiteFooter } from "@/components/site-chrome";
 import { HOME_COPY } from "@/lib/home-copy";
 import { getLocale } from "@/lib/locale-server";
 import { localeTag } from "@/lib/locale";
@@ -27,10 +27,10 @@ export default async function Home() {
   const [session, locale] = await Promise.all([getCustomerSession(), getLocale()]);
   const copy = HOME_COPY[locale];
   return (
-    <div className="home-page" lang={localeTag(locale)}>
+    <div className="home-page" lang={localeTag(locale)} id="top">
       <header className="nav">
         <div className="nav__inner container">
-          <Link href="/" className="nav__brand" aria-label={copy.nav.home}>
+          <Link href="/#top" className="nav__brand" aria-label={copy.nav.home}>
             <BrandMark />
           </Link>
           <nav className="nav__menu" aria-label={copy.nav.label}>
@@ -62,13 +62,10 @@ export default async function Home() {
             <h1 className="display" data-reveal data-reveal-group="hero">
               {copy.hero.title}
             </h1>
-            <p className="lead" data-reveal data-reveal-group="hero">
-              {copy.hero.description}
-            </p>
             <div className="hero__actions" data-reveal data-reveal-group="hero">
-              <a href="#cta" className="btn btn--primary btn--lg">
+              <Link href="/projects/new" className="btn btn--primary btn--lg">
                 {copy.hero.cta} <ArrowRight size={16} className="arw" aria-hidden="true" />
-              </a>
+              </Link>
               <a href="#office" className="btn btn--ghost btn--lg">
                 {copy.hero.office} <ArrowDown size={15} aria-hidden="true" />
               </a>
@@ -221,53 +218,8 @@ export default async function Home() {
         </section>
       </main>
 
-      {/* ---------- 极简页脚 ---------- */}
-      <footer className="footer">
-        <div className="container footer__grid">
-          <div className="footer__col">
-            <div className="footer__brand-row">
-              <BrandMark />
-              <span className="footer__brand-sep" aria-hidden="true"></span>
-              <span className="footer__powered">
-                <span className="meta">Powered by</span>
-                <Image
-                  src="/brand/mimo-logo.png"
-                  alt="MiMo AI"
-                  width={110}
-                  height={14}
-                  className="footer__mimo"
-                  unoptimized
-                />
-              </span>
-            </div>
-            <p className="meta" style={{ marginTop: "12px", maxWidth: "30em" }}>
-              {copy.footer.privacy}{" "}
-              {process.env.PRIVACY_CONTACT ? `${copy.footer.contact} ${process.env.PRIVACY_CONTACT}` : copy.footer.noContact}
-            </p>
-          </div>
-          <div className="footer__col">
-            <h4>{copy.footer.start}</h4>
-            <ul>
-              <li><a href="#service-flow">{copy.nav.flow}</a></li>
-              <li><a href="#plans">{copy.nav.plans}</a></li>
-              <li><Link href="/projects/new">{copy.footer.submit}</Link></li>
-            </ul>
-          </div>
-          <div className="footer__col">
-            <h4>{copy.footer.account}</h4>
-            <ul>
-              <li><Link href="/login">{copy.footer.login}</Link></li>
-              <li><Link href="/register">{copy.footer.register}</Link></li>
-              <li><Link href="/account">{session ? copy.nav.account : copy.nav.trial}</Link></li>
-            </ul>
-          </div>
-        </div>
-        <div className="container footer__bottom">
-          <span>© 2026 首客 HiFirst</span>
-          <span className="footer__divider" aria-hidden="true"></span>
-          <span>© JUNCTION·涌现</span>
-        </div>
-      </footer>
+      {/* ---------- 全站统一页脚 ---------- */}
+      <SiteFooter />
 
       {/* ---------- 交互层 + 悬浮回到顶部 ---------- */}
       <EditorialMotion key={locale} />

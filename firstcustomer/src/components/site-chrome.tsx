@@ -1,11 +1,14 @@
 import { LocalizedLink, LocalizedTag } from "@/components/localized-controls";
 import { T } from "@/components/ui-text";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BrandMark } from "@/components/brand-mark";
 import { LanguageSwitch } from "@/components/language-switch";
 import { signOutAction } from "@/app/account/actions";
 import { getCustomerSession } from "@/lib/customer-auth";
+import { HOME_COPY } from "@/lib/home-copy";
+import { getLocale } from "@/lib/locale-server";
 
 type NavKey = "account" | "new" | "project" | "auth";
 
@@ -15,7 +18,7 @@ export async function SiteHeader({ current, extra }: { current?: NavKey; extra?:
   return (
     <header className="nav nav--static site-nav">
       <div className="nav__inner container">
-        <LocalizedLink href="/" className="nav__brand" aria-label="首客首页"><BrandMark /></LocalizedLink>
+        <LocalizedLink href="/#top" className="nav__brand" aria-label="首客首页"><BrandMark /></LocalizedLink>
         <LocalizedTag as="nav" className="nav__menu" aria-label="主导航">
           <Link href="/#office" className="nav__link"><T>办公室</T></Link>
           <Link href="/account" className="nav__link" aria-current={current === "account" ? "page" : undefined}>
@@ -58,15 +61,66 @@ export function PageHead({ eyebrow, title, lead, meta, actions }: {
   );
 }
 
-/** 页尾：首页首屏同一张毛毡风景，只露山河，作为全站统一的收尾。 */
+/** 全站统一页脚：品牌行 + 链接列 + 居中版权行，与首页同一套结构。 */
+export async function SiteFooter() {
+  const [session, locale] = await Promise.all([getCustomerSession(), getLocale()]);
+  const copy = HOME_COPY[locale];
+  return (
+    <footer className="footer">
+      <div className="container footer__grid">
+        <div className="footer__col">
+          <div className="footer__brand-row">
+            <BrandMark />
+            <span className="footer__brand-sep" aria-hidden="true"></span>
+            <span className="footer__powered">
+              <span className="meta">Powered by</span>
+              <Image
+                src="/brand/mimo-logo.png"
+                alt="MiMo AI"
+                width={110}
+                height={14}
+                className="footer__mimo"
+                unoptimized
+              />
+            </span>
+          </div>
+          <p className="meta" style={{ marginTop: "12px", maxWidth: "30em" }}>
+            {copy.footer.privacy}{" "}
+            {process.env.PRIVACY_CONTACT ? `${copy.footer.contact} ${process.env.PRIVACY_CONTACT}` : copy.footer.noContact}
+          </p>
+        </div>
+        <div className="footer__col">
+          <h4>{copy.footer.start}</h4>
+          <ul>
+            <li><a href="/#service-flow">{copy.nav.flow}</a></li>
+            <li><a href="/#plans">{copy.nav.plans}</a></li>
+            <li><Link href="/projects/new">{copy.footer.submit}</Link></li>
+          </ul>
+        </div>
+        <div className="footer__col">
+          <h4>{copy.footer.account}</h4>
+          <ul>
+            <li><Link href="/login">{copy.footer.login}</Link></li>
+            <li><Link href="/register">{copy.footer.register}</Link></li>
+            <li><Link href="/account">{session ? copy.nav.account : copy.nav.trial}</Link></li>
+          </ul>
+        </div>
+      </div>
+      <div className="container footer__bottom">
+        <span>© 2026 首客 HiFirst</span>
+        <span className="footer__divider" aria-hidden="true"></span>
+        <span>© JUNCTION·涌现</span>
+      </div>
+    </footer>
+  );
+}
+
+/** 页尾：首页首屏同一张毛毡风景，只露山河，接统一页脚。 */
 export function SceneFooter({ low = false }: { low?: boolean }) {
   return (
     <>
       <div className={low ? "scene-foot scene-foot--low" : "scene-foot"} aria-hidden="true" />
-      <footer className="site-foot">
-        <span>© 2026 首客 HiFirst</span>
-        <span><Link href="/"><T>返回主页</T></Link></span>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
