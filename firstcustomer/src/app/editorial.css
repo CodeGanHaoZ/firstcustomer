@@ -74,7 +74,7 @@
   --sp-7: 48px;
   --sp-8: 64px;
   --sp-9: 96px;
-  --section-y: clamp(72px, 9vw, 128px);   /* 分区间距 · 呼吸感来源 */
+  --section-y: clamp(44px, 5.5vw, 80px);  /* 分区间距 · 已按反馈收紧 */
 
   /* ---------- 版心 ---------- */
   --container: 1180px;
