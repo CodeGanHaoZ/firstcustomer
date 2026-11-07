@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-11-07T23:26:08.280055+00:00",
+  "concurrentPresentationChanges": [
+    {
+      "path": "firstcustomer/src/app/office-relay.css",
+      "previousSha256": "39540f569c994ddd671e4149e175a42d81181ec0bb4b13f07f50ddc3e598c2e1",
+      "currentSha256": "ca88b250f8d8ac2cc52f5a4661064d5450df16ab560a4b814754c16e3e65d08b",
+      "review": "Homepage service illustration or CSS; no business actions or state changes"
+    },
+    {
+      "path": "firstcustomer/src/components/service-journey.tsx",
+      "previousSha256": "30b2d59dbb48a94d47b1d3edc5756d7d4efd02ac2f2a9366dbfcbb3d200feaa1",
+      "currentSha256": "591e355475d1d9eff67470edcea250819b9b03e3dda9e0cf88117465dbc18cdd",
+      "review": "Homepage service illustration or CSS; no business actions or state changes"
+    }
+  ],
+  "referencedBusinessFilesUnchanged": true
+}
