@@ -82,7 +82,7 @@
 .journey-pro li:last-child::before { display: none; }
 .journey-milestone { display: grid; place-items: center; position: relative; z-index: 1; width: 30px; height: 30px; border: 1px solid var(--forest); border-radius: 50%; background: var(--paper-2); font-size: 11px; color: var(--forest); font-variant-numeric: tabular-nums; }
 .journey-pro .office-mini-portrait { width: 58px; }
-.journey-agent { font-size: 12px; color: var(--forest); font-weight: 600; }
+.journey-agent { font-size: 15px; color: var(--forest); font-weight: 600; }
 .journey-pro h4 { margin: .2rem 0 .4rem; color: var(--pine); font-family: var(--font-serif); font-size: 24px; font-weight: 500; line-height: 1.45; text-wrap: balance; }
 .journey-pro li p { max-width: 48ch; margin: 0; color: var(--ink-2); font-size: 16px; line-height: 1.85; text-wrap: pretty; }
 .journey-next { position: absolute; left: 7px; bottom: -4px; padding-block: 2px; box-sizing: content-box; background: var(--paper-2); color: var(--forest); }
