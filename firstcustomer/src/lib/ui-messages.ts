@@ -726,7 +726,6 @@ export const UI_MESSAGES: Readonly<Record<string, string>> = {
   "返回主页": "Back home",
   "注册账号": "Create an account",
   "回来看看你的出海项目": "Welcome back to your overseas project",
-  "Lumi 在首客办公室等你。": "Lumi is waiting in the HiFirst office.",
   "创建首客账号": "Create your HiFirst account",
   "登录首客": "Log in to HiFirst",
   "把新提交的出海项目收在同一个账号里。": "Keep your newly submitted projects in one account.",
