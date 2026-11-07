@@ -843,6 +843,13 @@ main .container,
 .nav__link:hover,
 .nav__link[aria-current="page"] { color: var(--ink); }
 .nav__link[aria-current="page"] { text-decoration: underline; text-underline-offset: 6px; text-decoration-color: var(--line-strong); }
+/* 导航整体字号/图标放大一档（仅导航作用域，保持克制） */
+.nav__inner { height: 68px; }
+.nav__brand { font-size: 16px; }
+.nav__brand .brand-icon { width: 36px; height: 36px; }
+.nav__link { font-size: 15px; }
+.nav .btn--sm { height: 36px; padding: 0 16px; font-size: 13px; }
+.nav .language-switch button { font-size: 13px; }
 .nav__actions { display: flex; align-items: center; gap: var(--sp-3); }
 .home-page[lang="en"] .hero--split .display { font-size: clamp(2.5rem, 4.7vw, 4.25rem); line-height: 1.1; }
 .home-page[lang="en"] .disc-type { font-size: clamp(2rem, 5vw, 4.75rem); line-height: 1.2; }
