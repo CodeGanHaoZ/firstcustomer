@@ -50,15 +50,17 @@ export async function SiteHeader({ current, extra }: { current?: NavKey; extra?:
           {extra}
           <LanguageSwitch />
           {current === "auth" ? null : session ? (
-            <>
+            <div className="nav__user-menu">
               <span className="nav__user" title={session.user.email}>
                 <span className="nav__user-email">{session.user.email}</span>
                 <span className={tier === "pro" ? "nav__plan nav__plan--pro" : "nav__plan nav__plan--free"}>{tier === "pro" ? "Pro" : "Free"}</span>
               </span>
-              <form action={signOutAction} className="site-nav__form">
-                <button type="submit" className="btn btn--ghost btn--sm"><T>退出登录</T></button>
-              </form>
-            </>
+              <div className="nav__user-dropdown" role="menu">
+                <form action={signOutAction}>
+                  <button type="submit" className="nav__user-signout" role="menuitem"><T>退出登录</T></button>
+                </form>
+              </div>
+            </div>
           ) : <Link href="/login" className="btn btn--ghost btn--sm"><T>登录 / 注册</T></Link>}
         </div>
       </div>

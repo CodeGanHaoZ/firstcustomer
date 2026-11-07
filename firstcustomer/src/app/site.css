@@ -55,8 +55,51 @@
   padding: 4px 9px;
   border-radius: 999px;
 }
-.nav__plan--pro { background: var(--forest); color: #fff; }
-.nav__plan--free { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
+.nav__plan--pro { background: var(--pine); color: #fbfaf8; }
+.nav__plan--free { background: var(--apricot); color: #8a6432; }
+/* 悬停邮箱胶囊浮出下拉：退出登录 */
+.nav__user-menu { position: relative; display: inline-flex; }
+.nav__user-menu::after { content: ""; position: absolute; top: 100%; right: 0; width: 100%; height: 8px; }
+.nav__user { cursor: default; }
+.nav__user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 148px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: var(--shadow-2);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), visibility 0s var(--dur);
+  z-index: 60;
+}
+.nav__user-menu:hover .nav__user-dropdown,
+.nav__user-menu:focus-within .nav__user-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+.nav__user-dropdown form { margin: 0; }
+.nav__user-signout {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: var(--fs-meta);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.nav__user-signout:hover { background: var(--paper-2); color: var(--ink); }
 @media (max-width: 900px) {
   .nav__user { max-width: 190px; }
 }
