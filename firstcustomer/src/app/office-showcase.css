@@ -78,7 +78,7 @@
 .showcase-member dd { margin: 0; color: var(--ink-2); }
 .showcase-member-copy > button { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; margin-top: var(--sp-3); padding: 0; border: 0; border-bottom: 1px solid transparent; background: transparent; color: var(--forest); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
 .showcase-member-copy > button:hover, .showcase-member-copy > button[aria-pressed="true"] { border-bottom-color: var(--forest); }
-.showcase-owner-note { margin: var(--sp-5) 0 0; color: var(--demo-muted); font-size: 12px; line-height: 1.8; }
+.showcase-owner-note { margin: var(--sp-5) 0 0; color: var(--demo-muted); font-size: 15px; line-height: 1.8; text-align: center; }
 @media (max-width: 900px) {
   .showcase-member { grid-template-columns: 90px minmax(0, 1fr); gap: var(--sp-4); }
   .showcase-team { column-gap: var(--sp-5); }
