@@ -37,7 +37,7 @@ export const INITIAL_KNOWLEDGE: InitialArticle[] = [
   {
     key: "brand-voice", title: "首客品牌语气与表达规范", category: "brand", visibility: "internal",
     agents: ["quote", "support", "strategy", "launch"],
-    content: "中文品牌名为「首客」，英文为 HiFirst，前台兔子名写作 lumi（露米）。中文经营界面用亲切、务实、清楚的表达；面向海外访客的英文验证页使用自然英文，围绕客户产品的实际价值组织内容。\n\n优先写具体对象、问题、下一步与未知项。避免「保证获客」「必赚」「百分之百有效」等效果承诺。数字、竞品对比和效果描述必须有对应证据；客户产品的品牌与受众要求优先于首客自己的接待口吻。",
+    content: "中文品牌名为「首客」，英文为 HiFirst，前台兔子名写作 Lumi（露米）。中文经营界面用亲切、务实、清楚的表达；面向海外访客的英文验证页使用自然英文，围绕客户产品的实际价值组织内容。\n\n优先写具体对象、问题、下一步与未知项。避免「保证获客」「必赚」「百分之百有效」等效果承诺。数字、竞品对比和效果描述必须有对应证据；客户产品的品牌与受众要求优先于首客自己的接待口吻。",
   },
   {
     key: "research-evidence", title: "市场研究与证据核对规范", category: "research", visibility: "internal",

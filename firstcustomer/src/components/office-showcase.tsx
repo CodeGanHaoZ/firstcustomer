@@ -145,7 +145,7 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
   }, [scene, sceneIndex, paused, reduced, replay, nextScene]);
 
   return <div className="office-showcase">
-    <figure className="showcase-theatre" tabIndex={-1} aria-label={copy.label} aria-describedby="office-demo-note">
+    <figure className="showcase-theatre" tabIndex={-1} aria-label={copy.label}>
       <div className="showcase-toolbar">
         <p><span className="showcase-demo-mark" aria-hidden="true" />{copy.demo}<span className="showcase-toolbar-separator">/</span><span>{reduced ? copy.static : paused ? copy.paused : copy.beats[beat]}</span></p>
         <div className="showcase-controls">
@@ -178,7 +178,6 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
       </div>
       <nav className="showcase-chapters" aria-label={copy.chapters}>{scenes.map((item, index) => <button key={index} type="button" onClick={() => chooseScene(index)} aria-current={sceneIndex === index ? "step" : undefined}><span>{index + 1}</span>{item.chapter}</button>)}</nav>
       <p className="showcase-fallback-note">{copy.fallback}<button type="button" onClick={() => chooseScene(sceneIndex)}>{copy.retry}</button></p>
-      <figcaption id="office-demo-note">{copy.note}</figcaption>
     </figure>
     <div className="showcase-team-heading"><h3>{copy.team}</h3><p>{copy.teamDescription}</p></div>
     <div className="showcase-team">{members.map((member) => <article key={member.key} className="showcase-member" data-active={member.key === activeMember}>

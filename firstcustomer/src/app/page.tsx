@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowDown, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { BackToTop } from "@/components/back-to-top";
@@ -217,13 +217,6 @@ export default async function Home() {
               <Link href="/projects/new" className="btn btn--primary btn--lg">
                 {copy.hero.cta} <ArrowRight size={16} className="arw" aria-hidden="true" />
               </Link>
-              {session ? (
-                <Link href="/account" className="btn btn--ghost btn--lg">{copy.nav.account}</Link>
-              ) : (
-                <Link href="/register" className="btn btn--ghost btn--lg">
-                  {copy.cta.register} <ArrowUpRight size={15} aria-hidden="true" />
-                </Link>
-              )}
             </div>
           </div>
         </section>
@@ -272,6 +265,8 @@ export default async function Home() {
         </div>
         <div className="container footer__bottom">
           <span>© 2026 首客 HiFirst</span>
+          <span className="footer__divider" aria-hidden="true"></span>
+          <span>© JUNCTION·涌现</span>
         </div>
       </footer>
 
