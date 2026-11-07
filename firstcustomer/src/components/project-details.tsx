@@ -1,4 +1,5 @@
 import type { PositioningOption, VisionOutput } from "@/agents/schemas";
+import { ImageUploadInput } from "@/components/image-upload-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { GRADE_LABELS, type Grade } from "@/domain/evidence";
 import { MAIN_FLOW, STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { safeHref } from "@/lib/request";
+import { hostedUploadLimit } from "@/lib/uploads";
 import type { Project, ProjectView } from "@/workflow/queries";
 
 const RESPONSE_LABELS: Record<string, string> = {
@@ -238,8 +240,8 @@ export function ScreenshotsSection(props: {
         ) : null}
         {editable ? (
           <form action={props.uploadAction} className="flex flex-col gap-2">
-            <Label htmlFor="image-files">上传截图（一次最多 3 张，每张不超过 5 MB）</Label>
-            <Input id="image-files" name="images" type="file" multiple required accept="image/png,image/jpeg,image/webp" />
+            <Label htmlFor="image-files">上传截图（一次最多 3 张，{hostedUploadLimit ? "合计不超过 4 MB" : "每张不超过 5 MB"}）</Label>
+            <ImageUploadInput id="image-files" name="images" multiple required maxTotalBytes={hostedUploadLimit} />
             <div className="flex flex-wrap gap-2">
               <select name="kind" className="h-9 rounded-md border bg-background px-3" defaultValue="product">
                 <option value="product">我们的产品</option>

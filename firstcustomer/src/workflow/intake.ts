@@ -13,11 +13,12 @@ const schema = z.object({
 const optionalText = (value: FormDataEntryValue | null, max: number) =>
   typeof value === "string" ? value.trim().slice(0, max) || null : null;
 
-export async function submitProject(db: Db, formData: FormData, founder = false) {
+export async function submitProject(db: Db, formData: FormData, founder = false, customerId?: string) {
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) throw new Error("请检查必填项");
   const { project, token } = await createProject(db, {
     ...parsed.data,
+    customerId,
     productUrl: safeHref(optionalText(formData.get("productUrl"), 2048)) ?? null,
     targetMarket: optionalText(formData.get("targetMarket"), 200),
     budgetNote: optionalText(formData.get("budgetNote"), 200),

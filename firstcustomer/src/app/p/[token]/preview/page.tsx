@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { PageContent } from "@/agents/schemas";
 import { LandingPreviewBar, LandingView } from "@/components/landing-view";
 import { getDb } from "@/db";
-import { findProjectByToken } from "@/workflow/actions";
+import { findCustomerProject } from "@/lib/customer-project";
 import { parseLandingVersion } from "@/workflow/landing-edits";
 import { loadLandingPreview } from "@/workflow/queries";
 
@@ -16,7 +16,7 @@ export default async function CustomerPreviewPage({ params, searchParams }: Page
   const version = parseLandingVersion(rawVersion);
   if (version === null) notFound();
   const db = getDb();
-  const project = await findProjectByToken(db, token);
+  const project = await findCustomerProject(db, token);
   if (!project) notFound();
   const preview = await loadLandingPreview(db, project.id, version);
   if (!preview) notFound();

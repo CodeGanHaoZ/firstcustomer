@@ -62,6 +62,7 @@ export async function createProject(
     targetMarket?: string | null;
     budgetNote?: string | null;
     contact: string;
+    customerId?: string | null;
     isOwnProduct?: boolean;
     productPlan?: "free";
   },

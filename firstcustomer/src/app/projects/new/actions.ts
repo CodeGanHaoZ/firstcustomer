@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
+import { getCustomerSession } from "@/lib/customer-auth";
+import { accountProjectToken } from "@/lib/customer-project";
 import { withinLimit } from "@/lib/request";
 import { submitProject } from "@/workflow/intake";
 import { startFreeDiagnosis } from "@/workflow/plans";
@@ -12,7 +14,8 @@ export async function createProjectAction(formData: FormData) {
     redirect(`/projects/new?error=${encodeURIComponent("提交太频繁，请稍后再试")}`);
   }
   const db = getDb();
-  const { projectId, token, imageWarning } = await submitProject(db, formData).catch((error: unknown) => {
+  const session = await getCustomerSession();
+  const { projectId, token, imageWarning } = await submitProject(db, formData, false, session?.user.id).catch((error: unknown) => {
     redirect(`/projects/new?error=${encodeURIComponent(error instanceof Error ? error.message : "提交失败")}`);
   });
   const query = new URLSearchParams({ intake: "public" });
@@ -24,5 +27,5 @@ export async function createProjectAction(formData: FormData) {
     warning = [warning, "项目已保存。暂未进入初诊队列，请在项目页重试。"].filter(Boolean).join(" ");
   }
   if (warning) query.set("error", warning);
-  redirect(`/p/${token}?${query}`);
+  redirect(`/p/${session ? accountProjectToken(projectId) : token}?${query}`);
 }

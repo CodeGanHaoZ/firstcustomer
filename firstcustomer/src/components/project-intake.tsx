@@ -1,8 +1,10 @@
+import { ImageUploadInput } from "@/components/image-upload-input";
+import { ProjectDraftForm } from "@/components/project-draft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ProjectDraftForm } from "@/components/project-draft";
+import { hostedUploadLimit } from "@/lib/uploads";
 
 const selectClass = "h-9 rounded-md border bg-background px-3 text-sm";
 
@@ -55,8 +57,8 @@ export function ProjectIntake({ action, founder = false }: {
           <Input id="contact" name="contact" required maxLength={200} placeholder="微信或邮箱，用于交付与必要联系" />
         </div>
         <div className="flex min-w-0 flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="screenshots">产品截图（选填，最多 3 张，每张不超过 5 MB）</Label>
-          <Input id="screenshots" name="screenshots" type="file" multiple accept="image/png,image/jpeg,image/webp" />
+          <Label htmlFor="screenshots">产品截图（选填，最多 3 张，{hostedUploadLimit ? "合计不超过 4 MB" : "每张不超过 5 MB"}）</Label>
+          <ImageUploadInput id="screenshots" name="screenshots" multiple maxTotalBytes={hostedUploadLimit} />
         </div>
         {founder ? <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" name="own" value="1" /> 这是首客自有产品</label> : null}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:col-span-2">

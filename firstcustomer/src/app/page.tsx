@@ -1,11 +1,11 @@
 import { ArrowDown } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
+import { LumiChat } from "@/components/lumi-chat";
 import { OfficeMap } from "@/components/office-map";
 import { buttonVariants } from "@/components/ui/button";
 import { DEPARTMENTS } from "@/domain/office";
-import { BRAND } from "@/lib/brand";
+import { getCustomerSession } from "@/lib/customer-auth";
 import "./admin/office.css";
 import "./home.css";
 
@@ -25,16 +25,21 @@ const BOUNDARIES = [
   "对外发布和预算支出都要你确认",
 ];
 
-export default function Home() {
+export default async function Home() {
+  const session = await getCustomerSession();
   return (
     <>
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-[74rem] flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
           <Link href="/" aria-label="首客首页"><BrandMark /></Link>
-          <nav className="flex items-center gap-4 text-sm font-medium sm:gap-6" aria-label="官网导航">
+          <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium sm:gap-x-6" aria-label="官网导航">
             <a href="#service-flow" className="hover:underline">服务流程</a>
             <a href="#plans" className="hover:underline">版本</a>
             <Link href="/projects/new" className="hover:underline">提交项目</Link>
+            {session ? <Link href="/account" className={buttonVariants({ variant: "outline" })}>我的项目</Link> : <>
+              <Link href="/login" className="hover:underline">登录</Link>
+              <Link href="/register" className={buttonVariants({ variant: "outline" })}>注册</Link>
+            </>}
           </nav>
         </div>
       </header>
@@ -56,12 +61,7 @@ export default function Home() {
               </a>
             </div>
           </div>
-          <figure className="brand-welcome">
-            <Image className="brand-welcome-rabbit" src="/brand/front-desk-rabbit.webp" alt="穿珊瑚色开衫、抱着登记本挥手的小兔子" width={896} height={896} unoptimized fetchPriority="high" />
-            <figcaption className="brand-welcome-caption">
-              <strong lang="en">{BRAND.mascotName}</strong><span>首客办公室 · 前台</span>
-            </figcaption>
-          </figure>
+          <LumiChat />
         </section>
 
         <section className="flex flex-col gap-4 border-t pt-6" aria-labelledby="office-demo-title">

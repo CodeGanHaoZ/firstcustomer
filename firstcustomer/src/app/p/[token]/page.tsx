@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { BrandMark } from "@/components/brand-mark";
@@ -28,7 +29,7 @@ import { customerProgress } from "@/domain/customer-progress";
 import { DEPARTMENTS, officeRoomForAgent } from "@/domain/office";
 import { canStartFreeDiagnosis, usesQuoteFlow } from "@/domain/workflow";
 import { formatDateTime, formatYuan } from "@/lib/format";
-import { findProjectByToken } from "@/workflow/actions";
+import { findCustomerProject, isAccountProjectToken } from "@/lib/customer-project";
 import { confirmedOrderPayment, hasPaymentCode, latestReceipt, projectOrder } from "@/workflow/commerce";
 import { loadOfficeTransfer } from "@/workflow/office";
 import { loadProjectView, runningProjectAgents } from "@/workflow/queries";
@@ -54,7 +55,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
   const { token } = await params;
   const { error, notice, intake } = await searchParams;
   const db = getDb();
-  const project = await findProjectByToken(db, token);
+  const project = await findCustomerProject(db, token);
   if (!project) notFound();
   const [view, order, support, runningAgents, transfer] = await Promise.all([
     loadProjectView(db, project), projectOrder(db, project.id), projectSupport(db, project.id), runningProjectAgents(db, project),
@@ -122,7 +123,9 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
       {error ? <p className="text-sm text-destructive">{String(error)}</p> : null}
       {notice ? <p className="rounded-md border p-3 text-sm">{String(notice)}</p> : null}
       <p className="text-sm text-muted-foreground">
-        通过这个专属链接可查看当前项目的进度、报价和交付。请妥善保管，如需作废请联系首客。
+        {isAccountProjectToken(token) ? (
+          <>你可以随时从 <Link href="/account" className="font-semibold underline underline-offset-4">我的项目</Link> 回到这里。</>
+        ) : "通过这个专属链接可查看当前项目的进度、报价和交付。请妥善保管，如需作废请联系首客。"}
       </p>
 
       {refresh ? <AutoRefresh seconds={refresh} /> : null}

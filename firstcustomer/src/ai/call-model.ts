@@ -113,21 +113,25 @@ async function callEndpoint(endpoint: Endpoint, request: ModelRequest) {
       : {}),
   } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
   if (endpoint.provider === "mimo" && !tools.length && request.preferStreaming) {
-    return streamMimoCompletion(endpoint, payload);
+    return streamMimoCompletion(endpoint, payload, request.signal);
   }
-  const { data, response } = await endpoint.client.chat.completions.create(payload).withResponse();
+  const { data, response } = await endpoint.client.chat.completions.create(payload, { signal: request.signal }).withResponse();
   if (!Array.isArray(data?.choices)) {
     throw responseFormatError(endpoint.provider, response);
   }
   return toResponse(data, endpoint.provider);
 }
 
-async function streamMimoCompletion(endpoint: Endpoint, payload: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming) {
+async function streamMimoCompletion(
+  endpoint: Endpoint,
+  payload: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+  signal?: AbortSignal,
+) {
   const { data, response } = await endpoint.client.chat.completions.create({
     ...payload,
     stream: true,
     stream_options: { include_usage: true },
-  }).withResponse();
+  }, { signal }).withResponse();
   let content = "";
   let model = payload.model;
   let usage: OpenAI.Completions.CompletionUsage | undefined;
@@ -136,6 +140,7 @@ async function streamMimoCompletion(endpoint: Endpoint, payload: OpenAI.Chat.Cha
     usage = chunk.usage ?? usage;
     content += chunk.choices?.[0]?.delta?.content ?? "";
   }
+  signal?.throwIfAborted();
   if (!content.trim()) throw responseFormatError(endpoint.provider, response);
   return toResponse({
     model, usage, choices: [{ message: { role: "assistant", content } }],
@@ -212,7 +217,7 @@ export function createModelClient(
       return await callEndpoint(primary, request);
     } catch (error) {
       // 备用模型只在主力服务商故障时启用，实际使用的 provider 会写入 agent_tasks。
-      if (!fallback || request.webSearch || request.mimoOnly) throw error;
+      if (!fallback || request.webSearch || request.mimoOnly || request.signal?.aborted) throw error;
       console.error(`${primary.provider} 调用失败，切换备用模型`, error);
       return callEndpoint(fallback, request);
     }

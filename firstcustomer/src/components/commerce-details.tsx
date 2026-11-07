@@ -1,9 +1,10 @@
 import Image from "next/image";
 import type { ProposalOutput } from "@/agents/schemas";
+import { ImageUploadInput } from "@/components/image-upload-input";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatYuan } from "@/lib/format";
+import { hostedUploadLimit } from "@/lib/uploads";
 
 export function ProposalDetails({ proposal, version, quoteFen }: {
   proposal: ProposalOutput;
@@ -28,8 +29,8 @@ export function ReceiptUpload({ action }: { action: (formData: FormData) => Prom
   return (
     <form action={action} className="flex flex-wrap items-end gap-2">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="receipt">付款截图（最大 5 MB）</Label>
-        <Input id="receipt" name="receipt" type="file" accept="image/png,image/jpeg,image/webp" required />
+        <Label htmlFor="receipt">付款截图（最大 {hostedUploadLimit ? 4 : 5} MB）</Label>
+        <ImageUploadInput id="receipt" name="receipt" required maxTotalBytes={hostedUploadLimit} />
       </div>
       <Button type="submit" variant="outline">上传付款截图</Button>
     </form>

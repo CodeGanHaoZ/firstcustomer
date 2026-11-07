@@ -24,6 +24,7 @@ export type ModelRequest = {
   /** false 时关闭 MiMo 的思考模式：提取、整理类任务不需要推理，关掉后更快、耗时更稳定。 */
   thinking?: boolean;
   mimoOnly?: boolean;
+  signal?: AbortSignal;
 };
 
 export type UrlCitation = {

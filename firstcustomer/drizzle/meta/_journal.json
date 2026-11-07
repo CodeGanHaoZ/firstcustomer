@@ -50,6 +50,13 @@
       "when": 1794015413567,
       "tag": "0006_project_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794020234383,
+      "tag": "0007_customer_accounts",
+      "breakpoints": true
     }
   ]
 }

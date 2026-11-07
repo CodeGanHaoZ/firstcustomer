@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { findProjectByToken } from "@/workflow/actions";
+import { findCustomerProject } from "@/lib/customer-project";
 import { loadReceiptImage } from "@/workflow/commerce";
 import { imageResponse } from "@/workflow/queries";
 
@@ -9,7 +9,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/p/[token
   const { token, receiptId } = await params;
   if (!z.uuid().safeParse(receiptId).success) notFound();
   const db = getDb();
-  const project = await findProjectByToken(db, token);
+  const project = await findCustomerProject(db, token);
   if (!project) notFound();
   const image = await loadReceiptImage(db, project.id, receiptId);
   if (!image) notFound();

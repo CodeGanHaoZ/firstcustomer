@@ -1,16 +1,11 @@
 import { eq, inArray } from "drizzle-orm";
-import { createLiveSources } from "@/agents/sources";
-import { createModelClient } from "@/ai/call-model";
-import { createStubSources } from "@/ai/stub-model";
 import { getDb } from "@/db";
 import { agentTasks, companyReports, projects, supportMessages } from "@/db/schema";
 import { AGENT_STATUSES } from "@/domain/workflow";
-import { ADVANCE_QUEUE, getBoss, type AdvanceJob, type CompanyJob } from "@/jobs/queue";
-import { requestCompanyReport, runCompanyReport } from "@/workflow/company-reports";
-import { advanceProject, type EngineDeps } from "@/workflow/engine";
+import { createJobProcessor } from "@/jobs/process-job";
+import { ADVANCE_QUEUE, getBoss, type AdvanceJob, type CompanyJob, type WorkJob } from "@/jobs/queue";
 
 const db = getDb();
-const model = createModelClient();
 const boss = await getBoss("worker");
 
 const enqueue = async (projectId: string) => {
@@ -18,13 +13,6 @@ const enqueue = async (projectId: string) => {
     retryLimit: 0,
     expireInSeconds: 3600,
   });
-};
-
-const deps: EngineDeps = {
-  db,
-  model,
-  sources: process.env.LLM_PROVIDER === "stub" ? createStubSources() : createLiveSources(model),
-  enqueue,
 };
 
 // 只有一个 worker，所以启动时还在运行的任务都是上次中断留下的，要接着跑。
@@ -48,11 +36,8 @@ const pendingReports = await db.update(companyReports).set({ status: "queued" })
 await Promise.all(pendingReports.map(({ id }) => enqueueReport(id)));
 await boss.schedule(ADVANCE_QUEUE, "0 9 * * *", { dailyStandup: true } satisfies CompanyJob, { tz: "Asia/Shanghai" });
 
-await boss.work<AdvanceJob | CompanyJob>(ADVANCE_QUEUE, { localConcurrency: 1 }, async ([job]) => {
-  if ("projectId" in job.data) await advanceProject(deps, job.data.projectId);
-  else if ("reportId" in job.data) await runCompanyReport(db, model, job.data.reportId);
-  else await requestCompanyReport(db, enqueueReport, "standup");
-});
+const processJob = createJobProcessor(db, enqueue, enqueueReport);
+await boss.work<WorkJob>(ADVANCE_QUEUE, { localConcurrency: 1 }, async ([job]) => processJob(job.data));
 
 console.log(`worker 已启动，模型：${process.env.LLM_PROVIDER ?? "mimo"}`);
 

@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { enqueueAdvance } from "@/jobs/queue";
+import { findCustomerProject } from "@/lib/customer-project";
 import { withinLimit } from "@/lib/request";
 import { readUploadedFiles, readUploadedImage } from "@/lib/uploads";
 import { decideQuote, uploadReceipt } from "@/workflow/commerce";
@@ -14,7 +15,6 @@ import {
   answerClarifications,
   decide,
   deleteProjectImage,
-  findProjectByToken,
 } from "@/workflow/actions";
 import { openSupportMessage } from "@/workflow/support";
 import { requestPro, startFreeDiagnosis } from "@/workflow/plans";
@@ -31,7 +31,7 @@ async function withProject(
   run: (projectId: string) => Promise<string | void>,
 ) {
   const db = getDb();
-  const project = await findProjectByToken(db, token);
+  const project = await findCustomerProject(db, token);
   if (!project) notFound();
   const page = `/p/${token}`;
   let notice: string | void;
@@ -134,7 +134,7 @@ export async function customerAcceptanceAction(token: string, formData: FormData
 
 export async function customerDecision(token: string, formData: FormData) {
   const db = getDb();
-  const project = await findProjectByToken(db, token);
+  const project = await findCustomerProject(db, token);
   if (!project) notFound();
   const input = schema.parse(Object.fromEntries(formData));
   const page = `/p/${token}`;

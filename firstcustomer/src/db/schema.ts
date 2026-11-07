@@ -14,6 +14,9 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { authUsers } from "./customer-auth-schema";
+
+export { authAccounts, authRateLimits, authSessions, authUsers, authVerifications } from "./customer-auth-schema";
 
 const id = () => uuid("id").primaryKey().default(sql`gen_random_uuid()`);
 const createdAt = () =>
@@ -23,6 +26,7 @@ const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
 export const projects = pgTable("projects", {
   id: id(),
   tokenHash: text("token_hash").notNull().unique(),
+  customerId: text("customer_id").references(() => authUsers.id, { onDelete: "set null" }),
   productName: text("product_name").notNull(),
   productUrl: text("product_url"),
   stage: text("stage").notNull(),
@@ -46,7 +50,7 @@ export const projects = pgTable("projects", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [index("projects_customer_idx").on(table.customerId)]);
 
 export const stateTransitions = pgTable(
   "state_transitions",

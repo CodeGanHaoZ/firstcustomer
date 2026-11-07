@@ -1,0 +1,6 @@
+.env*
+.local-pg
+.next
+.vercel
+node_modules
+*.tsbuildinfo

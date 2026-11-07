@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { ImageUploadInput } from "@/components/image-upload-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getDb } from "@/db";
 import { requireAdmin } from "@/lib/auth";
+import { hostedUploadLimit } from "@/lib/uploads";
 import { hasPaymentCode } from "@/workflow/commerce";
 import { uploadPaymentCodeAction } from "../actions";
 
@@ -29,8 +30,8 @@ export default async function PaymentSettingsPage({ searchParams }: PageProps<"/
           {saved === "1" && codeReady ? <p role="status">已保存新的收款码。</p> : null}
           <form action={uploadPaymentCodeAction} className="flex flex-wrap items-end gap-2">
             <div className="flex min-w-0 flex-col gap-2">
-              <Label htmlFor="payment-code-file">收款码图片（最大 5 MB）</Label>
-              <Input id="payment-code-file" name="paymentCode" type="file" accept="image/png,image/jpeg,image/webp" required />
+              <Label htmlFor="payment-code-file">收款码图片（最大 {hostedUploadLimit ? 4 : 5} MB）</Label>
+              <ImageUploadInput id="payment-code-file" name="paymentCode" required maxTotalBytes={hostedUploadLimit} />
             </div>
             <Button type="submit">{codeReady ? "更换收款码" : "上传收款码"}</Button>
           </form>
