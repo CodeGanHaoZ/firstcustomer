@@ -1,6 +1,7 @@
 import type { ChatCompletionContentPart } from "openai/resources/chat/completions";
 import { z } from "zod";
 import { listCostYuan } from "./call-model";
+import { KNOWLEDGE_GUIDANCE } from "@/knowledge/types";
 import type { ChatMessage, ModelClient, ModelResponse, ModelTool, ModelUsage, ToolCall } from "./types";
 
 export type AgentTool = {
@@ -131,7 +132,7 @@ export async function runAgent<T>(options: {
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: `${options.system}\n\n${SAFETY_RULES}\n\n完成后只输出一个 JSON 对象，结构必须符合：\n${jsonSchema}`,
+      content: `${options.system}\n\n${SAFETY_RULES}\n\n${options.input && typeof options.input === "object" && Object.hasOwn(options.input, "knowledge") ? KNOWLEDGE_GUIDANCE : ""}\n\n完成后只输出一个 JSON 对象，结构必须符合：\n${jsonSchema}`,
     },
     { role: "user", content: options.userContent ?? JSON.stringify(options.input) },
   ];

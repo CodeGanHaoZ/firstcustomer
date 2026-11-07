@@ -34,6 +34,7 @@ npm run dev
 - 办公室任务板：`http://localhost:3100/admin/tasks`
 - 经营周报：`http://localhost:3100/admin/reports`
 - 公司卷宗：`http://localhost:3100/admin/context`
+- 资料库：`http://localhost:3100/admin/knowledge`
 
 模拟模式下 Lumi 的自由对话不可用，项目工作流仍可使用示例模型。开发数据库持久化在 `.local-pg/`，仅监听本机端口 `54329`。
 
@@ -67,6 +68,7 @@ Lumi 的自由对话走 `/api/lumi`；项目研究与交付走后台任务。API
 | `npm run lint` | ESLint 检查 |
 | `npm run build` | 生成 Next.js 生产构建 |
 | `npm run db:migrate` | 对 `DATABASE_URL` 指向的数据库执行已生成的迁移 |
+| `npm run knowledge:seed` | 载入 14 篇首客基础资料，重复执行不覆盖已有内容 |
 | `npm run db:generate` | 改完 `src/db/schema.ts` 后生成迁移 |
 | `npm run seed:evidence -- seeds/evidence.json` | 导入赛前种子证据，格式见 `seeds/evidence.example.json` |
 
@@ -85,6 +87,15 @@ Lumi 的自由对话走 `/api/lumi`；项目研究与交付走后台任务。API
 | `src/app` | 官网、注册登录、客户项目、经营台、英文验证页与 API |
 | `drizzle` | PostgreSQL 表结构迁移，包含客户账号与项目归属 |
 | `public/brand` | 兔子静态形象、8 秒静音循环视频及首帧封面 |
+| `src/knowledge` | 共享资料的验证、发布快照、版本历史、按角色检索和初始内容 |
+
+## 共享资料库
+
+迁移后运行 `npm run knowledge:seed`，即可在经营台「资料库」维护初始资料；也可以通过页面「补齐基础资料」初始化。编辑稿与发布快照分开保存，Agent 只读取已发布、未过期且授权给自己的内容。Lumi 额外限制为公开资料。
+
+Research、Strategy、Launch、Growth、接待报价员、项目客服、COO 和经营秘书会读取各自资料，并在任务或报告输入中保留使用的版本。票据员与截图阅读员继续按固定规则识别图片。资料库不会自动汇入其他客户的项目记录。
+
+页面支持搜索筛选、Markdown/TXT 导入、撤下、发布历史、ZIP 导出与无模型调用的检索预览。操作方式见[资料库使用说明](../docs/knowledge.md)。
 
 ## 操作与数据规则
 

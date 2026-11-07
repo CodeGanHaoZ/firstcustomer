@@ -15,6 +15,7 @@ import {
   claims,
   companyReports,
   companySettings,
+  knowledgeArticles,
   decisions,
   deliverables,
   events,
@@ -61,6 +62,7 @@ import { gatherSources } from "@/agents/gather";
 import { copyLibraryEvidence, libraryEvidence } from "@/agents/library";
 import type { SourceClient } from "@/agents/sources";
 import { createResearchTools } from "@/agents/tools";
+import { seedKnowledge } from "@/knowledge/seed";
 
 let pg: EmbeddedPostgres;
 let db: Db;
@@ -101,6 +103,7 @@ beforeEach(async () => {
   await db.delete(companyReports);
   await db.delete(companySettings);
   await db.delete(decisions);
+  await db.delete(knowledgeArticles);
 });
 
 // 用队列数组代替 pg-boss，循环执行直到项目停在需要人决定的状态。
@@ -200,6 +203,53 @@ async function toPublished() {
   const [page] = await db.select().from(landingPages).where(eq(landingPages.status, "published"));
   return { h, project, token, page };
 }
+
+describe("共享资料进入真实工作流", () => {
+  it("各角色读取已发布资料，任务与报告保留使用的版本", async () => {
+    await seedKnowledge(db);
+    const seen = new Map<string, { id: string; version: number; title: string }[]>();
+    const model: ModelClient = async (request) => {
+      const message = request.messages.find((item) => item.role === "user");
+      if (typeof message?.content === "string") {
+        const input = JSON.parse(message.content) as { knowledge?: { id: string; version: number; title: string }[] };
+        if (input.knowledge) {
+          seen.set(request.agent, input.knowledge);
+          expect(String(request.messages[0].content)).toContain("不能替代市场证据");
+        }
+      }
+      return stubModel(request);
+    };
+    const h = harness(model);
+    const { project } = await newProject();
+    await startResearch(db, h.enqueue, project.id);
+    await h.drain();
+    await bothApprove(h.enqueue, project.id, "positioning");
+    await h.drain();
+    await bothApprove(h.enqueue, project.id, "publish");
+    await openSupportMessage(db, h.enqueue, project.id, "已经发布了吗？");
+    await h.drain();
+    await startReview(db, h.enqueue, project.id);
+    await h.drain();
+    const { project: paidProject } = await newProject({ isOwnProduct: false, requiresPayment: true });
+    await startResearch(db, h.enqueue, paidProject.id);
+    await h.drain();
+    for (const kind of ["weekly", "standup"] as const) {
+      const reportId = await requestCompanyReport(db, async () => {}, kind);
+      await runCompanyReport(db, model, reportId);
+      const [stored] = await db.select().from(companyReports).where(eq(companyReports.id, reportId));
+      expect((stored.input as { knowledge: unknown[] }).knowledge.length).toBeGreaterThan(0);
+    }
+    for (const agent of ["research:plan", "research", "strategy", "launch", "support", "quote", "growth", "weekly", "standup"]) {
+      expect(seen.get(agent)?.length, agent).toBeGreaterThan(0);
+      expect(seen.get(agent)?.every((item) => item.version === 1 && Boolean(item.id))).toBe(true);
+    }
+    const tasks = await tasksOf(project.id);
+    for (const agent of ["research", "strategy", "launch", "growth"]) {
+      const task = tasks.find((item) => item.agent === agent);
+      expect((task?.input as { knowledge: unknown[] }).knowledge.length).toBeGreaterThan(0);
+    }
+  });
+});
 
 describe("办公室新增交付能力", () => {
   it("编辑后需要重新审批，截图只随对应的已发布版本公开", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, CalendarDays, ChartColumn, ClipboardList, FolderClosed, Grid2X2, Menu, Plus, Wallet, X } from "lucide-react";
+import { Archive, BookOpen, CalendarDays, ChartColumn, ClipboardList, FolderClosed, Grid2X2, Menu, Plus, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState, type ReactNode } from "react";
@@ -21,6 +21,7 @@ const groups = [
       { label: "经营报表", href: "/admin/metrics", icon: ChartColumn },
       { label: "经营周报", href: "/admin/reports", icon: CalendarDays },
       { label: "公司卷宗", href: "/admin/context", icon: Archive },
+      { label: "资料库", href: "/admin/knowledge", icon: BookOpen },
       { label: "收款设置", href: "/admin/payment", icon: Wallet },
     ],
   },

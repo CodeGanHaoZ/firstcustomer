@@ -78,6 +78,7 @@ import { ConflictError, transition } from "./transitions";
 import { latestReceipt, loadReceiptImage, projectOrder, quoteFeedback, saveDraftProposal } from "./commerce";
 import { recordClaimCheck } from "./landing-edits";
 import { needsFounder } from "./support";
+import { knowledgeForAgent } from "@/knowledge/store";
 
 export type EngineDeps = {
   db: Db;
@@ -372,6 +373,7 @@ async function runResearch(deps: EngineDeps, project: Project) {
     .where(eq(clarifications.projectId, project.id))
     .orderBy(asc(clarifications.createdAt));
   const input = {
+    knowledge: await knowledgeForAgent(db, "research", project.productName),
     product: productInput(project),
     request: pending?.request ?? null,
     founder_note: project.founderNote,
@@ -605,6 +607,7 @@ async function runQuote(deps: EngineDeps, project: Project) {
     .orderBy(desc(agentTasks.finishedAt))
     .limit(1);
   const input = {
+    knowledge: await knowledgeForAgent(deps.db, "quote", project.productName),
     product: productInput(project),
     diagnosis: diagnosis?.output ?? null,
     service: order.sku,
@@ -713,6 +716,7 @@ async function runStrategy(deps: EngineDeps, project: Project) {
 
   const input = {
     product: productInput(project),
+    knowledge: await knowledgeForAgent(db, "strategy", project.productName),
     research: research
       .map((r) => r.output as { status?: string })
       .filter((output) => output.status === "done"),
@@ -867,9 +871,11 @@ async function runLaunch(deps: EngineDeps, project: Project) {
   let violations: { target: string; message: string }[] | null = null;
   let parentTaskId = pending?.fromTaskId ?? null;
   const MAX_ATTEMPTS = 2;
+  const knowledge = await knowledgeForAgent(db, "launch", project.productName);
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const input = {
+      knowledge,
       product: productInput(project),
       positioning: chosen,
       experiment: positioning.experiment,
@@ -1071,6 +1077,7 @@ async function runGrowth(deps: EngineDeps, project: Project) {
     .where(and(eq(events.landingPageId, page.id), inArray(events.type, ["reply", "comment"])));
   const input = {
     product: productInput(project),
+    knowledge: await knowledgeForAgent(db, "growth", project.productName),
     experiment: plan,
     metrics,
     verdict,
@@ -1133,6 +1140,7 @@ async function runSupportInbox(deps: EngineDeps, project: Project) {
   ]);
   for (const message of messages) {
     const input = {
+      knowledge: await knowledgeForAgent(db, "support", message.question),
       question: message.question,
       product: productInput(project),
       status: STATUS_LABELS[project.status as ProjectStatus],
@@ -1148,7 +1156,7 @@ async function runSupportInbox(deps: EngineDeps, project: Project) {
     };
     let outcome: Partial<typeof supportMessages.$inferInsert>;
     try {
-      const { output } = await runTask(deps, project, { agent: "support", input: { messageId: message.id } }, () => runAgent({
+      const { output } = await runTask(deps, project, { agent: "support", input: { messageId: message.id, ...input } }, () => runAgent({
         agent: "support", tier: "flash", thinking: false, system: SUPPORT_PROMPT,
         input, schema: supportOutput, model: deps.model,
       }));

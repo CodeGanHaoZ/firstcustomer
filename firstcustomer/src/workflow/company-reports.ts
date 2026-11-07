@@ -7,6 +7,7 @@ import type { Db } from "@/db";
 import { agentTasks, companyReports, decisions, projects } from "@/db/schema";
 import { STATUS_LABELS, type ProjectStatus } from "@/domain/workflow";
 import { operatingMetrics } from "./operating-metrics";
+import { knowledgeForAgent } from "@/knowledge/store";
 
 export type ReportKind = "weekly" | "standup";
 const chinaDate = (date: Date) => new Date(date.getTime() + 8 * 3_600_000).toISOString().slice(0, 10);
@@ -45,13 +46,17 @@ export async function runCompanyReport(db: Db, model: ModelClient, id: string) {
   try {
     const isStandup = report.kind === "standup";
     const input = isStandup ? await standupInput(db) : await operatingMetrics(db);
-    const modelInput = isStandup ? input : { ...input, data_scope: "截至生成时的累计经营数据" };
+    const modelInput = {
+      ...input,
+      ...(!isStandup ? { data_scope: "截至生成时的累计经营数据" } : {}),
+      knowledge: await knowledgeForAgent(db, isStandup ? "standup" : "weekly"),
+    };
     const options = { tier: "flash" as const, thinking: false, input: modelInput, model };
     const result = isStandup
       ? await runAgent({ ...options, agent: "standup", system: STANDUP_PROMPT, schema: standupOutput })
       : await runAgent({ ...options, agent: "weekly", system: WEEKLY_PROMPT, schema: weeklyOutput });
     await db.update(companyReports).set({
-      status: "succeeded", input, output: result.output, provider: result.summary.provider,
+      status: "succeeded", input: modelInput, output: result.output, provider: result.summary.provider,
       model: result.summary.model, listCostYuan: result.summary.listCostYuan, finishedAt: new Date(),
     }).where(eq(companyReports.id, id));
   } catch (error) {

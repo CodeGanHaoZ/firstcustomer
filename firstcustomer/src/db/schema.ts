@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { ProposalOutput, ReceiptOutput } from "@/agents/schemas";
 import type { ProjectPlan } from "@/domain/workflow";
+import type { KnowledgeContent, PublishedKnowledge } from "@/knowledge/types";
 import {
   boolean,
   customType,
@@ -22,6 +23,26 @@ const id = () => uuid("id").primaryKey().default(sql`gen_random_uuid()`);
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
+
+export const knowledgeArticles = pgTable("knowledge_articles", {
+  id: id(),
+  seedKey: text("seed_key").unique(),
+  draft: jsonb("draft").$type<KnowledgeContent>().notNull(),
+  revision: integer("revision").notNull().default(1),
+  publication: integer("publication").notNull().default(0),
+  published: jsonb("published").$type<PublishedKnowledge>(),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const knowledgeHistory = pgTable("knowledge_history", {
+  id: id(),
+  articleId: uuid("article_id").notNull().references(() => knowledgeArticles.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  snapshot: jsonb("snapshot").$type<PublishedKnowledge>().notNull(),
+  createdAt: createdAt(),
+}, (table) => [uniqueIndex("knowledge_history_article_version_idx").on(table.articleId, table.version)]);
 
 export const projects = pgTable("projects", {
   id: id(),
