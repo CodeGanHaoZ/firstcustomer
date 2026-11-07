@@ -17,12 +17,57 @@ export function LumiChat() {
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [anchor, setAnchor] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const area = scrollArea.current;
     if (open && area) area.scrollTop = area.scrollHeight;
   }, [open, messages, pending, error]);
+
+  /* 弹窗吸附到右侧兔子卡片：同一次 getBoundingClientRect 直接给出 left/top/width/height，
+     避免用 right 反算时「包含块宽度」与「视口宽度」不一致造成的十几像素露边。 */
+  useEffect(() => {
+    if (!open) return;
+    const card = document.querySelector<HTMLElement>(".hero__visual .brand-welcome");
+    if (!card) return;
+    const measure = () => {
+      const rect = card.getBoundingClientRect();
+      // 首屏 [data-reveal] 入场时带 translateY(22px)，实测矩形会被临时下移，需补偿。
+      let revealY = 0;
+      const visual = card.closest<HTMLElement>("[data-reveal]");
+      if (visual) {
+        const raw = getComputedStyle(visual).transform;
+        const nums = raw && raw !== "none" ? raw.match(/matrix\(([^)]+)\)/)?.[1].split(",").map(Number) : null;
+        if (nums?.length === 6) revealY = nums[5];
+      }
+      const gutter = 24;
+      const viewportW = document.documentElement.clientWidth;
+      const left = Math.max(gutter, Math.min(rect.left, viewportW - 280 - gutter));
+      const top = Math.max(gutter, Math.min(rect.top - revealY, window.innerHeight - 320));
+      setAnchor({
+        left,
+        top,
+        width: Math.max(280, Math.min(rect.width, viewportW - left - gutter)),
+        height: Math.max(300, Math.min(560, window.innerHeight - top - gutter)),
+      });
+    };
+    measure();
+    // 模态滚动锁会移除滚动条、令版心变宽；稳定期与卡片尺寸变化时各重测一次。
+    const raf = requestAnimationFrame(measure);
+    const settle = window.setTimeout(measure, 160);
+    const observer = new ResizeObserver(measure);
+    observer.observe(card);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(settle);
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure);
+    };
+  }, [open]);
 
   async function replyTo(history: LumiMessage[]) {
     setPending(true);
@@ -64,7 +109,15 @@ export function LumiChat() {
 
       <Dialog.Portal keepMounted>
         <Dialog.Backdrop className="lumi-chat-backdrop" />
-        <Dialog.Popup className="lumi-chat">
+        <Dialog.Popup
+          className="lumi-chat"
+          style={anchor ? {
+            "--lumi-left": `${anchor.left}px`,
+            "--lumi-top": `${anchor.top}px`,
+            "--lumi-w": `${anchor.width}px`,
+            "--lumi-h": `${anchor.height}px`,
+          } as React.CSSProperties : undefined}
+        >
           <header className="lumi-chat-header">
             <span className="lumi-chat-avatar">
               <Image src={rabbit} alt="" width={44} height={44} unoptimized />

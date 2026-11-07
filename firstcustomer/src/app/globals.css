@@ -134,3 +134,20 @@
 .brand-mark small { color: var(--muted-foreground); font-size: .7rem; font-weight: 640; }
 .brand-icon { display: block; width: 1.875rem; height: 1.875rem; flex: none; }
 ::selection { background: #d9e5c5; color: #243b2d; }
+
+/* ---------- 全站路由过场：离开页淡出 / 进入页淡入（PageTransition 组件驱动） ---------- */
+html.page-leaving body {
+  opacity: 0;
+  transition: opacity .24s ease;
+}
+html.page-entering body {
+  animation: page-fade-in .36s ease-out both;
+}
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.page-leaving body { transition: none; }
+  html.page-entering body { animation: none; }
+}

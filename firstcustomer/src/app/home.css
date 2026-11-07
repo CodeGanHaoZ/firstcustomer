@@ -1,4 +1,4 @@
-.brand-welcome-shell { position: relative; min-width: 0; }
+.brand-welcome-shell { position: relative; min-width: 0; transition: opacity 180ms ease-out; }
 
 .brand-welcome {
   position: relative;
@@ -27,22 +27,6 @@
   aspect-ratio: 1;
   border-radius: .75rem;
 }
-
-.brand-welcome-motion {
-  position: absolute;
-  inset-block-start: .75rem;
-  inset-inline-end: .75rem;
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  place-items: center;
-  border: 1px solid #d9ceb7;
-  border-radius: .55rem;
-  background: #fff9ed;
-  color: #34563d;
-  cursor: pointer;
-}
-.brand-welcome-motion:hover { background: #ebe5d4; }
 
 .brand-welcome-caption {
   display: flex;
@@ -86,23 +70,24 @@
 .lumi-chat {
   position: fixed;
   z-index: 61;
-  inset-inline-end: max(1.5rem, calc((100vw - 71rem) / 2));
-  inset-block-end: 1.5rem;
+  /* 吸附右侧兔子卡片：left/top/width 全部来自同一次实测，边缘严格对齐。 */
+  inset-inline-start: var(--lumi-left, calc(50vw + var(--gutter)));
+  inset-block-start: var(--lumi-top, clamp(88px, 14vh, 150px));
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  width: min(27rem, calc(100% - 3rem));
-  height: min(35rem, calc(100dvh - 3rem));
+  width: var(--lumi-w, min(27rem, calc(100% - 3rem)));
+  height: var(--lumi-h, min(35rem, calc(100dvh - 3rem)));
   overflow: hidden;
   border-radius: 1rem;
   background: #fffdf6;
   color: #243b2d;
   box-shadow: 0 18px 56px #21322036;
-  transition: transform 240ms cubic-bezier(.22, 1, .36, 1), opacity 160ms ease-out;
+  /* 弹窗吸附右侧卡片，入场只淡入；任何 translate 都会让对齐看起来偏掉 */
+  transition: opacity 200ms ease-out;
 }
 
 .lumi-chat-backdrop:is([data-starting-style], [data-ending-style]),
 .lumi-chat:is([data-starting-style], [data-ending-style]) { opacity: 0; }
-.lumi-chat:is([data-starting-style], [data-ending-style]) { transform: translateY(.75rem); }
 
 .lumi-chat-header {
   display: flex;
@@ -244,7 +229,6 @@
 .lumi-chat-next:hover { text-decoration: underline; text-underline-offset: .2em; }
 
 .brand-welcome:focus-visible,
-.brand-welcome-motion:focus-visible,
 .lumi-chat :is(button, a):focus-visible {
   outline: 2px solid #456447;
   outline-offset: 3px;
@@ -253,6 +237,9 @@
 @media (width <= 40rem) {
   .lumi-chat {
     inset: auto 0 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    inset-block-start: auto;
     width: 100%;
     height: min(36rem, calc(100dvh - 1rem));
     border-radius: 1rem 1rem 0 0;
@@ -260,7 +247,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .brand-welcome-motion { display: none; }
-  .brand-welcome, .lumi-chat-backdrop, .lumi-chat { transition: none; }
+  .brand-welcome, .brand-welcome-shell, .lumi-chat-backdrop, .lumi-chat { transition: none; }
   .lumi-chat-status svg { animation: none; }
 }
