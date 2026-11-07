@@ -348,6 +348,18 @@ export function EditorialMotion() {
       });
     }
 
+    /* 跨页跳转携带 hash（如 /account → /#cta）时，路由过场后浏览器可能不重放
+       锚点滚动，这里在挂载后兜底滚一次，保证「开始」入口稳定落到目标区块。 */
+    if (window.location.hash) {
+      const hashId = window.location.hash.slice(1);
+      const timer = window.setTimeout(() => {
+        document
+          .getElementById(hashId)
+          ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      }, 80);
+      cleanups.push(() => window.clearTimeout(timer));
+    }
+
     return () => cleanups.forEach((fn) => fn());
   }, []);
 

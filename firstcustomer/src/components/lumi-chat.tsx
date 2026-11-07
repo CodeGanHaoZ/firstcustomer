@@ -177,7 +177,7 @@ export function LumiChat({ locale = "zh" }: { locale?: Locale }) {
                 <ArrowUp size={19} aria-hidden="true" />
               </button>
             </form>
-            <Link href="/projects/new" className="lumi-chat-next">{copy.cta} <ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link href="/#cta" className="lumi-chat-next">{copy.cta} <ArrowRight size={15} aria-hidden="true" /></Link>
           </footer>
         </Dialog.Popup>
       </Dialog.Portal>

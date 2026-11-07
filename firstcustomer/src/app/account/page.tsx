@@ -35,7 +35,7 @@ export default async function AccountPage() {
           <h1 className="text-3xl font-bold tracking-tight">我的项目</h1>
           <p className="mt-2 text-sm break-all text-muted-foreground">{session.user.email}</p>
         </div>
-        <Link href="/projects/new" className={buttonVariants({ size: "lg" })}>新建出海项目</Link>
+        <Link href="/#cta" className={buttonVariants({ size: "lg" })}>新建出海项目</Link>
       </header>
       {owned.length ? (
         <ul className="divide-y rounded-xl border bg-card">

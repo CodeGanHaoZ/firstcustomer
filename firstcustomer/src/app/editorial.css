@@ -513,6 +513,11 @@ main .container,
   border-top: 1px solid var(--line);
   padding-block: clamp(64px, 8vw, 116px);
   text-align: center;
+  /* 「开始」入口统一落到这里：整个区块撑满一屏，内容垂直居中 */
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  align-content: center;
 }
 .disc-band__inner { position: relative; }   /* 不要给 z-index，否则会切断混合组 */
 .disc-band__inner > .eyebrow { position: relative; z-index: 3; }

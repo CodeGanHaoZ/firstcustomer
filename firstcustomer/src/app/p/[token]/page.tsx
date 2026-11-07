@@ -23,7 +23,7 @@ import {
   ScreenshotsSection,
   SimulatedBanner,
 } from "@/components/project-details";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,7 @@ import { confirmedOrderPayment, hasPaymentCode, latestReceipt, projectOrder } fr
 import { loadOfficeTransfer } from "@/workflow/office";
 import { loadProjectView, runningProjectAgents } from "@/workflow/queries";
 import { projectSupport } from "@/workflow/support";
-import { customerAcceptanceAction, customerAnswers, customerDecision, customerDeleteImage, customerProposalAction, customerReceiptAction, customerRequestProAction, customerStartFreeAction, customerSupportAction, customerUploadImages } from "./actions";
+import { customerAcceptanceAction, customerAnswers, customerDecision, customerDeleteImage, customerProposalAction, customerReceiptAction, customerRequestProAction, customerSupportAction, customerUploadImages } from "./actions";
 import "../../admin/office.css";
 
 export const dynamic = "force-dynamic";
@@ -113,7 +113,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-10">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
-        <BrandMark />
+        <Link href="/#cta" aria-label="返回首页" className="inline-flex"><BrandMark /></Link>
         <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
           {project.productPlan !== "legacy" || canStartFree ? (
             <span className="rounded-md bg-secondary px-2 py-1 text-secondary-foreground">
@@ -144,9 +144,9 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           </div>
           {progress.action ? <a className="self-start font-medium underline underline-offset-4" href={progress.action.href}>{progress.action.label}</a> : null}
           {canStartFree ? (
-            <form action={customerStartFreeAction.bind(null, token)}>
-              <Button type="submit">{project.status === "failed" ? "重试免费初诊" : "开始免费初诊"}</Button>
-            </form>
+            <Link href="/#cta" className={buttonVariants()}>
+              {project.status === "failed" ? "重试免费初诊" : "开始免费初诊"}
+            </Link>
           ) : null}
           <section aria-labelledby="customer-office-title" className="mt-2 grid gap-3 border-t pt-4">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
