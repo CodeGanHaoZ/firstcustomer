@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, ArrowUpRight, Focus, CircleCheck, UserRound, Pause, Play, RotateCcw, SkipForward } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Focus, CircleCheck, UserRound, Pause, Play } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import type { DepartmentKey } from "@/domain/office";
@@ -62,10 +62,10 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
     followCamera.current = true;
     setReplay((value) => value + 1);
     setPaused(false);
-    windowRef.current?.scrollIntoView({ block: "nearest", behavior: reduced ? "instant" : "smooth" });
   };
   const jumpToStage = (step: number) => {
     requestedElapsed.current = [0, OFFICE_TIMING.meet, OFFICE_TIMING.home][step];
+    windowRef.current?.scrollIntoView({ block: "nearest", behavior: reduced ? "instant" : "smooth" });
     followCamera.current = true;
     setReplay((value) => value + 1);
     setPaused(false);
@@ -178,18 +178,20 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
     <figure className="showcase-theatre" tabIndex={-1} aria-label={copy.label}>
       <div className="showcase-toolbar">
         <p><span className="showcase-demo-mark" aria-hidden="true" />{copy.demo}<span className="showcase-toolbar-separator">/</span><span>{reduced ? copy.static : paused ? copy.paused : copy.beats[beat]}</span></p>
-        <div className="showcase-controls">
-          {!reduced ? <button type="button" onClick={() => setPaused((value) => !value)} aria-label={paused ? copy.playLabel : copy.pauseLabel}>{paused ? <Play size={15} /> : <Pause size={15} />}<span>{paused ? copy.play : copy.pause}</span></button> : null}
-          <button type="button" onClick={() => chooseScene(sceneIndex)} aria-label={copy.replayLabel}><RotateCcw size={15} /><span>{copy.replay}</span></button>
-          <button type="button" onClick={nextScene} aria-label={copy.nextLabel}><SkipForward size={15} /><span>{copy.next}</span></button>
-        </div>
       </div>
       <div className="showcase-guide" aria-label={t("协作流程说明", "How this collaboration works")}>
         <div className="showcase-guide-now"><span className="showcase-working-label"><span aria-hidden="true" />{t("本段演示任务", "Task in this demo")}</span><h3>{demoMember(scene.from, locale).name} · {story.task}</h3><p><strong>{t("完成后交出", "Delivers")}</strong>{story.output}</p></div>
         <div className="showcase-guide-next"><ArrowRight size={22} aria-hidden="true" /><div><span>{t("下一位伙伴", "Next teammate")}</span><h4>{story.next}</h4><p>{story.condition}</p></div></div>
       </div>
       <nav className="showcase-steps" aria-label={t("查看协作演示的三个阶段", "Explore the three stages of the demo")}>{[t("处理任务", "Working"), t("当面交接", "Handoff"), t("接手开工", "Next task")].map((label, index) => <button type="button" key={index} aria-current={(phase < 2 ? 0 : phase < 5 ? 1 : 2) === index ? "step" : undefined} onClick={() => jumpToStage(index)}><span>{index + 1}</span>{label}<ArrowRight size={14} aria-hidden="true" /></button>)}</nav>
-      <div className="showcase-phase-line" aria-live="off"><strong>{OFFICE_PHASES[locale][phase]}</strong><span>{phase === 5 ? story.next : phase >= 2 ? `${demoMember(scene.from, locale).name} → ${demoMember(scene.to, locale).name} · ${scene.document}` : `${demoMember(scene.from, locale).name} · ${story.task}`}</span><button type="button" onClick={() => { followCamera.current = true; const view = windowRef.current; if (view) view.scrollLeft = desks[currentActor].home[0] * view.scrollWidth / 100 - view.clientWidth / 2; }}><Focus size={15} />{t("跟随当前 Agent", "Follow current agent")}</button></div>
+      <div className="showcase-phase-line" aria-live="off">
+        <strong>{OFFICE_PHASES[locale][phase]}</strong>
+        <span>{phase === 5 ? story.next : phase >= 2 ? `${demoMember(scene.from, locale).name} → ${demoMember(scene.to, locale).name} · ${scene.document}` : `${demoMember(scene.from, locale).name} · ${story.task}`}</span>
+        <div className="showcase-phase-controls">
+          {!reduced ? <button type="button" onClick={() => setPaused((value) => !value)} aria-pressed={paused} aria-label={paused ? copy.playLabel : copy.pauseLabel}>{paused ? <Play size={15} /> : <Pause size={15} />}{paused ? copy.play : copy.pause}</button> : null}
+          <button type="button" onClick={() => { followCamera.current = true; const view = windowRef.current; if (view) view.scrollLeft = desks[currentActor].home[0] * view.scrollWidth / 100 - view.clientWidth / 2; }}><Focus size={15} />{t("跟随当前 Agent", "Follow current agent")}</button>
+        </div>
+      </div>
       <div className="showcase-window" ref={windowRef} tabIndex={0} role="region" aria-label={t("可左右滑动的办公室演示", "Office demo. Scroll horizontally to explore")} onPointerDown={() => { followCamera.current = false; }} onWheel={() => { followCamera.current = false; }}>
       <div className="showcase-scene" ref={stage} data-canvas="loading" data-beat="0">
         <Image className="showcase-background" src="/office/floor-map.webp" width={1681} height={936} sizes="(max-width: 1200px) 94vw, 1180px" alt="" />

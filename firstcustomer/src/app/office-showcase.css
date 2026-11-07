@@ -2,7 +2,7 @@
 .showcase-theatre { margin: 0; scroll-margin-top: 96px; }
 .showcase-toolbar, .showcase-toolbar > p, .showcase-controls { display: flex; align-items: center; }
 .showcase-toolbar { justify-content: space-between; gap: var(--sp-4); padding: 0 0 var(--sp-4); }
-.showcase-toolbar > p { flex-wrap: wrap; gap: var(--sp-2); margin: 0; color: var(--demo-muted); font-size: var(--fs-meta); }
+.showcase-toolbar > p { flex-wrap: wrap; gap: var(--sp-2); margin: 0; color: var(--demo-muted); font-size: 15px; }
 .showcase-demo-mark { width: 7px; height: 7px; border-radius: 50%; background: var(--forest); }
 .showcase-toolbar-separator { margin-inline: var(--sp-1); color: var(--line-strong); }
 .showcase-controls { gap: var(--sp-1); flex-shrink: 0; }
@@ -70,7 +70,7 @@
 }
 @media (max-width: 600px) {
   .showcase-toolbar { align-items: flex-start; gap: var(--sp-2); }
-  .showcase-toolbar > p { padding-block: var(--sp-2); max-width: 160px; font-size: 11px; }
+  .showcase-toolbar > p { padding-block: var(--sp-2); max-width: 240px; font-size: 13px; }
   .showcase-toolbar-separator { display: none; }
   .showcase-toolbar > p > span:last-child { flex-basis: 100%; padding-left: 15px; }
   .showcase-controls { gap: 0; }
@@ -158,3 +158,5 @@
 .showcase-steps button:last-child svg { visibility: hidden; }
 .showcase-steps button:hover, .showcase-steps button[aria-current="step"] { color: var(--forest); border-bottom-color: var(--forest); background: #4564470c; }
 @media (max-width: 600px) { .showcase-steps { gap: .3rem; } .showcase-steps button { gap: .3rem; font-size: 12px; } }
+.showcase-phase-controls { display: flex; align-items: center; gap: .5rem; }
+@media (max-width: 600px) { .showcase-phase-controls { width: 100%; } .showcase-phase-controls button { flex: 1; width: auto; } }

@@ -74,7 +74,7 @@
   --sp-7: 48px;
   --sp-8: 64px;
   --sp-9: 96px;
-  --section-y: clamp(44px, 5.5vw, 80px);  /* 分区间距 · 已按反馈收紧 */
+  --section-y: clamp(32px, 4vw, 56px);    /* 分区间距 · 再收紧 */
 
   /* ---------- 版心 ---------- */
   --container: 1180px;
@@ -265,7 +265,7 @@ main .container,
 .section--paper2 { background: var(--paper-2); }
 
 /* 分区头：居中标题 + 顶部眉标，全站统一，不要每区换花样 */
-.section-head { text-align: center; margin-bottom: clamp(40px, 5vw, 72px); }
+.section-head { text-align: center; margin-bottom: clamp(24px, 3vw, 40px); }
 .section-head--left { text-align: left; }
 /* 中文标题限宽必须用 em 不用 ch：1em ≈ 1 个汉字宽，ch 只有 0.5em，
    用 ch 会让中文标题在词中间断行（"线索" 被拆成 "线 / 索"）。 */
@@ -1077,6 +1077,31 @@ main .container,
   text-align: start;
 }
 .hero__copy .lead { margin-top: var(--sp-5); }
+/* 首屏快速登记：项目链接 + 项目名称 → 带参数进入对话工作台 */
+.hero-intake {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: var(--sp-7);
+  max-width: 26rem;
+}
+.hero-intake__field {
+  width: 100%;
+  padding: 12px 16px;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  outline: none;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.hero-intake__field::placeholder { color: var(--faint); }
+.hero-intake__field:focus { border-color: var(--forest); box-shadow: 0 0 0 3px rgba(36, 59, 45, 0.12); }
+.hero-intake .btn { margin-top: 4px; }
+
 /* 分栏后栏宽约一半，display 需按栏宽重新定级，否则会断词 */
 .hero--split .display {
   font-size: clamp(2.1rem, 4.4vw, 3.7rem);

@@ -62,14 +62,13 @@ export default async function Home() {
             <h1 className="display" data-reveal data-reveal-group="hero">
               {copy.hero.title}
             </h1>
-            <div className="hero__actions" data-reveal data-reveal-group="hero">
-              <Link href="/projects/new" className="btn btn--primary btn--lg">
+            <form className="hero-intake" method="get" action="/projects/new" data-reveal data-reveal-group="hero">
+              <input className="hero-intake__field" type="text" name="url" placeholder="项目链接，例如：example.com" maxLength={2048} autoComplete="url" aria-label="项目链接" />
+              <input className="hero-intake__field" type="text" name="brand" placeholder="项目名称" maxLength={500} aria-label="项目名称" />
+              <button type="submit" className="btn btn--primary btn--lg">
                 {copy.hero.cta} <ArrowRight size={16} className="arw" aria-hidden="true" />
-              </Link>
-              <a href="#office" className="btn btn--ghost btn--lg">
-                {copy.hero.office} <ArrowDown size={15} aria-hidden="true" />
-              </a>
-            </div>
+              </button>
+            </form>
           </div>
 
           <div className="hero__visual" data-reveal data-reveal-group="hero">
