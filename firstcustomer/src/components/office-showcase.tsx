@@ -219,7 +219,7 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
     <div className="showcase-team-heading"><h3>{copy.team}</h3><p>{copy.teamDescription}</p></div>
     <div className="showcase-team">{members.map((member) => <article key={member.key} className="showcase-member" data-active={member.key === activeMember}>
       <div className="showcase-portrait" data-person={member.key} role="img" aria-label={locale === "en" ? `${member.name}, ${member.animal}` : `${member.animal}形象，${member.name}`} style={{ "--portrait-x": `${member.portrait[0] * 100 / 3}%`, "--portrait-y": `${member.portrait[1] * 100}%` } as CSSProperties} />
-      <div className="showcase-member-copy"><p className="showcase-member-room">{member.room}</p><h4>{member.name}<span>{member.role}</span></h4>
+      <div className="showcase-member-copy"><p className="showcase-member-room">{member.room}</p><h4><span className="showcase-member-name">{member.name}</span><span>{member.role}</span></h4>
         <p className="showcase-member-description">{member.description}</p><dl><div><dt>{copy.output}</dt><dd>{member.output}</dd></div><div><dt>{copy.collaboration}</dt><dd>{member.collaboration}</dd></div></dl>
         <button type="button" onClick={() => watchMember(member.scene)} aria-pressed={member.key === activeMember} aria-label={locale === "en" ? `Watch ${member.name}'s collaboration scene` : `观看${member.name}的协作片段`}>{member.key === activeMember ? copy.selected : copy.watch}<ArrowUpRight size={16} aria-hidden="true" /></button>
       </div>
