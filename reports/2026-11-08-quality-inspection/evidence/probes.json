@@ -1,0 +1,33 @@
+{
+  "executedAt": "2026-11-07T17:45:42.742Z",
+  "dataType": "constructed_counterexamples",
+  "liveModelUsed": false,
+  "probes": [
+    {
+      "id": "P01",
+      "dimension": "Toulmin / concept distinction",
+      "source": "I complain about meeting notes but I would never pay for another notes app.",
+      "excerpt": "I would never pay for another notes app",
+      "claim": "Customers are willing to pay for our notes app",
+      "expected": "Reject a claim contradicted by its source",
+      "actual": {
+        "quoteStatus": "verified",
+        "violations": []
+      },
+      "result": "failed",
+      "interpretation": "Structural claim checks do not validate semantic support. Human review is separate and was not performed in this probe."
+    },
+    {
+      "id": "P02",
+      "dimension": "Data consistency",
+      "source": "A competitor charges $19 per seat per month.",
+      "claim": "Our product increased revenue by 19%.",
+      "expected": "Reject a percentage inferred from another product's price",
+      "actual": {
+        "unsupported": []
+      },
+      "result": "failed",
+      "interpretation": "Numeric matching does not bind values to units, subjects and measurement periods."
+    }
+  ]
+}

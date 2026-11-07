@@ -5,6 +5,7 @@ import { campaigns, claims, companySettings, decisions, evidenceItems, landingPa
 import type { Verdict } from "@/domain/approval";
 import { checkClaims, checkForbiddenTerms, type Asset, type ClaimInput } from "@/domain/claims";
 import { transition } from "./transitions";
+import { evidenceTraceProblems, recordConclusion } from "./provenance";
 
 export async function recordClaimCheck(db: Db, input: {
   projectId: string; version: number; subjectId?: string; verdict: Verdict; reason: string;
@@ -46,6 +47,8 @@ export async function editLandingPage(db: Db, input: {
       ...checkClaims({ projectId: project.id, page: input.content, claims: bindings, assets, evidence, now: new Date() }),
       ...checkForbiddenTerms(input.content, [...assets, ...bindings.map((item) => ({ title: "", body: item.text }))], settings?.terms ?? []),
     ];
+    errors.push(...(await evidenceTraceProblems(tx, project.id, bindings.flatMap((claim) => claim.evidence_id ? [claim.evidence_id] : [])))
+      .map((message) => ({ target: "来源链", message })));
     const version = latest.version + 1;
     if (errors.length) {
       const reason = errors.map(({ target, message }) => `${target}：${message}`).join("；");
@@ -67,10 +70,16 @@ export async function editLandingPage(db: Db, input: {
     }).returning({ id: landingPages.id });
     if (latest.status === "checked") await tx.update(landingPages).set({ status: "superseded" }).where(eq(landingPages.id, latest.id));
     if (image) await tx.insert(landingPageImages).values({ landingPageId: saved.id, ...image });
-    if (bindings.length) await tx.insert(claims).values(bindings.map((claim) => ({
+    if (bindings.length) {
+    const savedClaims = await tx.insert(claims).values(bindings.map((claim) => ({
       landingPageId: saved.id, text: claim.text, kind: claim.kind, location: claim.location,
       evidenceId: claim.evidence_id, checkPassed: true,
-    })));
+    }))).returning();
+    for (const claim of savedClaims) await recordConclusion(tx, { project, subjectType: "claim", subjectId: saved.id, key: claim.id,
+      statement: claim.text, rationale: "经营者编辑或继承的声明；新页面不继承旧页面的支持程度评价。", actor: "founder",
+      evidence: claim.evidenceId ? [{ id: claim.evidenceId, role: "support" }] : [],
+    });
+    }
     await tx.insert(campaigns).values({
       projectId: project.id, landingPageId: saved.id, channel: campaign.channel, reason: campaign.reason,
       checklist: campaign.checklist, assets: campaign.assets,

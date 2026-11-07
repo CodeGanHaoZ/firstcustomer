@@ -31,8 +31,8 @@ async function readPricing(category: LibraryCategory): Promise<GatheredResult[]>
       try {
         const page = await sources.readPage(url);
         if (page.text.length < 200) return null;
-        await cacheDocument(db, { url, title: page.title, text: page.text });
-        return { url, title: page.title, text: page.text, source: "pricing_page", purpose: "support" as const, candidate: category.id };
+        const captured = await cacheDocument(db, { url, title: page.title, text: page.text }, { method: "read_page", actor: "library" });
+        return { url, title: page.title, text: page.text, sourceVersionId: captured.id, source: "pricing_page", purpose: "support" as const, candidate: category.id };
       } catch {
         return null;
       }
@@ -92,6 +92,7 @@ async function buildCategory(category: LibraryCategory) {
     const collectedAt = new Date();
     await db.insert(evidenceItems).values({
       projectId: null,
+      sourceVersionId: doc.sourceVersionId,
       category: category.id,
       product: item.product,
       kind: item.kind,

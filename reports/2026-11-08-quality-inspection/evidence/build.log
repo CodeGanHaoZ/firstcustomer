@@ -1,0 +1,72 @@
+
+> firstcustomer@0.1.0 build
+> next build
+
+▲ Next.js 16.4.5 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 54ms
+- Experiments (use with caution):
+  · serverActions
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1238ms
+  Running TypeScript ...
+  Finished TypeScript in 2.3s ...
+  Collecting page data using 9 workers ...
+[QueueClient] Region not detected — defaulting to "iad1". On Vercel this is set automatically via VERCEL_REGION. To silence this warning, pass region explicitly: new QueueClient({ region: "iad1" })
+  Generating static pages using 9 workers (0/25) ...
+  Generating static pages using 9 workers (6/25) 
+  Generating static pages using 9 workers (12/25) 
+[QueueClient] Region not detected — defaulting to "iad1". On Vercel this is set automatically via VERCEL_REGION. To silence this warning, pass region explicitly: new QueueClient({ region: "iad1" })
+  Generating static pages using 9 workers (18/25) 
+✓ Generating static pages using 9 workers (25/25) in 448ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /account
+├ ƒ /admin
+├ ƒ /admin/access
+├ ƒ /admin/audit
+├ ƒ /admin/context
+├ ƒ /admin/context/export
+├ ƒ /admin/knowledge
+├ ƒ /admin/knowledge/[id]
+├ ƒ /admin/knowledge/export
+├ ƒ /admin/login
+├ ƒ /admin/metrics
+├ ƒ /admin/owner
+├ ƒ /admin/payment
+├ ƒ /admin/projects/[id]
+├ ƒ /admin/projects/[id]/images/[imageId]
+├ ƒ /admin/projects/[id]/preview
+├ ƒ /admin/projects/[id]/preview/image
+├ ƒ /admin/projects/[id]/receipts/[receiptId]
+├ ƒ /admin/projects/new
+├ ƒ /admin/reports
+├ ƒ /admin/status
+├ ƒ /admin/tasks
+├ ƒ /api/auth/[...all]
+├ ƒ /api/events
+├ ƒ /api/jobs/daily
+├ ƒ /api/jobs/work
+├ ƒ /api/lumi
+├ ƒ /api/lumi/intake
+├ ○ /icon.svg
+├ ƒ /launch/[slug]
+├ ƒ /launch/[slug]/image
+├ ƒ /login
+├ ƒ /p/[token]
+├ ƒ /p/[token]/images/[imageId]
+├ ƒ /p/[token]/payment-code
+├ ƒ /p/[token]/preview
+├ ƒ /p/[token]/preview/image
+├ ƒ /p/[token]/receipts/[receiptId]
+├ ƒ /projects/new
+└ ƒ /register
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

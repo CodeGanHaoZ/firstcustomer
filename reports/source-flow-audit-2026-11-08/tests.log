@@ -1,0 +1,13 @@
+
+> firstcustomer@0.1.0 test
+> vitest run
+
+
+ RUN  v5.1.0 /Users/kong/Documents/junction黑客松/firstcustomer
+
+
+ Test Files  16 passed (16)
+      Tests  236 passed (236)
+   Start at  02:38:37
+   Duration  11.73s (tests 51%, import 43%, transform 7%)
+

@@ -9,6 +9,8 @@ import { notFound } from "next/navigation";
 import type { PositioningOption } from "@/agents/schemas";
 import { hasModelListPrice } from "@/ai/call-model";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { ProvenanceSection } from "@/components/provenance-details";
+import { conclusionReviewAction } from "@/app/admin/actions";
 import { ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
 import { LandingEditor } from "@/components/landing-editor";
 import { ClearProjectDraft } from "@/components/project-draft";
@@ -95,6 +97,7 @@ function GateForm(props: {
   previewHref?: string;
 }) {
   const { projectId, gate, state } = props;
+  if (state.founderRequired === false) return <p className="notice"><T>账号 Pro 项目由客户直接确认，无需老板审核。</T></p>;
   if (state.founder === "approved") {
     return (
       <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -137,8 +140,8 @@ function GateForm(props: {
 }
 
 export default async function AdminProjectPage({ params, searchParams }: PageProps<"/admin/projects/[id]">) {
-  await requireAdmin();
   const { id } = await params;
+  await requireAdmin("workspace.read", `/admin/projects/${id}`);
   const { error, notice, task, created } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = getDb();
@@ -452,6 +455,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         retryAction={bind(retryImagesAction)}
       />
       <div id="research"><EvidenceSection view={view} /></div>
+      <ProvenanceSection provenance={view.provenance} reviewAction={conclusionReviewAction.bind(null, project.id)} />
 
       <details className="fold">
         <summary>
@@ -564,7 +568,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
             <>
               <dl className="figures m-0">
                 <div className="figure"><dt className="order-last"><span>{order.sku}</span></dt><dd className="m-0"><b><T>{order.quoteFen ? `¥${(order.quoteFen / 100).toFixed(2)}` : "未报价"}</T></b></dd></div>
-                <div className="figure"><dt className="order-last"><span><T>付款状态</T></span></dt><dd className="m-0"><b className="text-[1.25rem]">{order.status}</b></dd></div>
+                <div className="figure"><dt className="order-last"><span><T>付款状态</T></span></dt><dd className="m-0"><b className="text-[1.25rem]"><T>{order.status === "key_activated" ? "密钥已开通 Pro（无实收）" : order.status}</T></b></dd></div>
                 <div className="figure"><dt className="order-last"><span><T>交付状态</T></span></dt><dd className="m-0"><b className="text-[1.25rem]">{order.deliveryStatus}</b></dd></div>
               </dl>
               {orderPayments.map((p) => (

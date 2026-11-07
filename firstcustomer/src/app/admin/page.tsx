@@ -159,7 +159,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                     </div>
                     <h3 className="tile__title">{project.productName}</h3>
                     <p className="tile__meta">
-                      <T>{order?.status === "paid"
+                      <T>{order?.status === "key_activated" ? "密钥已开通 Pro（无实收）" : order?.status === "paid"
                         ? "已付款"
                         : order?.status === "quoted" || order?.status === "accepted"
                           ? `${order.status === "accepted" ? "已接受" : "已报价"} ${money(order.quoteFen ?? 0)}`

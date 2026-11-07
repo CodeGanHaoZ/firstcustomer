@@ -29,7 +29,10 @@ export function customerProgress(input: {
   receiptUploaded: boolean;
   deliveryStatus?: string;
   canStartFree?: boolean;
+  selfServicePro?: boolean;
+  proInactive?: boolean;
 }): Progress {
+  if (input.proInactive) return { title: "Pro 账号权益当前不可用", detail: "请在账号工作台核对版本，现有项目资料会保留。", action: { href: "/account/upgrade", label: "查看账号版本" } };
   const phase = input.status === "reviewing" && input.reportReady ? undefined : WORK_PHASES[input.status as ProjectStatus];
   const actor = phase && input.runningAgents.includes(phase.agent) ? phase.label
     : phase && input.runningAgents.includes("vision") ? "截图读取员" : null;
@@ -46,11 +49,13 @@ export function customerProgress(input: {
     return { title: input.status === "researching" ? "正在分析你的出海机会" : STATUS_LABELS[input.status as ProjectStatus], detail, refreshSeconds: 3 };
   }
   if (input.openGate) {
-    return { title: "待你确认", detail: CONFIRMATION_TEXT[input.openGate], action: { href: "#approval", label: "查看待确认事项" } };
+    return { title: "待你确认", detail: input.selfServicePro ? "Pro 方案已准备好，请核对当前版本后确认或提出修改。" : CONFIRMATION_TEXT[input.openGate], action: { href: "#approval", label: "查看待确认事项" } };
   }
 
   switch (input.status) {
-    case "submitted": return input.canStartFree
+    case "submitted": return input.selfServicePro
+      ? { title: "Pro 工作模块已开通", detail: "从 Pro 工作台选择模块即可启动项目，无需初步报价。", action: { href: "/account/pro", label: "进入 Pro 工作台" } }
+      : input.canStartFree
       ? { title: "可以免费分析出海机会", detail: "提交的资料已保存。点击下方按钮即可排队开始。", refreshSeconds: 3 }
       : { title: "已提交", detail: "项目已提交，等待首客老板确认后开始研究。", refreshSeconds: 12 };
     case "free_ready": return { title: "你的出海机会报告已生成", detail: "你可以查看候选人群和待验证事项，或申请 Pro 继续做定位与发布。", action: { href: "#diagnosis", label: "查看出海机会报告" } };
@@ -68,7 +73,7 @@ export function customerProgress(input: {
     case "awaiting_publish": return { title: "首客正在核对发布版本", detail: "老板把关后会请你确认是否发布。", refreshSeconds: 12 };
     case "published":
     case "collecting": return { title: "验证页已公开", detail: "正在收集访问与反馈，样本够了再进行复盘。", action: { href: "#launch", label: "查看验证页" }, refreshSeconds: 12 };
-    case "reviewing": return { title: "复盘已生成", detail: "首客正在核对复盘与交付清单。", action: { href: "#growth", label: "查看增长复盘" }, refreshSeconds: 12 };
+    case "reviewing": return { title: "复盘已生成", detail: input.selfServicePro ? "可查看本轮复盘，核对结果与下一步建议。" : "首客正在核对复盘与交付清单。", action: { href: "#growth", label: "查看增长复盘" }, refreshSeconds: 12 };
     case "awaiting_founder": return { title: "等首客决定下一步", detail: "前序材料已保存，首客会先核对当前问题。", refreshSeconds: 12 };
     case "failed": return input.canStartFree
       ? { title: "出海机会分析暂未完成", detail: "项目资料已保留，可以重新分析出海机会。" }

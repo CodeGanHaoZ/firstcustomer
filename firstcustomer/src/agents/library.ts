@@ -138,7 +138,7 @@ export async function libraryEvidence(db: Db, categoryIds: string[]) {
 }
 
 // 把选中的预存证据复制进项目；项目里已有同一网址、同一摘录的就直接复用。
-export async function copyLibraryEvidence(db: Db, projectId: string, ids: string[], candidate: string) {
+export async function copyLibraryEvidence(db: Db, projectId: string, ids: string[], candidate: string, taskId?: string) {
   if (!ids.length) return [];
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
   if (!project) throw new Error("项目不存在");
@@ -147,14 +147,14 @@ export async function copyLibraryEvidence(db: Db, projectId: string, ids: string
     .from(evidenceItems)
     .where(and(isNull(evidenceItems.projectId), inArray(evidenceItems.id, ids)));
   const existing = await db
-    .select({ id: evidenceItems.id, url: evidenceItems.url, excerpt: evidenceItems.excerpt })
+    .select({ id: evidenceItems.id, url: evidenceItems.url, excerpt: evidenceItems.excerpt, sourceVersionId: evidenceItems.sourceVersionId })
     .from(evidenceItems)
     .where(and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.scopeVersion, project.scopeVersion)));
-  const key = (url: string, excerpt: string) => `${url}|${normalizeText(excerpt)}`;
-  const known = new Map(existing.map((e) => [key(e.url, e.excerpt), e.id]));
+  const key = (url: string, excerpt: string, version: string | null) => `${url}|${normalizeText(excerpt)}|${version}`;
+  const known = new Map(existing.map((e) => [key(e.url, e.excerpt, e.sourceVersionId), e.id]));
   const out: { library_id: string; evidence_id: string }[] = [];
   for (const row of rows) {
-    const k = key(row.url, row.excerpt);
+    const k = key(row.url, row.excerpt, row.sourceVersionId);
     let evidenceId = known.get(k);
     if (!evidenceId) {
       const [copy] = await db
@@ -162,6 +162,9 @@ export async function copyLibraryEvidence(db: Db, projectId: string, ids: string
         .values({
           projectId,
           scopeVersion: project.scopeVersion,
+          sourceVersionId: row.sourceVersionId,
+          originEvidenceId: row.id,
+          createdTaskId: taskId ?? null,
           candidate,
           product: row.product,
           category: row.category,

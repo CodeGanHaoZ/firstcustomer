@@ -1,0 +1,37 @@
+
+> firstcustomer@0.1.0 test
+> vitest run --reporter=default --reporter=json --outputFile=../reports/2026-11-08-quality-inspection/evidence/vitest.json
+
+
+ RUN  v5.1.0 /Users/kong/Documents/junction黑客松/firstcustomer
+
+ ✓ tests/locale.test.ts (5 tests) 13ms
+stderr | tests/lumi-intake.test.ts > Lumi AI 需求对话接口 > 限流和模型失败明确返回错误，不伪装成固定脚本回答
+Lumi 需求对话失败 Error
+
+ ✓ tests/lumi-intake.test.ts (10 tests) 148ms
+ ✓ tests/domain.test.ts (31 tests) 16ms
+ ✓ tests/office-guide.test.ts (14 tests) 15ms
+ ✓ tests/auth-return.test.ts (3 tests) 3ms
+ ✓ tests/pro-access-key.test.ts (4 tests) 17ms
+ ✓ tests/sources.test.ts (10 tests) 21ms
+ ✓ tests/project-intake.test.ts (8 tests) 7ms
+ ✓ tests/run-agent.test.ts (37 tests) 246ms
+ ✓ tests/customer-project-session.test.ts (3 tests) 12ms
+ ✓ tests/auth.test.ts (8 tests) 11ms
+ ✓ tests/knowledge.test.ts (15 tests) 1780ms
+ ✓ tests/owner-dashboard.test.ts (8 tests) 1765ms
+ ✓ tests/provenance.test.ts (11 tests) 2076ms
+stderr | tests/workflow.test.ts > 失败恢复（AC-08） > 模型失败时保留已完成部分，重试后继续，不重复研究
+项目 1cf47da3-9e51-41e7-9221-db96255a17aa 执行失败： MiMo 503
+
+ ✓ tests/workflow.test.ts (58 tests) 4112ms
+   ✓ 初诊、报价与到账 (1)
+     ✓ 退回报价会生成新版本，到账前不运行 Strategy，重复确认只记一笔 338ms
+
+ Test Files  15 passed (15)
+      Tests  225 passed (225)
+   Start at  01:46:34
+   Duration  6.01s (tests 47%, import 47%, transform 5%, worker 1%)
+
+JSON report written to /Users/kong/Documents/junction黑客松/reports/2026-11-08-quality-inspection/evidence/vitest.json

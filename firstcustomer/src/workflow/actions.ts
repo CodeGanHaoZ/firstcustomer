@@ -5,6 +5,7 @@ import { cacheDocument } from "@/agents/tools";
 import type { Db } from "@/db";
 import {
   campaigns,
+  claims,
   clarifications,
   decisions,
   evidenceItems,
@@ -27,11 +28,14 @@ import {
   type Verdict,
 } from "@/domain/approval";
 import { expiresAt, gradeFor, verifyQuote, type EvidenceKind } from "@/domain/evidence";
-import type { ProjectStatus } from "@/domain/workflow";
+import { isAccountPro, type ProjectStatus } from "@/domain/workflow";
+import { assertAccountProjectAccess } from "./membership";
 import { reportFor, type Escalation, type PendingRequest } from "./engine";
 import { transition } from "./transitions";
+import { evidenceTraceProblems } from "./provenance";
 import { recordRequirementVersion } from "./requirements";
 import { workPackageReadiness } from "./work-packages";
+import { MAX_AMOUNT_FEN } from "./commerce";
 
 export type Enqueue = (projectId: string, transaction?: Db) => Promise<void>;
 
@@ -234,7 +238,7 @@ async function subjectVersion(db: Db, project: typeof projects.$inferSelect, gat
 export async function gateStatusFor(db: Db, project: typeof projects.$inferSelect, gate: Gate) {
   const version = await subjectVersion(db, project, gate);
   const rows = await db.select().from(decisions).where(eq(decisions.projectId, project.id));
-  return { version, state: gateState(rows, gate, version) };
+  return { version, state: gateState(rows, gate, version, !isAccountPro(project)) };
 }
 
 export async function decide(
@@ -259,6 +263,7 @@ export async function decide(
     if (project.status !== GATE_STATUS[gate]) {
       throw new Error("当前阶段不能做这个决定");
     }
+    await assertAccountProjectAccess(tx, project);
     if (verdict === "reject" && !input.reason?.trim()) {
       throw new Error("退回时必须写明原因");
     }
@@ -275,7 +280,7 @@ export async function decide(
     if (blocked) throw new Error(blocked);
 
     const positioning = gate === "positioning" ? await latestPositioning(tx, projectId) : null;
-    if (positioning && actor === "founder" && verdict === "approve") {
+    if (positioning && (actor === "founder" || isAccountPro(project)) && verdict === "approve") {
       const options = positioning.options as PositioningOption[];
       const chosen = input.chosenOption ?? positioning.recommendedOption;
       if (!options[chosen]) throw new Error("选择的方案不存在");
@@ -357,6 +362,14 @@ async function applyApproval(
     if (!page || page.status !== "checked" || page.positioningVersion !== project.positioningVersion) {
       throw new Error("当前没有通过声明检查的页面版本");
     }
+    const bindings = await db.select().from(claims).where(eq(claims.landingPageId, page.id));
+    const referenced = bindings.flatMap((claim) => claim.evidenceId ? [claim.evidenceId] : []);
+    const problems = await evidenceTraceProblems(db, project.id, referenced);
+    const currentEvidence = referenced.length ? await db.select().from(evidenceItems).where(inArray(evidenceItems.id, referenced)) : [];
+    if (bindings.some((claim) => !claim.evidenceId) || problems.length || currentEvidence.some((item) =>
+      item.status !== "verified" || item.expiresAt <= new Date() || !["public_reference", "customer_authorized", "permitted"].includes(item.licenseStatus))) {
+      throw new Error("发布前引用检查失败：来源链不完整或证据已失效");
+    }
     await db.transaction(async (tx) => {
       await tx
         .update(landingPages)
@@ -390,9 +403,13 @@ async function applyApproval(
   await enqueue(project.id);
 }
 
-export async function startReview(db: Db, enqueue: Enqueue, projectId: string) {
+export async function startReview(db: Db, enqueue: Enqueue, projectId: string, actor: ActorRole = "founder") {
   const project = await getProject(db, projectId);
-  await transition(db, project, "reviewing", "founder", "老板开始复盘");
+  if (actor === "customer") {
+    if (!isAccountPro(project)) throw new Error("此项目不支持客户自助启动复盘");
+    await assertAccountProjectAccess(db, project);
+  }
+  await transition(db, project, "reviewing", actor, actor === "customer" ? "客户从 Pro 模块开始复盘" : "老板开始复盘");
   await enqueue(projectId);
 }
 
@@ -529,10 +546,19 @@ export async function recordFeedback(
 }
 
 export async function setQuote(db: Db, projectId: string, quoteFen: number) {
+  if (!Number.isSafeInteger(quoteFen) || quoteFen <= 0 || quoteFen > MAX_AMOUNT_FEN) throw new Error("请填写正确的报价金额");
   await db.transaction(async (tx) => {
-    const project = await getProject(tx, projectId);
+    const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
+    if (!project) throw new Error("项目不存在");
     if (project.requiresPayment || project.productPlan !== "legacy") throw new Error("请通过项目报价审批确认报价");
-    await tx.update(orders).set({ quoteFen, status: "quoted" }).where(eq(orders.projectId, projectId));
+    if (project.paused || project.status === "cancelled") throw new Error("暂停或取消的项目不能修改报价");
+    const [order] = await tx.select().from(orders).where(eq(orders.projectId, projectId));
+    if (!order) throw new Error("项目没有订单");
+    if (["paid", "accepted", "key_activated"].includes(order.status)) throw new Error("已接受或已付款的订单不能直接改价");
+    await tx.update(orders).set({ quoteFen, status: "quoted", quoteVersion: order.quoteVersion + 1 }).where(eq(orders.id, order.id));
+    await tx.insert(decisions).values({ projectId, gate: "quote", subjectVersion: order.quoteVersion + 1,
+      actorRole: "founder", verdict: "approve", reason: "老板更新旧版订单报价",
+      snapshot: { orderId: order.id, previousQuoteFen: order.quoteFen, quoteFen } });
   });
 }
 
@@ -541,17 +567,27 @@ export async function recordPayment(
   projectId: string,
   input: { amountFen: number; method: string; reference?: string | null },
 ) {
+  if (!Number.isSafeInteger(input.amountFen) || input.amountFen <= 0 || input.amountFen > MAX_AMOUNT_FEN) throw new Error("请填写正确的实收金额");
+  if (!input.method.trim() || input.method.length > 200 || (input.reference?.length ?? 0) > 200) throw new Error("请检查收款方式与交易备注");
   await db.transaction(async (tx) => {
-    const project = await getProject(tx, projectId);
+    const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
+    if (!project) throw new Error("项目不存在");
     if (project.requiresPayment || project.productPlan !== "legacy") throw new Error("请通过项目到账审批记录实收");
+    if (project.paused || project.status === "cancelled") throw new Error("暂停或取消的项目不能记录实收");
     const [order] = await tx.select().from(orders).where(eq(orders.projectId, projectId));
     if (!order) throw new Error("项目没有订单");
-    await tx.insert(payments).values({ ...input, orderId: order.id });
+    const [existing] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.orderId, order.id)).limit(1);
+    if (existing || order.status === "paid") throw new Error("此订单已记录实收，请勿重复记账");
+    const [payment] = await tx.insert(payments).values({ ...input, orderId: order.id }).returning({ id: payments.id });
     await tx.update(orders).set({ status: "paid" }).where(eq(orders.id, order.id));
+    await tx.insert(decisions).values({ projectId, gate: "payment", subjectVersion: order.quoteVersion,
+      actorRole: "founder", verdict: "approve", reason: "老板确认旧版订单实收",
+      snapshot: { orderId: order.id, paymentId: payment.id, quoteFen: order.quoteFen, ...input } });
   });
 }
 
 export async function setFounderMinutes(db: Db, projectId: string, minutes: number) {
+  if (!Number.isSafeInteger(minutes) || minutes < 0 || minutes > MAX_AMOUNT_FEN) throw new Error("人工分钟必须是有效的非负整数");
   await db.update(orders).set({ founderMinutes: minutes }).where(eq(orders.projectId, projectId));
 }
 
@@ -579,12 +615,15 @@ export async function addManualEvidence(
   const url = new URL(input.url).toString();
   const collectedAt = input.collectedAt ?? new Date();
   const project = input.projectId ? await getProject(db, input.projectId) : null;
-  await cacheDocument(db, { url, title: input.product ?? url, text: input.sourceText });
+  const source = await cacheDocument(db, { url, title: input.product ?? url, text: input.sourceText }, {
+    projectId: input.projectId ?? null, method: "manual_submission", actor: input.createdBy ?? "founder",
+  });
   const [row] = await db
     .insert(evidenceItems)
     .values({
       projectId: input.projectId ?? null,
       scopeVersion: project?.scopeVersion ?? 1,
+      sourceVersionId: source.id,
       product: input.product ?? null,
       category: input.category ?? null,
       kind: input.kind,

@@ -9,11 +9,12 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { saveTrialProjectsAction } from "@/app/account/actions";
+import { customerLoginDestinationAction, saveTrialProjectsAction } from "@/app/account/actions";
+import { customerReturnTo } from "@/lib/auth-return";
 
 const auth = createAuthClient();
 
-export function CustomerAuthForm({ register }: { register: boolean }) {
+export function CustomerAuthForm({ register, returnTo = "/account" }: { register: boolean; returnTo?: string }) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
@@ -47,11 +48,11 @@ export function CustomerAuthForm({ register }: { register: boolean }) {
       try {
         await saveTrialProjectsAction();
       } catch {
-        router.replace("/account");
+        router.replace(await customerLoginDestinationAction(customerReturnTo(returnTo)));
         router.refresh();
         return;
       }
-      router.replace("/account");
+      router.replace(await customerLoginDestinationAction(customerReturnTo(returnTo)));
       router.refresh();
     } catch {
       setError("暂时连不上账号服务，请稍后再试。");

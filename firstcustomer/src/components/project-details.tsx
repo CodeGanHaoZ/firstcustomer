@@ -1,3 +1,4 @@
+import { founderReady } from "@/domain/approval";
 import { LocalizedInput, LocalizedTag } from "@/components/localized-controls";
 import { T } from "@/components/ui-text";
 import type { PositioningOption, VisionOutput } from "@/agents/schemas";
@@ -7,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { GRADE_LABELS, type Grade } from "@/domain/evidence";
+import { QUOTE_STATUS_LABELS } from "@/domain/provenance";
+import { ConclusionStatus } from "@/components/provenance-details";
 import { STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { safeHref } from "@/lib/request";
@@ -97,10 +100,11 @@ export function StatusFlow({ status, quoteFlow, plan = "legacy", failedFrom }: {
   );
 }
 
-export function DeliverablesSection({ view, deliveryStatus, closingHref }: {
+export function DeliverablesSection({ view, deliveryStatus, closingHref, selfServicePro }: {
   view: ProjectView;
   deliveryStatus?: string;
   closingHref: string;
+  selfServicePro?: boolean;
 }) {
   const { positioning, gates, evidence, page, campaign, report } = view;
   const verified = evidence.filter((item) => item.status === "verified").length;
@@ -109,16 +113,16 @@ export function DeliverablesSection({ view, deliveryStatus, closingHref }: {
       : deliveryStatus === "delivered" ? "已交付，等待客户验收" : null;
   const items = [
     { label: "定位卡", href: positioning ? "#strategy" : null,
-      state: positioning ? `第 ${positioning.version} 版 · ${gates.positioning.complete ? "已确认" : gates.positioning.founder === "approved" ? "待客户确认" : "待老板把关"}` : "待生成" },
+      state: positioning ? `第 ${positioning.version} 版 · ${gates.positioning.complete ? "已确认" : founderReady(gates.positioning) ? "待客户确认" : "待老板把关"}` : "待生成" },
     { label: "商业证据卡", href: "#research",
-      state: evidence.length ? `已验证 ${verified} 条 · 待验证 ${evidence.length - verified} 条` : "待收集" },
+      state: evidence.length ? `摘录已匹配 ${verified} 条 · 未匹配或待核对 ${evidence.length - verified} 条` : "待收集" },
     { label: "英文验证页", href: page ? "#launch" : null,
-      state: page ? `第 ${page.version} 版 · ${page.status === "published" ? "已发布" : gates.publish.founder === "approved" ? "待客户确认" : "待老板把关"}` : "待生成" },
+      state: page ? `第 ${page.version} 版 · ${page.status === "published" ? "已发布" : founderReady(gates.publish) ? "待客户确认" : "待老板把关"}` : "待生成" },
     { label: "渠道行动卡", href: campaign ? "#campaign" : null,
       state: campaign?.status === "executed" ? "已记录执行凭证" : campaign?.status === "approved" ? "已批准，等待执行" : campaign ? "等待发布审批" : "待生成" },
     { label: "增长复盘卡", href: report ? "#growth" : null,
       state: report ? `已复盘 · ${report.verdict_label}` : "待复盘" },
-    { label: "结案记录", href: closing ? closingHref : null, state: closing ?? "待交付" },
+    ...(!selfServicePro ? [{ label: "结案记录", href: closing ? closingHref : null, state: closing ?? "待交付" }] : []),
   ];
 
   return (
@@ -295,12 +299,13 @@ export function EvidenceSection({ view }: { view: ProjectView }) {
           <li key={e.id} className="tile rise bg-background" style={{ "--i": Math.min(i, 8) } as CSSProperties}>
             <div className="flex flex-wrap gap-1.5">
               <span className="pill"><T>{KIND_LABELS[e.kind] ?? e.kind}</T></span>
-              <span className={e.status === "verified" ? "pill pill--ok" : "pill pill--wait"}><T>{e.status === "verified" ? "已验证" : "待验证"}</T></span>
+              <span className={e.status === "verified" ? "pill pill--ok" : "pill pill--wait"}><T>{QUOTE_STATUS_LABELS[e.status] ?? "摘录待核对"}</T></span>
               {e.grade ? <span className="pill pill--line"><T>{GRADE_LABELS[e.grade as Grade]}</T></span> : null}
             </div>
             <p className="m-0 leading-relaxed">{e.excerpt}</p>
             {e.numberValue ? <p className="tile__value text-[1.35rem]">{e.numberValue}{e.metric ? <span className="ms-1 font-sans text-xs text-muted-foreground">（{e.metric}）</span> : null}</p> : null}
             <p className="tile__foot tile__meta"><SourceLink url={e.url} /><span>{formatDate(e.collectedAt)}</span></p>
+            <a className="text-sm underline" href={`#source-evidence-${e.id}`}><T>查看溯源</T></a>
           </li>
         ))}
       </ul>
@@ -353,6 +358,7 @@ export function PositioningSection({ view }: { view: ProjectView }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4 text-sm">
         <p>{positioning.rationale}</p>
+        <ConclusionStatus provenance={view.provenance} subjectId={positioning.id} recordKey="rationale" />
         <ul className="card-grid">
           {options.map((option, i) => (
             <li key={option.audience} className={`tile rise ${i === positioning.chosenOption || i === positioning.recommendedOption ? "border-[#456447] bg-background" : "bg-background"}`} style={{ "--i": i } as CSSProperties}>
@@ -365,6 +371,7 @@ export function PositioningSection({ view }: { view: ProjectView }) {
               <p className="m-0"><T>问题：</T>{option.problem}</p>
               <p className="m-0"><T>价值主张：</T>{option.value_prop}</p>
               <p className="tile__meta">{option.why}</p>
+              <ConclusionStatus provenance={view.provenance} subjectId={positioning.id} recordKey={`option:${i}`} />
             </li>
           ))}
         </ul>
@@ -430,6 +437,7 @@ export function PageSection({ view, previewHref }: { view: ProjectView; previewH
                   <div className="flex flex-wrap items-center gap-2"><span className="pill"><T>{CLAIM_LABELS[c.kind] ?? c.kind}</T></span><SourceLink url={c.url} /></div>
                   <p className="m-0 font-medium">{c.text}</p>
                   <p className="m-0 text-muted-foreground"><T>{c.excerpt ?? "无"}</T></p>
+                  <ConclusionStatus provenance={view.provenance} subjectId={page.id} recordKey={c.id} />
                 </li>
               ))}
             </ul>

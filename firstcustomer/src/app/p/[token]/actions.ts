@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { enqueueAdvance } from "@/jobs/queue";
-import { findCustomerProject } from "@/lib/customer-project";
+import { findCustomerProject, requireCustomerProjectSession } from "@/lib/customer-project";
 import { withinLimit } from "@/lib/request";
 import { readUploadedFiles, readUploadedImage } from "@/lib/uploads";
 import { decideQuote, uploadReceipt } from "@/workflow/commerce";
@@ -20,6 +20,7 @@ import { openSupportMessage } from "@/workflow/support";
 import { requestPro, startFreeDiagnosis } from "@/workflow/plans";
 import { reviseRequirements } from "@/workflow/requirements";
 import { requirementFields } from "@/domain/requirements";
+import { activateProByKey } from "@/workflow/pro-access";
 
 const schema = z.object({
   gate: z.enum(["positioning", "publish", "next_round"]),
@@ -32,6 +33,7 @@ async function withProject(
   token: string,
   run: (projectId: string) => Promise<string | void>,
 ) {
+  await requireCustomerProjectSession(token);
   const db = getDb();
   const project = await findCustomerProject(db, token);
   if (!project) notFound();
@@ -76,6 +78,16 @@ export async function customerRequestProAction(token: string) {
   await withProject(token, async (projectId) => {
     await requestPro(getDb(), projectId);
     return "已提交 Pro 升级申请。你可以在这里查看提案和报价。";
+  });
+}
+
+export async function customerActivateProAction(token: string, formData: FormData) {
+  await withProject(token, async (projectId) => {
+    if (!(await withinLimit("pro-key", 5, 900))) throw new Error("密钥尝试过于频繁，请 15 分钟后再试。");
+    const activated = await activateProByKey(getDb(), projectId, formData.get("proKey"));
+    revalidatePath("/admin");
+    revalidatePath(`/admin/projects/${projectId}`);
+    return activated ? "Pro 已通过密钥开通，正在开始制定策略。" : "当前项目已开通 Pro，无需重复开通。";
   });
 }
 
@@ -150,6 +162,7 @@ export async function customerRequirementsAction(token: string, formData: FormDa
 }
 
 export async function customerDecision(token: string, formData: FormData) {
+  await requireCustomerProjectSession(token);
   const db = getDb();
   const project = await findCustomerProject(db, token);
   if (!project) notFound();

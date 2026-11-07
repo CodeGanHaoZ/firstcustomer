@@ -7,7 +7,7 @@ import { NEW_CUSTOMER_LINK_COOKIE, requireAdmin } from "@/lib/auth";
 import { submitProject } from "@/workflow/intake";
 
 export async function createFounderProjectAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("projects.manage", "/admin/projects/new");
   const { projectId, token, imageWarning } = await submitProject(getDb(), formData, true).catch((error: unknown) => {
     redirect(`/admin/projects/new?error=${encodeURIComponent(error instanceof Error ? error.message : "提交失败")}`);
   });

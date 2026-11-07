@@ -1,0 +1,885 @@
+{
+  "scope": "Static source inventory, not a claim of runtime branch coverage. Guards may be delegated to imported helpers.",
+  "sourceFiles": 200,
+  "typedModules": 190,
+  "routes": 42,
+  "serverActionFunctions": 61,
+  "entryPoints": [
+    {
+      "file": "src/app/account/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "AccountPage"
+      ],
+      "directGuardCalls": [
+        "getCustomerSession"
+      ],
+      "path": "/account"
+    },
+    {
+      "file": "src/app/account/pro/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "ProWorkspace"
+      ],
+      "directGuardCalls": [
+        "getCustomerSession"
+      ],
+      "path": "/account/pro"
+    },
+    {
+      "file": "src/app/account/upgrade/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "UpgradePage"
+      ],
+      "directGuardCalls": [
+        "getCustomerSession"
+      ],
+      "path": "/account/upgrade"
+    },
+    {
+      "file": "src/app/admin/access/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "AccessPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/access"
+    },
+    {
+      "file": "src/app/admin/audit/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "AuditPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/audit"
+    },
+    {
+      "file": "src/app/admin/context/export/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/context/export"
+    },
+    {
+      "file": "src/app/admin/context/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "ContextPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/context"
+    },
+    {
+      "file": "src/app/admin/knowledge/[id]/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "KnowledgeDetailPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/knowledge/[id]"
+    },
+    {
+      "file": "src/app/admin/knowledge/export/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/knowledge/export"
+    },
+    {
+      "file": "src/app/admin/knowledge/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "KnowledgePage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/knowledge"
+    },
+    {
+      "file": "src/app/admin/login/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "LoginPage"
+      ],
+      "directGuardCalls": [],
+      "path": "/admin/login"
+    },
+    {
+      "file": "src/app/admin/metrics/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "MetricsPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/metrics"
+    },
+    {
+      "file": "src/app/admin/owner/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "OwnerPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/owner"
+    },
+    {
+      "file": "src/app/admin/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "AdminPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin"
+    },
+    {
+      "file": "src/app/admin/payment/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "PaymentSettingsPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/payment"
+    },
+    {
+      "file": "src/app/admin/projects/[id]/images/[imageId]/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [],
+      "path": "/admin/projects/[id]/images/[imageId]"
+    },
+    {
+      "file": "src/app/admin/projects/[id]/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "AdminProjectPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/projects/[id]"
+    },
+    {
+      "file": "src/app/admin/projects/[id]/preview/image/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/projects/[id]/preview/image"
+    },
+    {
+      "file": "src/app/admin/projects/[id]/preview/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "AdminPreviewPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/projects/[id]/preview"
+    },
+    {
+      "file": "src/app/admin/projects/[id]/receipts/[receiptId]/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/projects/[id]/receipts/[receiptId]"
+    },
+    {
+      "file": "src/app/admin/projects/new/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "NewFounderProjectPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/projects/new"
+    },
+    {
+      "file": "src/app/admin/reports/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "ReportsPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/reports"
+    },
+    {
+      "file": "src/app/admin/status/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [],
+      "path": "/admin/status"
+    },
+    {
+      "file": "src/app/admin/tasks/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "TasksPage"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ],
+      "path": "/admin/tasks"
+    },
+    {
+      "file": "src/app/api/auth/[...all]/route.ts",
+      "serverActions": [],
+      "exports": [],
+      "directGuardCalls": [],
+      "path": "/api/auth/[...all]"
+    },
+    {
+      "file": "src/app/api/events/route.ts",
+      "serverActions": [],
+      "exports": [
+        "POST"
+      ],
+      "directGuardCalls": [
+        "hasAdminSession"
+      ],
+      "path": "/api/events"
+    },
+    {
+      "file": "src/app/api/jobs/daily/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [],
+      "path": "/api/jobs/daily"
+    },
+    {
+      "file": "src/app/api/jobs/work/route.ts",
+      "serverActions": [],
+      "exports": [],
+      "directGuardCalls": [],
+      "path": "/api/jobs/work"
+    },
+    {
+      "file": "src/app/api/lumi/intake/route.ts",
+      "serverActions": [],
+      "exports": [
+        "POST"
+      ],
+      "directGuardCalls": [],
+      "path": "/api/lumi/intake"
+    },
+    {
+      "file": "src/app/api/lumi/route.ts",
+      "serverActions": [],
+      "exports": [
+        "POST"
+      ],
+      "directGuardCalls": [],
+      "path": "/api/lumi"
+    },
+    {
+      "file": "src/app/launch/[slug]/image/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [],
+      "path": "/launch/[slug]/image"
+    },
+    {
+      "file": "src/app/launch/[slug]/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "LaunchPage"
+      ],
+      "directGuardCalls": [],
+      "path": "/launch/[slug]"
+    },
+    {
+      "file": "src/app/login/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "LoginPage"
+      ],
+      "directGuardCalls": [],
+      "path": "/login"
+    },
+    {
+      "file": "src/app/p/[token]/images/[imageId]/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [
+        "findCustomerProject"
+      ],
+      "path": "/p/[token]/images/[imageId]"
+    },
+    {
+      "file": "src/app/p/[token]/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "CustomerProjectPage"
+      ],
+      "directGuardCalls": [
+        "requireCustomerProjectSession",
+        "findCustomerProject"
+      ],
+      "path": "/p/[token]"
+    },
+    {
+      "file": "src/app/p/[token]/payment-code/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [
+        "findCustomerProject"
+      ],
+      "path": "/p/[token]/payment-code"
+    },
+    {
+      "file": "src/app/p/[token]/preview/image/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [
+        "findCustomerProject"
+      ],
+      "path": "/p/[token]/preview/image"
+    },
+    {
+      "file": "src/app/p/[token]/preview/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "CustomerPreviewPage"
+      ],
+      "directGuardCalls": [
+        "findCustomerProject"
+      ],
+      "path": "/p/[token]/preview"
+    },
+    {
+      "file": "src/app/p/[token]/receipts/[receiptId]/route.ts",
+      "serverActions": [],
+      "exports": [
+        "GET"
+      ],
+      "directGuardCalls": [
+        "findCustomerProject"
+      ],
+      "path": "/p/[token]/receipts/[receiptId]"
+    },
+    {
+      "file": "src/app/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "Home"
+      ],
+      "directGuardCalls": [
+        "getCustomerSession"
+      ],
+      "path": "/"
+    },
+    {
+      "file": "src/app/projects/new/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "NewProjectPage"
+      ],
+      "directGuardCalls": [],
+      "path": "/projects/new"
+    },
+    {
+      "file": "src/app/register/page.tsx",
+      "serverActions": [],
+      "exports": [
+        "generateMetadata",
+        "RegisterPage"
+      ],
+      "directGuardCalls": [],
+      "path": "/register"
+    }
+  ],
+  "actionModules": [
+    {
+      "file": "src/app/account/actions.ts",
+      "serverActions": [
+        "customerLoginDestinationAction",
+        "enterProModuleAction",
+        "saveTrialProjectsAction",
+        "signOutAction",
+        "saveTrialProjectsAndReturnAction"
+      ],
+      "exports": [
+        "customerLoginDestinationAction",
+        "enterProModuleAction",
+        "saveTrialProjectsAction",
+        "signOutAction",
+        "saveTrialProjectsAndReturnAction"
+      ],
+      "directGuardCalls": [
+        "getCustomerSession"
+      ]
+    },
+    {
+      "file": "src/app/admin/actions.ts",
+      "serverActions": [
+        "loginAction",
+        "logoutAction",
+        "conclusionReviewAction",
+        "founderDecision",
+        "ownProductConfirm",
+        "startResearchAction",
+        "startReviewAction",
+        "deliverAction",
+        "retryAction",
+        "cancelAction",
+        "escalationAction",
+        "regenerateLinkAction",
+        "campaignExecutedAction",
+        "feedbackAction",
+        "quoteAction",
+        "paymentAction",
+        "minutesAction",
+        "founderProposalAction",
+        "founderReceiptUploadAction",
+        "confirmReceiptAction",
+        "pauseProjectAction",
+        "markTestLeadAction",
+        "editLandingAction",
+        "replyToSupportAction",
+        "uploadPaymentCodeAction",
+        "manualEvidenceAction",
+        "founderAnswersAction",
+        "skipClarificationsAction",
+        "ownProductAction",
+        "adminUploadImagesAction",
+        "adminDeleteImageAction",
+        "retryImagesAction",
+        "deleteLeadAction"
+      ],
+      "exports": [
+        "loginAction",
+        "logoutAction",
+        "conclusionReviewAction",
+        "founderDecision",
+        "ownProductConfirm",
+        "startResearchAction",
+        "startReviewAction",
+        "deliverAction",
+        "retryAction",
+        "cancelAction",
+        "escalationAction",
+        "regenerateLinkAction",
+        "campaignExecutedAction",
+        "feedbackAction",
+        "quoteAction",
+        "paymentAction",
+        "minutesAction",
+        "founderProposalAction",
+        "founderReceiptUploadAction",
+        "confirmReceiptAction",
+        "pauseProjectAction",
+        "markTestLeadAction",
+        "editLandingAction",
+        "replyToSupportAction",
+        "uploadPaymentCodeAction",
+        "manualEvidenceAction",
+        "founderAnswersAction",
+        "skipClarificationsAction",
+        "ownProductAction",
+        "adminUploadImagesAction",
+        "adminDeleteImageAction",
+        "retryImagesAction",
+        "deleteLeadAction"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ]
+    },
+    {
+      "file": "src/app/admin/context/actions.ts",
+      "serverActions": [
+        "saveCompanyContext"
+      ],
+      "exports": [
+        "saveCompanyContext"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ]
+    },
+    {
+      "file": "src/app/admin/knowledge/actions.ts",
+      "serverActions": [
+        "saveKnowledgeAction",
+        "withdrawKnowledgeAction",
+        "initializeKnowledgeAction"
+      ],
+      "exports": [
+        "saveKnowledgeAction",
+        "withdrawKnowledgeAction",
+        "initializeKnowledgeAction"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ]
+    },
+    {
+      "file": "src/app/admin/projects/new/actions.ts",
+      "serverActions": [
+        "createFounderProjectAction"
+      ],
+      "exports": [
+        "createFounderProjectAction"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ]
+    },
+    {
+      "file": "src/app/admin/reports/actions.ts",
+      "serverActions": [
+        "createWeeklyReport",
+        "createStandupReport",
+        "weeklyDecisionAction"
+      ],
+      "exports": [
+        "createWeeklyReport",
+        "createStandupReport",
+        "weeklyDecisionAction"
+      ],
+      "directGuardCalls": [
+        "requireAdmin"
+      ]
+    },
+    {
+      "file": "src/app/language-actions.ts",
+      "serverActions": [
+        "changeLanguage"
+      ],
+      "exports": [
+        "changeLanguage"
+      ],
+      "directGuardCalls": []
+    },
+    {
+      "file": "src/app/launch/[slug]/actions.ts",
+      "serverActions": [
+        "submitLead"
+      ],
+      "exports": [
+        "submitLead"
+      ],
+      "directGuardCalls": []
+    },
+    {
+      "file": "src/app/p/[token]/actions.ts",
+      "serverActions": [
+        "customerAnswers",
+        "customerStartFreeAction",
+        "customerRequestProAction",
+        "customerActivateProAction",
+        "customerUploadImages",
+        "customerDeleteImage",
+        "customerProposalAction",
+        "customerReceiptAction",
+        "customerSupportAction",
+        "customerAcceptanceAction",
+        "customerRequirementsAction",
+        "customerDecision"
+      ],
+      "exports": [
+        "customerAnswers",
+        "customerStartFreeAction",
+        "customerRequestProAction",
+        "customerActivateProAction",
+        "customerUploadImages",
+        "customerDeleteImage",
+        "customerProposalAction",
+        "customerReceiptAction",
+        "customerSupportAction",
+        "customerAcceptanceAction",
+        "customerRequirementsAction",
+        "customerDecision"
+      ],
+      "directGuardCalls": [
+        "requireCustomerProjectSession",
+        "findCustomerProject"
+      ]
+    },
+    {
+      "file": "src/app/projects/new/actions.ts",
+      "serverActions": [
+        "createProjectAction"
+      ],
+      "exports": [
+        "createProjectAction"
+      ],
+      "directGuardCalls": [
+        "getCustomerSession"
+      ]
+    }
+  ],
+  "sourcePaths": [
+    "src/agents/fetch-page.ts",
+    "src/agents/gather.ts",
+    "src/agents/library.ts",
+    "src/agents/prompts.ts",
+    "src/agents/schemas.ts",
+    "src/agents/sources.ts",
+    "src/agents/tools.ts",
+    "src/ai/call-model.ts",
+    "src/ai/run-agent.ts",
+    "src/ai/stub-model.ts",
+    "src/ai/types.ts",
+    "src/app/account/actions.ts",
+    "src/app/account/page.tsx",
+    "src/app/account/pro/page.tsx",
+    "src/app/account/upgrade/page.tsx",
+    "src/app/admin/access/access.css",
+    "src/app/admin/access/page.tsx",
+    "src/app/admin/actions.ts",
+    "src/app/admin/audit/error.tsx",
+    "src/app/admin/audit/loading.tsx",
+    "src/app/admin/audit/page.tsx",
+    "src/app/admin/context/actions.ts",
+    "src/app/admin/context/export/route.ts",
+    "src/app/admin/context/page.tsx",
+    "src/app/admin/knowledge/[id]/page.tsx",
+    "src/app/admin/knowledge/actions.ts",
+    "src/app/admin/knowledge/export/route.ts",
+    "src/app/admin/knowledge/page.tsx",
+    "src/app/admin/layout.tsx",
+    "src/app/admin/login/page.tsx",
+    "src/app/admin/metrics/page.tsx",
+    "src/app/admin/office.css",
+    "src/app/admin/owner/error.tsx",
+    "src/app/admin/owner/loading.tsx",
+    "src/app/admin/owner/owner.css",
+    "src/app/admin/owner/page.tsx",
+    "src/app/admin/page.tsx",
+    "src/app/admin/payment/page.tsx",
+    "src/app/admin/projects/[id]/images/[imageId]/route.ts",
+    "src/app/admin/projects/[id]/page.tsx",
+    "src/app/admin/projects/[id]/preview/image/route.ts",
+    "src/app/admin/projects/[id]/preview/page.tsx",
+    "src/app/admin/projects/[id]/receipts/[receiptId]/route.ts",
+    "src/app/admin/projects/new/actions.ts",
+    "src/app/admin/projects/new/page.tsx",
+    "src/app/admin/reports/actions.ts",
+    "src/app/admin/reports/page.tsx",
+    "src/app/admin/status/route.ts",
+    "src/app/admin/tasks/page.tsx",
+    "src/app/admin/workspace.css",
+    "src/app/api/auth/[...all]/route.ts",
+    "src/app/api/events/route.ts",
+    "src/app/api/jobs/daily/route.ts",
+    "src/app/api/jobs/work/route.ts",
+    "src/app/api/lumi/intake/route.ts",
+    "src/app/api/lumi/route.ts",
+    "src/app/editorial.css",
+    "src/app/globals.css",
+    "src/app/home.css",
+    "src/app/language-actions.ts",
+    "src/app/launch/[slug]/actions.ts",
+    "src/app/launch/[slug]/image/route.ts",
+    "src/app/launch/[slug]/page.tsx",
+    "src/app/layout.tsx",
+    "src/app/login/page.tsx",
+    "src/app/office-showcase.css",
+    "src/app/p/[token]/actions.ts",
+    "src/app/p/[token]/images/[imageId]/route.ts",
+    "src/app/p/[token]/page.tsx",
+    "src/app/p/[token]/payment-code/route.ts",
+    "src/app/p/[token]/preview/image/route.ts",
+    "src/app/p/[token]/preview/page.tsx",
+    "src/app/p/[token]/receipts/[receiptId]/route.ts",
+    "src/app/page.tsx",
+    "src/app/projects/new/actions.ts",
+    "src/app/projects/new/intake.css",
+    "src/app/projects/new/page.tsx",
+    "src/app/register/page.tsx",
+    "src/app/site.css",
+    "src/components/admin-workspace.tsx",
+    "src/components/auto-refresh.tsx",
+    "src/components/back-to-top.tsx",
+    "src/components/brand-mark.tsx",
+    "src/components/commerce-details.tsx",
+    "src/components/customer-auth-form.tsx",
+    "src/components/customer-auth-page.tsx",
+    "src/components/decide.tsx",
+    "src/components/editorial-motion.tsx",
+    "src/components/image-upload-input.tsx",
+    "src/components/knowledge-editor.tsx",
+    "src/components/landing-editor.tsx",
+    "src/components/landing-view.tsx",
+    "src/components/language-switch.tsx",
+    "src/components/locale-provider.tsx",
+    "src/components/localized-controls.tsx",
+    "src/components/lumi-chat.tsx",
+    "src/components/lumi-project-intake.tsx",
+    "src/components/lumi-welcome.tsx",
+    "src/components/office-board.tsx",
+    "src/components/office-connection.tsx",
+    "src/components/office-map.tsx",
+    "src/components/office-showcase-canvas.ts",
+    "src/components/office-showcase.tsx",
+    "src/components/office-stage.tsx",
+    "src/components/office-work-guide.tsx",
+    "src/components/operating-numbers.tsx",
+    "src/components/owner-quote-form.tsx",
+    "src/components/page-transition.tsx",
+    "src/components/pro-key-form.tsx",
+    "src/components/project-details.tsx",
+    "src/components/project-draft.tsx",
+    "src/components/project-intake.tsx",
+    "src/components/provenance-details.tsx",
+    "src/components/requirement-card.tsx",
+    "src/components/site-chrome.tsx",
+    "src/components/tracker.tsx",
+    "src/components/ui/alert.tsx",
+    "src/components/ui/badge.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/card.tsx",
+    "src/components/ui/input.tsx",
+    "src/components/ui/label.tsx",
+    "src/components/ui/separator.tsx",
+    "src/components/ui/table.tsx",
+    "src/components/ui/textarea.tsx",
+    "src/components/ui-text.tsx",
+    "src/components/work-package-list.tsx",
+    "src/db/customer-auth-schema.ts",
+    "src/db/index.ts",
+    "src/db/schema.ts",
+    "src/domain/approval.ts",
+    "src/domain/claims.ts",
+    "src/domain/counter.ts",
+    "src/domain/customer-progress.ts",
+    "src/domain/evidence.ts",
+    "src/domain/experiment.ts",
+    "src/domain/images.ts",
+    "src/domain/membership.ts",
+    "src/domain/office-guide.ts",
+    "src/domain/office.ts",
+    "src/domain/owner-permissions.ts",
+    "src/domain/provenance.ts",
+    "src/domain/requirements.ts",
+    "src/domain/workflow.ts",
+    "src/jobs/process-job.ts",
+    "src/jobs/queue.ts",
+    "src/knowledge/defaults.ts",
+    "src/knowledge/import.ts",
+    "src/knowledge/seed.ts",
+    "src/knowledge/store.ts",
+    "src/knowledge/types.ts",
+    "src/knowledge/validation.ts",
+    "src/lib/auth-return.ts",
+    "src/lib/auth.ts",
+    "src/lib/brand.ts",
+    "src/lib/customer-auth.ts",
+    "src/lib/customer-project.ts",
+    "src/lib/format.ts",
+    "src/lib/home-copy.ts",
+    "src/lib/locale-server.ts",
+    "src/lib/locale.ts",
+    "src/lib/lumi-chat.ts",
+    "src/lib/lumi-intake.ts",
+    "src/lib/markdown-archive.ts",
+    "src/lib/membership-ui-messages.ts",
+    "src/lib/office-showcase.ts",
+    "src/lib/office-story.ts",
+    "src/lib/owner-ui-messages.ts",
+    "src/lib/pro-access-key.ts",
+    "src/lib/project-intake.ts",
+    "src/lib/provenance-ui-messages.ts",
+    "src/lib/request.ts",
+    "src/lib/trial-projects.ts",
+    "src/lib/ui-messages.ts",
+    "src/lib/ui-translation.ts",
+    "src/lib/uploads.ts",
+    "src/lib/utils.ts",
+    "src/worker/index.ts",
+    "src/workflow/actions.ts",
+    "src/workflow/audit-log.ts",
+    "src/workflow/commerce.ts",
+    "src/workflow/company-context.ts",
+    "src/workflow/company-reports.ts",
+    "src/workflow/engine.ts",
+    "src/workflow/intake.ts",
+    "src/workflow/landing-edits.ts",
+    "src/workflow/membership.ts",
+    "src/workflow/office.ts",
+    "src/workflow/operating-metrics.ts",
+    "src/workflow/owner-dashboard.ts",
+    "src/workflow/plans.ts",
+    "src/workflow/pro-access.ts",
+    "src/workflow/provenance.ts",
+    "src/workflow/queries.ts",
+    "src/workflow/requirements.ts",
+    "src/workflow/source-versions.ts",
+    "src/workflow/support.ts",
+    "src/workflow/task-board.ts",
+    "src/workflow/transitions.ts",
+    "src/workflow/work-packages.ts"
+  ]
+}

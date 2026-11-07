@@ -1,0 +1,69 @@
+
+> firstcustomer@0.1.0 test
+> vitest run --reporter=default --reporter=json --outputFile=../reports/2026-11-08-quality-inspection/evidence/vitest.json
+
+
+ RUN  v5.1.0 /Users/kong/Documents/junction黑客松/firstcustomer
+
+ ✓ tests/domain.test.ts (31 tests) 15ms
+stderr | tests/lumi-intake.test.ts > Lumi AI 需求对话接口 > 限流和模型失败明确返回错误，不伪装成固定脚本回答
+Lumi 需求对话失败 Error
+
+ ✓ tests/lumi-intake.test.ts (10 tests) 87ms
+ ✓ tests/locale.test.ts (5 tests) 31ms
+ ✓ tests/office-guide.test.ts (14 tests) 17ms
+ ✓ tests/sources.test.ts (10 tests) 19ms
+ ✓ tests/project-intake.test.ts (8 tests) 7ms
+ ✓ tests/auth.test.ts (8 tests) 14ms
+ ✓ tests/pro-access-key.test.ts (4 tests) 8ms
+ ✓ tests/auth-return.test.ts (3 tests) 14ms
+ ✓ tests/run-agent.test.ts (37 tests) 217ms
+ ✓ tests/customer-project-session.test.ts (3 tests) 10ms
+ ✓ tests/knowledge.test.ts (15 tests) 1745ms
+ ✓ tests/owner-dashboard.test.ts (8 tests) 1649ms
+stderr | tests/workflow.test.ts > 失败恢复（AC-08） > 模型失败时保留已完成部分，重试后继续，不重复研究
+项目 efe2df35-8f95-4789-8154-4283aa6e35c8 执行失败： MiMo 503
+
+ ✓ tests/workflow.test.ts (58 tests) 3407ms
+ ❯ tests/provenance.test.ts (11 tests | 11 skipped) 121086ms
+   ↓ 不可变来源版本 (5)
+     ↓ 重复抓取保留旧正文；新证据绑定本次版本而非可变 URL
+     ↓ 并发采集同一 URL 后按显式版本保存，不串用正文
+     ↓ 数据库拒绝覆盖快照、修改证据身份和伪造摘要
+     ↓ 旧缓存不会冒充旧快照，缺链记录阻止通过来源检查
+     ↓ 复制共享证据保留原来源版本和原证据身份
+   ↓ 溯源范围与评价隔离 (5)
+     ↓ 拒绝跨项目/旧范围快照、证据和评价，查询不泄露他人原文
+     ↓ 数据库也阻止跨项目引用边；事务失败不留下半条结论
+     ↓ 摘录匹配不提升结论评价，人工评价独立保存且保留历史
+     ↓ 证据撤回或过期后旧评价失效，拒绝旧页面提交和充分支持评价
+     ↓ 视图分别展示摘录状态、未评价及真实快照；原文按文本转义
+   ↓ 生成与发布链路集成 (1)
+     ↓ 真实工作流写入结论、版本、AI 处理记录；证据过期后拒绝发布
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/provenance.test.ts [ tests/provenance.test.ts ]
+Unknown Error: undefined
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/provenance.test.ts [ tests/provenance.test.ts ]
+Error: Hook timed out in 120000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+ ❯ tests/provenance.test.ts:35:1
+     33|       server.close((error) => error ? reject(error) : resolve(availabl…
+     34|     });
+     35|   });
+       | ^
+     36|   dir = mkdtempSync(join(tmpdir(), "fc-provenance-"));
+     37|   pg = new EmbeddedPostgres({ databaseDir: dir, user: "test", password…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 14 passed (15)
+      Tests  214 passed | 11 skipped (225)
+   Start at  01:44:29
+   Duration  122.53s (tests 93%, import 6%, transform 1%)
+
+JSON report written to /Users/kong/Documents/junction黑客松/reports/2026-11-08-quality-inspection/evidence/vitest.json

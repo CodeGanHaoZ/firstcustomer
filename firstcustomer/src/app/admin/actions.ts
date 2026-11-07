@@ -5,10 +5,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { pageContent } from "@/agents/schemas";
+import type { OwnerPermission } from "@/domain/owner-permissions";
+import { ownerReturnTo } from "@/lib/auth-return";
 import { getDb } from "@/db";
 import { leads, projects } from "@/db/schema";
 import { enqueueAdvance } from "@/jobs/queue";
-import { adminCredentialsMatch, endAdminSession, requireAdmin, startAdminSession } from "@/lib/auth";
+import { adminCredentialsMatch, adminUsername, endAdminSession, requireAdmin, startAdminSession } from "@/lib/auth";
 import { withinLimit } from "@/lib/request";
 import { readUploadedFiles, readUploadedImage } from "@/lib/uploads";
 import { confirmReceipt, decideQuote, MAX_AMOUNT_FEN, savePaymentCode, uploadReceipt } from "@/workflow/commerce";
@@ -38,14 +40,16 @@ import {
 } from "@/workflow/actions";
 import { replyToSupport } from "@/workflow/support";
 import { editLandingPage } from "@/workflow/landing-edits";
+import { reviewConclusion } from "@/workflow/provenance";
 
 export async function loginAction(formData: FormData) {
+  const next = ownerReturnTo(formData.get("next"));
   const allowed = await withinLimit("admin-login", 10, 600);
   if (!allowed || !adminCredentialsMatch(String(formData.get("username") ?? ""), String(formData.get("password") ?? ""))) {
-    redirect("/admin/login?error=1");
+    redirect(`/admin/login?error=1&next=${encodeURIComponent(next)}`);
   }
   await startAdminSession();
-  redirect("/admin");
+  redirect(next);
 }
 
 export async function logoutAction() {
@@ -56,23 +60,35 @@ export async function logoutAction() {
 type Handler = (formData: FormData, projectId: string) => Promise<string | void>;
 
 // 所有经营台操作都先验证登录，失败时把原因带回页面。
-function adminAction(handler: Handler) {
+function adminAction(permission: OwnerPermission, handler: Handler) {
   return async (projectId: string, formData: FormData) => {
-    await requireAdmin();
+    await requireAdmin(permission, `/admin/projects/${projectId}`);
     const page = `/admin/projects/${projectId}`;
+    const destination = formData.get("returnTo") === "/admin/owner" ? "/admin/owner" : page;
     let notice: string | void;
     try {
       notice = await handler(formData, projectId);
     } catch (error) {
       const message = error instanceof Error ? error.message : "操作失败";
-      redirect(`${page}?error=${encodeURIComponent(message)}`);
+      redirect(`${destination}?error=${encodeURIComponent(message)}`);
     }
     revalidatePath(page);
-    redirect(notice ? `${page}?notice=${encodeURIComponent(notice)}` : page);
+    revalidatePath("/admin/owner");
+    revalidatePath("/admin/audit");
+    revalidatePath("/admin/metrics");
+    redirect(notice ? `${destination}?notice=${encodeURIComponent(notice)}` : destination);
   };
 }
 
 const text = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
+const conclusionReviewHandler = adminAction("delivery.approve", async (formData, projectId) => {
+  const input = z.object({ conclusionId: z.uuid(), basisHash: z.string(), level: z.enum(["supported", "limited", "insufficient"]), reason: z.string() }).parse(Object.fromEntries(formData));
+  await reviewConclusion(getDb(), { ...input, projectId, reviewer: adminUsername() });
+  return "结论评价已保存；原文匹配状态保持独立";
+});
+export async function conclusionReviewAction(projectId: string, formData: FormData) {
+  return conclusionReviewHandler(projectId, formData);
+}
 const yuanToFen = (value: string) => {
   if (!/^\d+(?:\.\d{1,2})?$/.test(value)) throw new Error("金额不正确，请精确到分");
   const amount = Number(value);
@@ -80,7 +96,7 @@ const yuanToFen = (value: string) => {
   return Math.round(amount * 100);
 };
 
-const founderDecisionHandler = adminAction(async (formData, projectId) => {
+const founderDecisionHandler = adminAction("delivery.approve", async (formData, projectId) => {
   const input = z
     .object({
       gate: z.enum(["positioning", "publish", "next_round"]),
@@ -102,7 +118,7 @@ export async function founderDecision(projectId: string, formData: FormData) {
 }
 
 // 自有产品没有外部客户，老板代为记录第二道确认，记录上仍是两道。
-const ownProductConfirmHandler = adminAction(async (formData, projectId) => {
+const ownProductConfirmHandler = adminAction("delivery.approve", async (formData, projectId) => {
   const gate = z.enum(["positioning", "publish", "next_round"]).parse(formData.get("gate"));
   const db = getDb();
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
@@ -114,42 +130,42 @@ export async function ownProductConfirm(projectId: string, formData: FormData) {
   return ownProductConfirmHandler(projectId, formData);
 }
 
-const startResearchHandler = adminAction(async (_formData, projectId) => {
+const startResearchHandler = adminAction("projects.manage", async (_formData, projectId) => {
   await startResearch(getDb(), enqueueAdvance, projectId);
 });
 export async function startResearchAction(projectId: string, formData: FormData) {
   return startResearchHandler(projectId, formData);
 }
 
-const startReviewHandler = adminAction(async (_formData, projectId) => {
+const startReviewHandler = adminAction("growth.manage", async (_formData, projectId) => {
   await startReview(getDb(), enqueueAdvance, projectId);
 });
 export async function startReviewAction(projectId: string, formData: FormData) {
   return startReviewHandler(projectId, formData);
 }
 
-const deliverHandler = adminAction(async (formData, projectId) => {
+const deliverHandler = adminAction("delivery.approve", async (formData, projectId) => {
   await deliverProject(getDb(), projectId, z.string().regex(/^[a-f0-9]{64}$/).parse(formData.get("deliveryStamp")));
 });
 export async function deliverAction(projectId: string, formData: FormData) {
   return deliverHandler(projectId, formData);
 }
 
-const retryHandler = adminAction(async (_formData, projectId) => {
+const retryHandler = adminAction("projects.manage", async (_formData, projectId) => {
   await retryProject(getDb(), enqueueAdvance, projectId);
 });
 export async function retryAction(projectId: string, formData: FormData) {
   return retryHandler(projectId, formData);
 }
 
-const cancelHandler = adminAction(async (_formData, projectId) => {
+const cancelHandler = adminAction("projects.manage", async (_formData, projectId) => {
   await cancelProject(getDb(), projectId);
 });
 export async function cancelAction(projectId: string, formData: FormData) {
   return cancelHandler(projectId, formData);
 }
 
-const escalationHandler = adminAction(async (formData, projectId) => {
+const escalationHandler = adminAction("projects.manage", async (formData, projectId) => {
   await resolveEscalation(getDb(), enqueueAdvance, {
     projectId,
     target: z.enum(["researching", "strategizing", "preparing_page"]).parse(formData.get("target")),
@@ -160,7 +176,7 @@ export async function escalationAction(projectId: string, formData: FormData) {
   return escalationHandler(projectId, formData);
 }
 
-const regenerateHandler = adminAction(async (_formData, projectId) => {
+const regenerateHandler = adminAction("projects.manage", async (_formData, projectId) => {
   const token = await regenerateProjectLink(getDb(), projectId);
   return `新的项目链接（只显示这一次）：/p/${token}`;
 });
@@ -168,14 +184,14 @@ export async function regenerateLinkAction(projectId: string, formData: FormData
   return regenerateHandler(projectId, formData);
 }
 
-const campaignHandler = adminAction(async (formData) => {
+const campaignHandler = adminAction("growth.manage", async (formData) => {
   await markCampaignExecuted(getDb(), text(formData, "campaignId"), text(formData, "url"));
 });
 export async function campaignExecutedAction(projectId: string, formData: FormData) {
   return campaignHandler(projectId, formData);
 }
 
-const feedbackHandler = adminAction(async (formData) => {
+const feedbackHandler = adminAction("growth.manage", async (formData) => {
   const body = text(formData, "text");
   if (!body) throw new Error("请填写回复内容");
   await recordFeedback(getDb(), {
@@ -189,14 +205,14 @@ export async function feedbackAction(projectId: string, formData: FormData) {
   return feedbackHandler(projectId, formData);
 }
 
-const quoteHandler = adminAction(async (formData, projectId) => {
+const quoteHandler = adminAction("quotes.approve", async (formData, projectId) => {
   await setQuote(getDb(), projectId, yuanToFen(text(formData, "yuan")));
 });
 export async function quoteAction(projectId: string, formData: FormData) {
   return quoteHandler(projectId, formData);
 }
 
-const paymentHandler = adminAction(async (formData, projectId) => {
+const paymentHandler = adminAction("payments.confirm", async (formData, projectId) => {
   await recordPayment(getDb(), projectId, {
     amountFen: yuanToFen(text(formData, "yuan")),
     method: text(formData, "method") || "人工记录",
@@ -207,14 +223,14 @@ export async function paymentAction(projectId: string, formData: FormData) {
   return paymentHandler(projectId, formData);
 }
 
-const minutesHandler = adminAction(async (formData, projectId) => {
-  await setFounderMinutes(getDb(), projectId, Math.max(0, Number(text(formData, "minutes")) || 0));
+const minutesHandler = adminAction("company.manage", async (formData, projectId) => {
+  await setFounderMinutes(getDb(), projectId, Number(text(formData, "minutes")));
 });
 export async function minutesAction(projectId: string, formData: FormData) {
   return minutesHandler(projectId, formData);
 }
 
-const proposalHandler = adminAction(async (formData, projectId) => {
+const proposalHandler = adminAction("quotes.approve", async (formData, projectId) => {
   const verdict = z.enum(["approve", "reject"]).parse(formData.get("verdict"));
   await decideQuote(getDb(), enqueueAdvance, {
     projectId,
@@ -224,19 +240,20 @@ const proposalHandler = adminAction(async (formData, projectId) => {
     reason: text(formData, "reason").slice(0, 500),
     quoteFen: verdict === "approve" ? yuanToFen(text(formData, "yuan")) : undefined,
   });
+  return verdict === "approve" ? "报价已确认，等待客户接受；此时尚未计入实收。" : "报价已退回重写，新版本需要重新审批。";
 });
 export async function founderProposalAction(projectId: string, formData: FormData) {
   return proposalHandler(projectId, formData);
 }
 
-const receiptUploadHandler = adminAction(async (formData, projectId) => {
+const receiptUploadHandler = adminAction("payments.confirm", async (formData, projectId) => {
   await uploadReceipt(getDb(), enqueueAdvance, { projectId, bytes: await readUploadedImage(formData, "receipt"), actor: "founder" });
 });
 export async function founderReceiptUploadAction(projectId: string, formData: FormData) {
   return receiptUploadHandler(projectId, formData);
 }
 
-const receiptConfirmationHandler = adminAction(async (formData, projectId) => {
+const receiptConfirmationHandler = adminAction("payments.confirm", async (formData, projectId) => {
   await confirmReceipt(getDb(), enqueueAdvance, {
     projectId,
     receiptId: z.uuid().parse(formData.get("receiptId")),
@@ -249,7 +266,7 @@ export async function confirmReceiptAction(projectId: string, formData: FormData
   return receiptConfirmationHandler(projectId, formData);
 }
 
-const pauseHandler = adminAction(async (formData, projectId) => {
+const pauseHandler = adminAction("projects.manage", async (formData, projectId) => {
   const paused = z.enum(["1", "0"]).parse(formData.get("paused")) === "1";
   await setPaused(getDb(), enqueueAdvance, projectId, paused);
 });
@@ -257,14 +274,14 @@ export async function pauseProjectAction(projectId: string, formData: FormData) 
   return pauseHandler(projectId, formData);
 }
 
-const markTestLeadHandler = adminAction(async (formData, projectId) => {
+const markTestLeadHandler = adminAction("growth.manage", async (formData, projectId) => {
   await setLeadTest(getDb(), projectId, z.uuid().parse(formData.get("leadId")), formData.get("test") === "1");
 });
 export async function markTestLeadAction(projectId: string, formData: FormData) {
   return markTestLeadHandler(projectId, formData);
 }
 
-const landingEditHandler = adminAction(async (formData, projectId) => {
+const landingEditHandler = adminAction("delivery.approve", async (formData, projectId) => {
   const rows = (key: string) => text(formData, key).slice(0, 3000).split("\n").map((value) => value.trim()).filter(Boolean);
   const field = (key: string) => z.string().min(1).max(600).parse(text(formData, key));
   const claim = text(formData, "claim");
@@ -288,7 +305,7 @@ export async function editLandingAction(projectId: string, formData: FormData) {
   return landingEditHandler(projectId, formData);
 }
 
-const supportReplyHandler = adminAction(async (formData, projectId) => {
+const supportReplyHandler = adminAction("support.reply", async (formData, projectId) => {
   await replyToSupport(getDb(), projectId, z.uuid().parse(formData.get("messageId")), text(formData, "reply"));
 });
 export async function replyToSupportAction(projectId: string, formData: FormData) {
@@ -296,7 +313,7 @@ export async function replyToSupportAction(projectId: string, formData: FormData
 }
 
 export async function uploadPaymentCodeAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("company.manage", "/admin/payment");
   try {
     await savePaymentCode(getDb(), await readUploadedImage(formData, "paymentCode"));
   } catch (error) {
@@ -306,7 +323,7 @@ export async function uploadPaymentCodeAction(formData: FormData) {
   redirect("/admin/payment?saved=1");
 }
 
-const evidenceHandler = adminAction(async (formData, projectId) => {
+const evidenceHandler = adminAction("projects.manage", async (formData, projectId) => {
   await addManualEvidence(getDb(), {
     projectId,
     url: text(formData, "url"),
@@ -324,7 +341,7 @@ export async function manualEvidenceAction(projectId: string, formData: FormData
   return evidenceHandler(projectId, formData);
 }
 
-const founderAnswersHandler = adminAction(async (formData, projectId) => {
+const founderAnswersHandler = adminAction("projects.manage", async (formData, projectId) => {
   const answers: Record<string, string> = {};
   for (const [key, value] of formData) {
     if (key.startsWith("answer_") && typeof value === "string") {
@@ -343,21 +360,21 @@ export async function founderAnswersAction(projectId: string, formData: FormData
   return founderAnswersHandler(projectId, formData);
 }
 
-const skipClarificationsHandler = adminAction(async (_formData, projectId) => {
+const skipClarificationsHandler = adminAction("projects.manage", async (_formData, projectId) => {
   await skipClarifications(getDb(), enqueueAdvance, projectId);
 });
 export async function skipClarificationsAction(projectId: string, formData: FormData) {
   return skipClarificationsHandler(projectId, formData);
 }
 
-const ownProductHandler = adminAction(async (formData, projectId) => {
+const ownProductHandler = adminAction("projects.manage", async (formData, projectId) => {
   await setOwnProduct(getDb(), projectId, formData.get("value") === "1");
 });
 export async function ownProductAction(projectId: string, formData: FormData) {
   return ownProductHandler(projectId, formData);
 }
 
-const uploadImagesHandler = adminAction(async (formData, projectId) => {
+const uploadImagesHandler = adminAction("projects.manage", async (formData, projectId) => {
   const kind = z.enum(["product", "competitor"]).parse(formData.get("kind"));
   const note = text(formData, "note").slice(0, 200);
   for (const bytes of await readUploadedFiles(formData, "images")) {
@@ -368,21 +385,21 @@ export async function adminUploadImagesAction(projectId: string, formData: FormD
   return uploadImagesHandler(projectId, formData);
 }
 
-const deleteImageHandler = adminAction(async (formData, projectId) => {
+const deleteImageHandler = adminAction("projects.manage", async (formData, projectId) => {
   await deleteProjectImage(getDb(), projectId, z.uuid().parse(formData.get("imageId")));
 });
 export async function adminDeleteImageAction(projectId: string, formData: FormData) {
   return deleteImageHandler(projectId, formData);
 }
 
-const retryImagesHandler = adminAction(async (_formData, projectId) => {
+const retryImagesHandler = adminAction("projects.manage", async (_formData, projectId) => {
   await retryFailedImages(getDb(), projectId);
 });
 export async function retryImagesAction(projectId: string, formData: FormData) {
   return retryImagesHandler(projectId, formData);
 }
 
-const deleteLeadHandler = adminAction(async (formData) => {
+const deleteLeadHandler = adminAction("growth.manage", async (formData) => {
   await getDb().delete(leads).where(eq(leads.id, text(formData, "leadId")));
 });
 export async function deleteLeadAction(projectId: string, formData: FormData) {

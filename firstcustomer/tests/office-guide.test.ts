@@ -16,7 +16,7 @@ describe("office workflow guidance", () => {
     expect(officeGuidance(base).nextActor).toBe("customer");
     expect(officeGuidance({ ...base, plan: "pro", quoteRequired: true }).nextActor).toBe("frontdesk");
     expect(officeGuidance({ ...base, plan: "pro", quoteRequired: true, quotePaid: true }).nextActor).toBe("strategy");
-    expect(officeGuidance({ ...base, status: "free_ready" }).condition).toContain("仅在你申请 Pro 后");
+    expect(officeGuidance({ ...base, status: "free_ready" }).condition).toContain("账号开通 Pro");
   });
   it("distinguishes operator review from customer approval and keeps the gates", () => {
     const waiting = { ...base, status: "awaiting_positioning" };
@@ -34,6 +34,15 @@ describe("office workflow guidance", () => {
     expect(uploaded.state).toBe("waiting");
     expect(uploaded.condition).toContain("实际到账");
     expect(officeGuidance({ ...base, status: "awaiting_payment", receiptUploaded: true, audience: "operator" }).state).toBe("action");
+  });
+  it("keeps account Pro guidance with the customer instead of inventing owner approval", () => {
+    const pro = { ...base, plan: "pro" as const, selfServicePro: true };
+    expect(officeGuidance({ ...pro, status: "submitted" }).yourAction).toContain("Pro 工作台");
+    expect(officeGuidance({ ...pro, status: "strategizing" }).nextActor).toBe("customer");
+    expect(officeGuidance({ ...pro, status: "preparing_page" }).nextActor).toBe("customer");
+    expect(officeGuidance({ ...pro, status: "awaiting_positioning", openGate: "positioning" }).condition).toContain("你确认");
+    expect(officeGuidance({ ...pro, status: "reviewing", reportReady: true })).toMatchObject({ state: "complete", link: { href: "#growth" } });
+    expect(officeGuidance({ ...pro, status: "awaiting_positioning", proInactive: true })).toMatchObject({ state: "waiting", link: { href: "/account/upgrade" }, nextActor: "customer" });
   });
   it("distinguishes a running growth review from a report awaiting a decision", () => {
     expect(officeGuidance({ ...base, status: "reviewing", runningAgents: ["growth"] }).state).toBe("working");

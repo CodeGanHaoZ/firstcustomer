@@ -1,3 +1,5 @@
+import { customerMembership } from "@/workflow/membership";
+import { PRO_MODULES } from "@/domain/membership";
 import { LocalizedTextarea } from "@/components/localized-controls";
 import { getLocale } from "@/lib/locale-server";
 import { translateUi } from "@/lib/ui-translation";
@@ -6,6 +8,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { ConclusionStatus, ProvenanceSection } from "@/components/provenance-details";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Decide } from "@/components/decide";
@@ -17,6 +20,8 @@ import { OfficeStage } from "@/components/office-stage";
 import { ClearProjectDraft } from "@/components/project-draft";
 import { RequirementCard } from "@/components/requirement-card";
 import { WorkPackageList } from "@/components/work-package-list";
+import { ProKeyForm } from "@/components/pro-key-form";
+import { isProAccessKeyConfigured } from "@/lib/pro-access-key";
 import { requirementHistory } from "@/workflow/requirements";
 import { workPackageReadiness } from "@/workflow/work-packages";
 import { customerRequirementsAction } from "./actions";
@@ -33,16 +38,16 @@ import {
 } from "@/components/project-details";
 import { Button } from "@/components/ui/button";
 import { getDb } from "@/db";
-import type { Gate } from "@/domain/approval";
+import { founderReady, type Gate } from "@/domain/approval";
 import { customerProgress } from "@/domain/customer-progress";
-import { canStartFreeDiagnosis, usesQuoteFlow } from "@/domain/workflow";
+import { canActivateProByKey, canStartFreeDiagnosis, hasProAccess, isAccountPro, isKeyActivatedPro, usesQuoteFlow } from "@/domain/workflow";
 import { formatDateTime, formatYuan } from "@/lib/format";
-import { findCustomerProject, isAccountProjectToken } from "@/lib/customer-project";
+import { findCustomerProject, isAccountProjectToken, requireCustomerProjectSession } from "@/lib/customer-project";
 import { confirmedOrderPayment, hasPaymentCode, latestReceipt, projectOrder } from "@/workflow/commerce";
 import { loadOfficeTransfer } from "@/workflow/office";
 import { loadProjectView, runningProjectAgents } from "@/workflow/queries";
 import { projectSupport } from "@/workflow/support";
-import { customerAcceptanceAction, customerAnswers, customerDecision, customerDeleteImage, customerProposalAction, customerReceiptAction, customerRequestProAction, customerSupportAction, customerUploadImages } from "./actions";
+import { customerAcceptanceAction, customerActivateProAction, customerAnswers, customerDecision, customerDeleteImage, customerProposalAction, customerReceiptAction, customerSupportAction, customerUploadImages } from "./actions";
 import "../../admin/office.css";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +69,7 @@ const GATE_TEXT: Record<Gate, string> = {
 
 export default async function CustomerProjectPage({ params, searchParams }: PageProps<"/p/[token]">) {
   const { token } = await params;
+  await requireCustomerProjectSession(token);
   const { error, notice, intake } = await searchParams;
   const db = getDb();
   const project = await findCustomerProject(db, token);
@@ -75,8 +81,11 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
   ]);
   const commercialOrder = usesQuoteFlow(project) ? order : null;
   const canStartFree = canStartFreeDiagnosis(project, order);
-  const proPaid = project.productPlan === "pro" && commercialOrder?.status === "paid";
-  const advancedAvailable = project.productPlan === "legacy" ? !canStartFree : proPaid;
+  const membership = await customerMembership(db, project.customerId);
+  const accountPro = isAccountPro(project);
+  const proActive = hasProAccess(project, order) && (!accountPro || membership.plan === "pro");
+  const proByKey = proActive && isKeyActivatedPro(project);
+  const advancedAvailable = project.productPlan === "legacy" ? !canStartFree : proActive;
   const visibleProposal = commercialOrder && ["quoted", "accepted", "paid"].includes(commercialOrder.status)
     ? commercialOrder.proposal : null;
   const awaitingPayment = !!commercialOrder && commercialOrder.status === "accepted" &&
@@ -88,33 +97,33 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
   ]);
 
   const openGate: Gate | null =
-    project.status === "awaiting_positioning" &&
-    view.gates.positioning.founder === "approved" &&
+    accountPro && !proActive ? null : project.status === "awaiting_positioning" &&
+    founderReady(view.gates.positioning) &&
     view.gates.positioning.customer === "pending"
       ? "positioning"
       : project.status === "awaiting_publish" &&
-          view.gates.publish.founder === "approved" &&
+          founderReady(view.gates.publish) &&
           view.gates.publish.customer === "pending"
         ? "publish"
-        : project.status === "reviewing" &&
-            view.gates.next_round.founder === "approved" &&
+        : project.status === "reviewing" && (!accountPro || Boolean(view.report?.next_hypothesis)) &&
+            founderReady(view.gates.next_round) &&
             view.gates.next_round.customer === "pending"
           ? "next_round"
           : null;
   const progress = customerProgress({
     status: project.status, paused: project.paused, runningAgents, openGate, reportReady: !!view.report,
-    quoteVisible: !!visibleProposal, awaitingPayment, receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree,
+    quoteVisible: !!visibleProposal, awaitingPayment, receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree, selfServicePro: accountPro && proActive, proInactive: accountPro && !proActive,
   });
   const supportPending = !project.paused && support.some((item) => item.status === "queued");
   const officeInput: OfficeGuideInput = { status: project.status, paused: project.paused, runningAgents, plan: project.productPlan,
     quoteRequired: usesQuoteFlow(project), quotePaid: commercialOrder?.status === "paid", openGate, reportReady: !!view.report,
-    receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree, failedFrom: project.failedFrom };
+    receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree, failedFrom: project.failedFrom, selfServicePro: accountPro && proActive, proInactive: accountPro && !proActive };
   const stations = customerOfficeStations(officeInput);
   const activeRoom = stations.find(({ state }) => state === "running")?.key;
   const finished = project.status === "free_ready" || project.status === "cancelled" || (project.status === "delivered" && order?.deliveryStatus === "accepted");
   const refresh = supportPending || activeRoom || project.status === "submitted" ? 3 : progress.refreshSeconds ?? (finished ? null : 12);
 
-  const planLabel = proPaid ? "Pro" : project.productPlan === "pro" ? "Free · Pro 待开通" : "Free";
+  const planLabel = accountPro && proActive ? (membership.testAccount ? "Pro · 测试权益" : "Pro · 账号权益") : proByKey ? "Pro · 密钥已开通" : proActive ? "Pro" : project.productPlan === "pro" ? "Free · Pro 待开通" : "Free";
   const showPlan = project.productPlan !== "legacy" || canStartFree;
 
   return (
@@ -130,6 +139,8 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         />
         {error ? <p className="notice notice--fail" role="alert"><T>{String(error)}</T></p> : null}
         {notice ? <p className="notice notice--ok" role="status"><T>{String(notice)}</T></p> : null}
+        {accountPro && proActive ? <section className="paper"><p className="notice notice--ok"><T>{membership.testAccount ? "当前使用 Pro 测试权益，不代表付款或收入。" : "当前项目使用已开通的 Pro 账号权益，无需初步报价与老板开通审核。"}</T></p><nav className="flex flex-wrap gap-2" aria-label="Pro 工作模块">{PRO_MODULES.map((module) => <a key={module.key} href={`#${module.anchor}`} className="btn btn--ghost btn--sm"><T>{module.zh}</T></a>)}</nav></section> : null}
+        {proByKey ? <p className="notice notice--ok"><T>当前项目已通过密钥开通 Pro。后续定位和发布仍需双方确认。</T></p> : null}
 
         {refresh ? <AutoRefresh seconds={refresh} /> : null}
         <section className="paper paper--tan rise" style={{ "--i": 3 } as CSSProperties} aria-labelledby="customer-progress-title">
@@ -162,7 +173,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         {openGate ? (
           <section id="approval" className="paper paper--focus rise" aria-labelledby="approval-title">
             <p className="eyebrow m-0"><T>待你确认</T></p>
-            <h2 id="approval-title" className="paper__title mt-1"><T>{GATE_TEXT[openGate]}</T></h2>
+            <h2 id="approval-title" className="paper__title mt-1"><T>{accountPro ? "请核对当前方案并确认" : GATE_TEXT[openGate]}</T></h2>
             {openGate === "publish" ? <p className="paper__lead"><T>实验使用一个免费渠道。额外付费推广需要单独确认。</T><T>{project.budgetNote ? `你提交的预算和时间要求为「${project.budgetNote}」。` : ""}</T></p> : null}
             {openGate === "publish" && view.page ? (
               <a href={`/p/${token}/preview?version=${view.page.version}`} target="_blank" rel="noreferrer" className="btn btn--ghost btn--sm mt-4"><T>
@@ -198,12 +209,14 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           <section id="diagnosis" className="paper scroll-mt-24 rise" aria-labelledby="diagnosis-title">
             <p className="eyebrow m-0"><T>出海机会报告</T></p>
             <h2 id="diagnosis-title" className="paper__title mt-1 max-w-[30em]">{view.diagnosis.summary}</h2>
+            <ConclusionStatus provenance={view.provenance} subjectId={view.diagnosisTaskId} recordKey="summary" />
             <ul className="card-grid mt-5">
               {view.diagnosis.candidates.map((candidate, index) => (
                 <li key={candidate.name} className="tile rise bg-background" style={{ "--i": index } as CSSProperties}>
                   <p className="tile__meta"><T>候选人群</T> {String(index + 1).padStart(2, "0")}</p>
                   <h3 className="tile__title">{candidate.name}</h3>
                   <p className="m-0 text-sm leading-relaxed text-muted-foreground">{candidate.why}</p>
+                  <ConclusionStatus provenance={view.provenance} subjectId={view.diagnosisTaskId} recordKey={`candidate:${index}`} />
                 </li>
               ))}
             </ul>
@@ -216,19 +229,19 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           </section>
         ) : null}
 
-        {project.productPlan === "free" && project.status === "free_ready" && !project.paused ? (
-          <section className="paper paper--apricot rise" aria-labelledby="project-pro-title">
+        {canActivateProByKey(project) ? (
+          <section id="pro" className="paper paper--apricot rise" aria-labelledby="project-pro-title">
             <div className="paper__head mb-0">
               <div>
                 <p className="eyebrow m-0">Pro</p>
-                <h2 id="project-pro-title" className="paper__title mt-1"><T>升级到 Pro</T></h2>
+                <h2 id="project-pro-title" className="paper__title mt-1"><T>{project.productPlan === "free" ? "升级到 Pro" : "密钥开通 Pro"}</T></h2>
                 <p className="paper__lead"><T>根据出海机会报告继续做完整定位、英文验证页、渠道行动和增长复盘。</T></p>
-                <p className="paper__lead"><T>申请后可查看服务提案和报价，由你决定是否付款。</T></p>
+                {project.productPlan === "free" ? <p className="paper__lead"><T>Pro 账号提供高级工作模块，价格尚未公布，暂未开放在线购买。</T></p> : null}
               </div>
-              <form action={customerRequestProAction.bind(null, token)}>
-                <Button type="submit" size="lg"><T>申请 Pro 报价</T><ArrowRight size={15} aria-hidden="true" /></Button>
-              </form>
+              {project.productPlan === "free" ? <Link href="/account/upgrade" className="btn btn--primary"><T>了解 Pro</T><ArrowRight size={15} aria-hidden="true" /></Link> : null}
             </div>
+            {isProAccessKeyConfigured() ? <ProKeyForm action={customerActivateProAction.bind(null, token)} /> :
+              <p className="mt-5 text-sm text-muted-foreground"><T>密钥开通暂未启用，请联系首客获取开通方式。</T></p>}
           </section>
         ) : null}
 
@@ -267,7 +280,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         ) : null}
         {advancedAvailable ? (
           <>
-            <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#delivery" />
+            <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#delivery" selfServicePro={accountPro} />
             <div id="strategy"><PositioningSection view={view} /></div>
             <div id="launch"><PageSection view={view} previewHref={`/p/${token}/preview`} /></div>
             <div id="growth"><GrowthSection view={view} /></div>
@@ -283,6 +296,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           deleteAction={customerDeleteImage.bind(null, token)}
         />
         <div id="research"><EvidenceSection view={view} /></div>
+        <ProvenanceSection provenance={view.provenance} />
 
         <details id="support" className="fold rise" open={support.length > 0 || undefined}>
           <summary>

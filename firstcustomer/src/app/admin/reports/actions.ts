@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/auth";
 import { decideWeekly, requestCompanyReport } from "@/workflow/company-reports";
 
 export async function createWeeklyReport() {
-  await requireAdmin();
+  await requireAdmin("company.manage", "/admin/reports");
   try {
     await requestCompanyReport(getDb(), enqueueCompanyReport, "weekly");
   } catch (error) {
@@ -20,7 +20,7 @@ export async function createWeeklyReport() {
 }
 
 export async function createStandupReport() {
-  await requireAdmin();
+  await requireAdmin("company.manage", "/admin/reports");
   try {
     await requestCompanyReport(getDb(), enqueueCompanyReport, "standup");
   } catch (error) {
@@ -31,7 +31,7 @@ export async function createStandupReport() {
 }
 
 export async function weeklyDecisionAction(reportId: string, formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("company.manage", "/admin/reports");
   try {
     const choice = z.enum(["continue", "pricing", "trim"]).parse(formData.get("choice"));
     await decideWeekly(getDb(), z.uuid().parse(reportId), choice, String(formData.get("note") ?? "").slice(0, 1000));

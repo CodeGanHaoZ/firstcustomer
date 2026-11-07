@@ -47,11 +47,11 @@ describe("状态机", () => {
     expect(sendBackAllowed("growth->strategy", 1)).toBe(false);
   });
 
-  it("免费初诊完成后可请求 Pro 报价，付款阶段才能进入策略", () => {
+  it("免费初诊完成后可请求 Pro 报价，或通过密钥进入策略", () => {
     expect(canTransition("researching", "free_ready")).toBe(true);
     expect(canTransition("free_ready", "drafting_quote")).toBe(true);
-    expect(canTransition("free_ready", "strategizing")).toBe(false);
-    expect(canTransition("awaiting_quote_acceptance", "strategizing")).toBe(false);
+    expect(canTransition("free_ready", "strategizing")).toBe(true);
+    expect(canTransition("awaiting_quote_acceptance", "strategizing")).toBe(true);
     expect(usesQuoteFlow({ requiresPayment: true, isOwnProduct: false, productPlan: "free" })).toBe(false);
     expect(usesQuoteFlow({ requiresPayment: true, isOwnProduct: false, productPlan: "pro" })).toBe(true);
   });

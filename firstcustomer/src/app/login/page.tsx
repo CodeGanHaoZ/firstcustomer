@@ -8,6 +8,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: translateUi(locale, "登录首客 · HiFirst") };
 }
 
-export default function LoginPage() {
-  return <CustomerAuthPage />;
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  return <CustomerAuthPage returnTo={(await searchParams).next} />;
 }

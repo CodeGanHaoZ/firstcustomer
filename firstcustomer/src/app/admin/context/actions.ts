@@ -16,7 +16,7 @@ const settingsSchema = z.object({
 });
 
 export async function saveCompanyContext(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("company.manage", "/admin/context");
   try {
     const values = settingsSchema.parse(Object.fromEntries(formData));
     await saveCompanySettings(getDb(), values, formData.get("intent") === "confirm");

@@ -4,7 +4,7 @@ import { markdownArchive } from "@/lib/markdown-archive";
 import { companyDocuments } from "@/workflow/company-context";
 
 export async function GET() {
-  await requireAdmin();
+  await requireAdmin("company.manage", "/admin/context");
   const files = await companyDocuments(getDb());
   return new Response(markdownArchive(files), {
     headers: {

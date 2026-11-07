@@ -1,5 +1,6 @@
 import { OFFICE_CHARACTERS } from "@/lib/brand";
 import type { GateState } from "./approval";
+import { founderReady } from "./approval";
 import type { ProjectStatus } from "./workflow";
 
 export type DepartmentKey = "frontdesk" | "research" | "strategy" | "finance" | "launch" | "growth";
@@ -99,6 +100,7 @@ export type OfficeInput = {
   tasks: OfficeTask[];
   gates: { positioning: GateState; publish: GateState; next_round: GateState };
   hasReport: boolean;
+  nextRoundAvailable?: boolean;
   pagePublished: boolean;
   unansweredQuestions: number;
   supportPending?: number;
@@ -151,7 +153,7 @@ const ROUTE_TARGET: Record<string, DepartmentKey> = {
 };
 
 function gateDetail(gate: GateState, subject: string) {
-  return gate.founder === "pending" ? `${subject}，等首客老板把关` : `${subject}，等客户确认`;
+  return founderReady(gate) ? `${subject}，等客户确认` : `${subject}，等首客老板把关`;
 }
 
 // 人物状态完全由后台业务状态推出，前端不另外维护一套。
@@ -202,7 +204,8 @@ export function departmentViews(input: OfficeInput): DepartmentView[] {
       if (status === "awaiting_positioning") return view("awaiting_approval", gateDetail(input.gates.positioning, "定位方案已提交"));
       if (status === "awaiting_publish") return view("awaiting_approval", gateDetail(input.gates.publish, "页面通过声明检查"));
       if (status === "collecting") return view("waiting", "页面已发布，等待真实访问和留资");
-      if (status === "reviewing") return view("awaiting_approval", "复盘完成，等首客老板决定交付或下一轮");
+      if (status === "reviewing") return input.gates.next_round.founderRequired === false && input.nextRoundAvailable === false
+        ? view("completed", "本轮复盘已完成") : view("awaiting_approval", gateDetail(input.gates.next_round, "复盘完成"));
     }
 
     if (key === "frontdesk") {

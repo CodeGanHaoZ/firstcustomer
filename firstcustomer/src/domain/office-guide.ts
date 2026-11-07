@@ -9,7 +9,7 @@ export type OfficeGuideInput = {
   plan?: ProjectPlan; quoteRequired?: boolean; quotePaid?: boolean;
   openGate?: Gate | null; reportReady?: boolean; receiptUploaded?: boolean;
   deliveryStatus?: string; canStartFree?: boolean; failedFrom?: string | null;
-  audience?: "customer" | "operator"; operatorTurn?: boolean;
+  audience?: "customer" | "operator"; operatorTurn?: boolean; selfServicePro?: boolean; proInactive?: boolean;
 };
 export type OfficeGuide = {
   room: DepartmentKey | null;
@@ -63,7 +63,7 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
     if (operator && customer) guide.title = t(`等待客户确认${subject[0]}`, `Waiting for customer approval: ${subject[1]}`);
     guide.task = t("这一步需要人工确认，Agent 会等确认后再继续。", "This stage needs a human decision. The agent continues after approval.");
     guide.yourAction = customer ? (operator ? t("客户确认后自动进入后续任务。", "The next task starts after customer approval.") : t("查看当前版本，确认采用或提出修改。", "Review the current version, approve it or request changes.")) : (operator ? t("在项目详情核对当前版本，再交客户确认。", "Review the current version in project details, then request customer approval.") : t("首客团队正在把关，你现在不用重复提交。", "HiFirst is reviewing this stage. You do not need to resubmit."));
-    next(actor, task, ["双方确认当前版本后", "After both parties approve this version"]);
+    next(actor, task, input.selfServicePro ? ["你确认当前版本后", "After you approve this version"] : ["双方确认当前版本后", "After both parties approve this version"]);
     if (guide.state === "action") action(operator ? "#decisions" : "#approval", ["查看待确认事项", "Review the pending decision"]);
   };
   if (work) {
@@ -76,7 +76,7 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
       guide.task = t("先核对已提交的产品资料，再交给 Nori 研究。", "Check the submitted product details, then pass them to Nori for research.");
       guide.output = c(WORK.researching.output);
       next("research", ["Nori 研究海外需求与候选人群", "Nori researches overseas needs and candidate audiences"]);
-      guide.yourAction = input.canStartFree ? t("确认启动免费分析后，Nori 才会开始。", "Nori starts after you confirm the free assessment.") : t("项目登记已保存，等待首客确认启动。", "Your brief is saved and waiting for HiFirst to start the work.");
+      guide.yourAction = input.selfServicePro ? t("从 Pro 工作台选择模块启动，任务会在这里显示进度。", "Start a module from your Pro workspace to see its progress here.") : input.canStartFree ? t("确认启动免费分析后，Nori 才会开始。", "Nori starts after you confirm the free assessment.") : t("项目登记已保存，等待首客确认启动。", "Your brief is saved and waiting for HiFirst to start the work.");
       break;
     case "researching":
       if (input.plan === "free") next("customer", ["先查看免费的出海机会报告", "Review your free opportunity report"], ["研究完成后，是否申请 Pro 由你决定", "After research, you decide whether to request Pro"]);
@@ -86,8 +86,8 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
     case "free_ready":
       guide.state = "complete"; guide.title = t("Nori 已完成免费出海机会报告", "Nori has completed your free opportunity report");
       guide.task = t("先看候选人群、证据与待验证的问题。Free 在这里交付结果。", "Review the audiences, evidence and open questions. This is the Free deliverable.");
-      guide.output = c(WORK.researching.output); next("frontdesk", ["如需继续，Lumi 会整理 Pro 提案", "If you continue, Lumi prepares a Pro proposal"], ["仅在你申请 Pro 后", "Only after you request Pro"]);
-      guide.yourAction = t("先读报告，再决定是否申请 Pro；不需要自动进入付费服务。", "Read the report, then decide whether to request Pro. Paid work is optional."); action("#diagnosis", ["查看出海机会报告", "View opportunity report"]); break;
+      guide.output = c(WORK.researching.output); next("customer", ["了解 Pro 的高级工作模块", "Explore the advanced Pro modules"], ["仅在账号开通 Pro 后继续", "Continue only after your account has Pro access"]);
+      guide.yourAction = t("先读报告，再了解 Pro 高级模块；价格尚未公布。", "Read the report, then explore Pro modules. Pricing is not published yet."); action("#diagnosis", ["查看出海机会报告", "View opportunity report"]); break;
     case "drafting_quote": next("owner", ["首客经营者核定服务范围与价格", "The operator reviews the scope and price"], ["Lumi 完成提案草稿后", "After Lumi finishes the draft proposal"]); break;
     case "awaiting_quote":
       guide.state = operator ? "action" : "waiting"; guide.title = t("等待经营者核定 Pro 提案", "Waiting for operator review of the Pro proposal");
@@ -109,16 +109,20 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
       guide.yourAction = input.receiptUploaded ? (operator ? t("核对最新凭证与实际到账金额。", "Verify the latest proof and amount received.") : t("凭证已提交，等待首客核对。", "Your proof is submitted. Wait for HiFirst to verify it.")) : (operator ? t("等待客户上传付款凭证。", "Wait for the customer to upload payment proof.") : t("按已确认报价付款，再上传付款截图。", "Pay the accepted quote and upload payment proof."));
       if (guide.state === "action") action(operator ? "#decisions" : "#payment", ["查看付款事项", "View payment details"]); break;
     case "reading_receipt": next("owner", ["经营者核实实际到账后，再交 Fino", "The operator verifies receipt before handing off to Fino"]); break;
-    case "strategizing": next("owner", ["经营者把关，再请你确认定位", "Operator review, then your positioning approval"]); break;
+    case "strategizing": next(input.selfServicePro ? "customer" : "owner", input.selfServicePro ? ["由你确认定位方向", "You approve the positioning direction"] : ["经营者把关，再请你确认定位", "Operator review, then your positioning approval"]); break;
     case "awaiting_positioning": guide.output = c(WORK.strategizing.output); approval("positioning", ["定位", "positioning"], "launch", ["Kito 按确认的定位准备英文验证页", "Kito prepares an English page from the approved positioning"]); break;
-    case "preparing_page": next("owner", ["经营者把关，再请你确认是否公开", "Operator review, then your approval to publish"]); break;
+    case "preparing_page": next(input.selfServicePro ? "customer" : "owner", input.selfServicePro ? ["由你确认是否公开页面", "You approve whether to publish the page"] : ["经营者把关，再请你确认是否公开", "Operator review, then your approval to publish"]); break;
     case "awaiting_publish": guide.output = c(WORK.preparing_page.output); approval("publish", ["发布", "publishing"], "growth", ["Pogo 收集真实访问、留资与回复", "Pogo collects real visits, leads and replies"]); break;
     case "published": case "collecting":
       guide.state = "waiting"; guide.title = t("Pogo 在等待真实反馈", "Pogo is waiting for real feedback"); guide.task = t("页面已经公开，接下来执行已批准的渠道行动并积累样本。", "The page is public. Carry out approved channel actions and gather a sample."); guide.output = t("真实访问、留资和回复记录", "Real visit, lead and reply records");
       next("growth", ["Pogo 按预设标准复盘本轮实验", "Pogo reviews the experiment against preset criteria"], ["样本达到要求并启动复盘后", "After the sample is sufficient and the review is started"]);
       guide.yourAction = operator ? t("记录真实渠道执行，样本足够后启动复盘。", "Record actual channel execution and start the review when the sample is sufficient.") : t("可以查看英文页与反馈记录；当前不是 Agent 故障。", "You can review the page and feedback records. Waiting for data is not an agent failure."); break;
     case "reviewing":
-      if (input.reportReady) { guide.output = c(WORK.reviewing.output); approval("next_round", ["下一轮实验", "the next experiment"], "strategy", ["确认下一轮后，Fino 调整策略", "If another round is approved, Fino adjusts the strategy"]); }
+      if (input.reportReady && input.selfServicePro && input.openGate !== "next_round") {
+        guide.state = "complete"; guide.title = t("本轮增长复盘已完成", "This growth review is complete"); guide.output = c(WORK.reviewing.output);
+        guide.yourAction = t("查看复盘结果与已保存的交付内容。", "Review the results and saved deliverables."); action("#growth", ["查看增长复盘", "View growth review"]);
+      }
+      else if (input.reportReady) { guide.output = c(WORK.reviewing.output); approval("next_round", ["下一轮实验", "the next experiment"], "strategy", ["确认下一轮后，Fino 调整策略", "If another round is approved, Fino adjusts the strategy"]); }
       else next("owner", ["查看复盘，决定交付或下一轮", "Review the results and decide on delivery or another round"]); break;
     case "needs_info":
       guide.state = operator ? "waiting" : "action"; guide.title = t("Nori 需要补充资料", "Nori needs more information"); guide.task = t("先补充本轮追问，未知的信息可以如实保留。", "Answer the current questions and leave uncertain details as unknown."); guide.output = t("补充后的需求记录", "Updated requirement records"); next("research", ["Nori 带着补充资料继续研究", "Nori continues research with the additional details"]);
@@ -139,6 +143,12 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
     guide.title = finishing ? t(`${name(finishing)} 正在收尾，之后暂停`, `${name(finishing)} is finishing before pausing`) : t("项目已暂停", "Project paused");
     guide.nextActor = null; guide.next = t("恢复项目后才会开始下一步", "The next stage starts after the project resumes"); guide.condition = "";
     guide.yourAction = operator ? t("在项目设置中恢复后继续。", "Resume the project in its settings to continue.") : t("联系首客恢复项目，已保存的内容会保留。", "Contact HiFirst to resume. Saved material is preserved."); delete guide.link;
+  }
+  if (input.proInactive && !["cancelled", "delivered"].includes(input.status)) {
+    guide.room = null; guide.state = "waiting"; guide.title = t("Pro 账号权益当前不可用", "Pro account access is unavailable");
+    guide.task = t("已保存的项目资料仍可查看，高级任务等待账号权益恢复。", "Saved project records remain available. Advanced tasks wait for account access to be restored.");
+    guide.nextActor = "customer"; guide.next = t("核对账号版本后继续", "Check your account plan to continue"); guide.condition = "";
+    guide.yourAction = t("前往账号工作台核对权益，可通过客服寻求帮助。", "Check your account access or ask support for help."); action("/account/upgrade", ["查看账号版本", "View account plan"]);
   }
   return guide;
 }

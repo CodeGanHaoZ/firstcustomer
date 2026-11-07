@@ -46,6 +46,7 @@ export async function replyToSupport(db: Db, projectId: string, messageId: strin
     await tx.insert(decisions).values({
       projectId, subjectId: changed.id, gate: "support", subjectVersion: 1,
       actorRole: "founder", verdict: "approve", reason: "老板核对并回复客户问题",
+      snapshot: { messageId: changed.id, reply },
     });
   });
 }

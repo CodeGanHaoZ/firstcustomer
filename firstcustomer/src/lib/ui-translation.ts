@@ -1,5 +1,6 @@
 import type { Locale } from "./locale";
 import { UI_MESSAGES } from "./ui-messages";
+import { MEMBERSHIP_UI_MESSAGES } from "./membership-ui-messages";
 
 // Only explicit UI boundaries call this function. Unknown text remains verbatim.
 export function translateUi(locale: Locale, text: string): string {
@@ -10,10 +11,11 @@ export function translateUi(locale: Locale, text: string): string {
   return text;
 }
 
-const message = (key: string): string | undefined => Object.hasOwn(UI_MESSAGES, key) ? UI_MESSAGES[key] : undefined;
+const message = (key: string): string | undefined => Object.hasOwn(MEMBERSHIP_UI_MESSAGES, key) ? MEMBERSHIP_UI_MESSAGES[key] : Object.hasOwn(UI_MESSAGES, key) ? UI_MESSAGES[key] : undefined;
 
 function translateTemplate(text: string): string | undefined {
   let match: RegExpMatchArray | null;
+  if ((match = text.match(/^摘录已匹配 (\d+) 条 · 未匹配或待核对 (\d+) 条$/))) return `${match[1]} quotes matched · ${match[2]} unmatched or awaiting checking`;
   if ((match = text.match(/^项目登记 · (\d+) \/ (\d+)$/))) return `Project details · ${match[1]} / ${match[2]}`;
   if ((match = text.match(/^修改(.+)$/)) && message(match[1])) return `Edit ${message(match[1])}`;
   if ((match = text.match(/^请缩短到 (\d+) 个字符以内。$/))) return `Please use no more than ${match[1]} characters.`;

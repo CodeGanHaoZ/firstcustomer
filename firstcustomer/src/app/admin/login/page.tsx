@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isAdmin } from "@/lib/auth";
+import { ownerReturnTo } from "@/lib/auth-return";
 import { loginAction } from "../actions";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,8 +19,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage({ searchParams }: PageProps<"/admin/login">) {
-  if (await isAdmin()) redirect("/admin");
-  const { error } = await searchParams;
+  const { error, next: requestedNext } = await searchParams;
+  const next = ownerReturnTo(requestedNext);
+  if (await isAdmin()) redirect(next);
   return (
     <div className="site-shell">
       <main className="site-main grid content-center">
@@ -37,6 +39,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/admin/logi
             </header>
             {error ? <p role="alert" className="notice notice--fail"><T>账号或密码不正确，或尝试太频繁。</T></p> : null}
             <form action={loginAction} className="grid gap-4">
+              <input type="hidden" name="next" value={next} />
               <div className="grid gap-2"><Label htmlFor="username"><T>内部账号</T></Label>
                 <Input id="username" name="username" required autoComplete="username" maxLength={128} autoCapitalize="none" spellCheck={false} /></div>
               <div className="grid gap-2"><Label htmlFor="password"><T>密码</T></Label>

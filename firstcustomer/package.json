@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 3100",
+    "owner:provision": "node scripts/provision-owner.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -17,7 +18,10 @@
     "typecheck": "next typegen && tsc --noEmit",
     "library:build": "tsx --env-file-if-exists=.env.local scripts/build-library.ts",
     "knowledge:seed": "tsx --env-file-if-exists=.env.local scripts/seed-knowledge.ts",
-    "knowledge:import": "tsx --env-file-if-exists=.env.local scripts/import-knowledge.ts"
+    "knowledge:import": "tsx --env-file-if-exists=.env.local scripts/import-knowledge.ts",
+    "accounts:seed-test": "tsx --env-file-if-exists=.env.local scripts/seed-test-accounts.ts",
+    "verify:roles": "tsx --env-file-if-exists=.env.local scripts/verify-role-flows.ts",
+    "audit:source": "tsx scripts/audit-source.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

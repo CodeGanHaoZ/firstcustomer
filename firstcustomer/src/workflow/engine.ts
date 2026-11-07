@@ -1,3 +1,4 @@
+import { activateAccountPro, customerMembership } from "./membership";
 import { randomBytes } from "node:crypto";
 import { and, asc, count, countDistinct, desc, eq, gt, inArray, max, sql } from "drizzle-orm";
 import {
@@ -51,7 +52,6 @@ import {
   positionings,
   projectImages,
   projects,
-  sourceDocuments,
   supportMessages,
 } from "@/db/schema";
 import { toDataUrl } from "@/domain/images";
@@ -70,6 +70,8 @@ import {
   sendBackAllowed,
   STATUS_LABELS,
   usesQuoteFlow,
+  isAccountPro,
+  isKeyActivatedPro,
   type ProjectStatus,
   type SendBackRoute,
 } from "@/domain/workflow";
@@ -80,6 +82,8 @@ import { recordClaimCheck } from "./landing-edits";
 import { needsFounder } from "./support";
 import { knowledgeForAgent } from "@/knowledge/store";
 import { clarificationProblem, MAX_CLARIFICATION_ROUNDS, requirementSnapshot } from "@/domain/requirements";
+import { readCapturedSource, textHash } from "./source-versions";
+import { evidenceTraceProblems, recordConclusion } from "./provenance";
 
 export type EngineDeps = {
   db: Db;
@@ -115,7 +119,7 @@ async function runTask<T>(
   deps: EngineDeps,
   project: Project,
   options: TaskOptions,
-  run: (context: { addSearchCalls: (n: number) => void }) => Promise<{
+  run: (context: { taskId: string; addSearchCalls: (n: number) => void }) => Promise<{
     output: T;
     summary: RunSummary;
   }>,
@@ -143,6 +147,10 @@ async function runTask<T>(
       requirementVersion: project.requirementVersion,
       scopeVersion: project.scopeVersion,
       input: options.input,
+      promptHash: textHash(({ research: RESEARCH_PLAN_PROMPT + "\n" + RESEARCH_PROMPT,
+        strategy: STRATEGY_PROMPT, launch: LAUNCH_PROMPT, growth: GROWTH_PROMPT,
+        quote: QUOTE_PROMPT, receipt: RECEIPT_PROMPT, support: SUPPORT_PROMPT, vision: VISION_PROMPT,
+      } as Record<string, string>)[options.agent] ?? options.agent),
       trigger: options.trigger ?? "normal",
       parentTaskId: options.parentTaskId ?? null,
       round: project.round,
@@ -173,6 +181,7 @@ async function runTask<T>(
 
   try {
     const { output, summary } = await run({
+      taskId: task.id,
       addSearchCalls: (n) => {
         toolSearchCalls += n;
       },
@@ -373,12 +382,12 @@ function mergeSummaries(list: RunSummary[]): RunSummary {
   };
 }
 
-async function readProductPage(deps: EngineDeps, url: string | null) {
+async function readProductPage(deps: EngineDeps, url: string | null, projectId: string, taskId: string) {
   if (!url) return null;
   try {
     const page = await deps.sources.readPage(url);
-    await cacheDocument(deps.db, { url, title: page.title, text: page.text });
-    return { url, title: page.title, text: page.text.slice(0, 4000) };
+    const source = await cacheDocument(deps.db, { url, title: page.title, text: page.text }, { projectId, taskId, method: "product_page" });
+    return { url, title: page.title, text: page.text.slice(0, 4000), sourceVersionId: source.id };
   } catch (error) {
     return { url, error: error instanceof Error ? error.message : String(error) };
   }
@@ -410,11 +419,11 @@ async function runResearch(deps: EngineDeps, project: Project) {
     deps,
     project,
     { agent: "research", input, ...triggerFor(pending) },
-    async ({ addSearchCalls }): Promise<{ output: ResearchOutput; summary: RunSummary }> => {
+    async ({ addSearchCalls, taskId: researchTaskId }): Promise<{ output: ResearchOutput; summary: RunSummary }> => {
       const summaries: RunSummary[] = [];
       try {
         // 第一步：程序先读产品页，由模型规划检索词。
-        const productPage = await readProductPage(deps, project.productUrl);
+        const productPage = await readProductPage(deps, project.productUrl, project.id, researchTaskId);
         const plan = await runAgent({
           agent: "research:plan",
           tier: "flash",
@@ -443,7 +452,7 @@ async function runResearch(deps: EngineDeps, project: Project) {
         summaries.push(plan.summary);
 
         // 第二步：程序并行检索，并取出相关品类的预存证据。
-        const gathered = await gatherSources(db, deps.sources, plan.output.queries, { projectId: project.id });
+        const gathered = await gatherSources(db, deps.sources, plan.output.queries, { projectId: project.id, taskId: researchTaskId });
         addSearchCalls(gathered.searchCalls);
         const categories = plan.output.categories.filter((c) => LIBRARY_CATEGORIES.some((l) => l.id === c));
         const library = (await libraryEvidence(db, categories)).slice(0, 40).map((e) => ({
@@ -460,7 +469,11 @@ async function runResearch(deps: EngineDeps, project: Project) {
         // 第三步：模型一次输出全部选择，不调用工具；程序核对摘录后统一保存。
         const libraryIds = new Set(library.map((e) => e.library_id));
         const docs = new Map(gathered.results.map((r) => [r.url, r.text]));
-        if (productPage && "text" in productPage && productPage.text) docs.set(productPage.url, productPage.text);
+        const versions = new Map(gathered.results.map((r) => [r.url, r.sourceVersionId]));
+        if (productPage && "text" in productPage && productPage.text) {
+          docs.set(productPage.url, productPage.text);
+          versions.set(productPage.url, productPage.sourceVersionId!);
+        }
         const view = (results: typeof gathered.results) =>
           results.slice(0, 40).map((r) => ({
             url: r.url,
@@ -483,11 +496,10 @@ async function runResearch(deps: EngineDeps, project: Project) {
         const loadCachedDocs = async (urls: string[]) => {
           const missing = [...new Set(urls)].filter((u) => !docs.has(u));
           if (!missing.length) return;
-          const rows = await db
-            .select({ url: sourceDocuments.url, text: sourceDocuments.text })
-            .from(sourceDocuments)
-            .where(inArray(sourceDocuments.url, missing));
-          for (const row of rows) docs.set(row.url, row.text);
+          for (const url of missing) {
+            const row = await readCapturedSource(db, { projectId: project.id, scopeVersion: project.scopeVersion, url });
+            if (row) { docs.set(row.url, row.text); versions.set(row.url, row.id); }
+          }
         };
         const select = (extra: Record<string, unknown>) =>
           runAgent({
@@ -541,14 +553,15 @@ async function runResearch(deps: EngineDeps, project: Project) {
             db,
             deps.sources,
             more.filter((q) => plan.output.candidates.includes(q.candidate)),
-            { projectId: project.id },
+            { projectId: project.id, taskId: researchTaskId },
           );
           addSearchCalls(extra.searchCalls);
           for (const r of extra.results) {
-            if (!docs.has(r.url)) {
-              docs.set(r.url, r.text);
-              gathered.results.push(r);
-            }
+            docs.set(r.url, r.text);
+            versions.set(r.url, r.sourceVersionId);
+            const index = gathered.results.findIndex((old) => old.url === r.url);
+            if (index >= 0) gathered.results[index] = r;
+            else gathered.results.push(r);
           }
           if (extra.results.length) {
             selection = await select({ no_more_queries: true, prefetched: view([...extra.results, ...gathered.results]) });
@@ -559,7 +572,7 @@ async function runResearch(deps: EngineDeps, project: Project) {
         const output = selection.output;
         if (output.status === "need_info") return { output, summary: mergeSummaries(summaries) };
         const dropped: string[] = [];
-        const candidates = [];
+        const candidates: { name: string; why: string; evidence_ids: string[] }[] = [];
         for (const c of output.candidates) {
           const ids: string[] = [];
           const copied = await copyLibraryEvidence(
@@ -567,6 +580,7 @@ async function runResearch(deps: EngineDeps, project: Project) {
             project.id,
             c.library_ids.filter((id) => libraryIds.has(id)).slice(0, 8),
             c.name,
+            researchTaskId,
           );
           ids.push(...copied.map((x) => x.evidence_id));
           // 多写的不报错，只取前 8 条，免得为了条数让模型重写一遍。
@@ -577,7 +591,8 @@ async function runResearch(deps: EngineDeps, project: Project) {
               continue;
             }
             try {
-              const saved = await storeEvidence(db, project.id, { ...pick, candidate: c.name, category: null });
+              const saved = await storeEvidence(db, project.id, { ...pick, candidate: c.name, category: null,
+                sourceVersionId: versions.get(pick.url), taskId: researchTaskId });
               ids.push(saved.evidence_id);
             } catch (error) {
               dropped.push(`${pick.url}：${error instanceof Error ? error.message : error}`);
@@ -592,6 +607,18 @@ async function runResearch(deps: EngineDeps, project: Project) {
           unknowns: output.unknowns,
           ...(dropped.length ? { dropped } : {}),
         };
+        const traceProblems = await evidenceTraceProblems(db, project.id, candidates.flatMap((candidate) => candidate.evidence_ids));
+        if (traceProblems.length || candidates.some((candidate) => !candidate.evidence_ids.length)) throw new Error(`来源链不完整：${traceProblems.join("；") || "候选人群缺少证据"}`);
+        await db.transaction(async (tx) => {
+          await recordConclusion(tx, { project, subjectType: "research", subjectId: researchTaskId, key: "summary",
+            statement: output.summary, rationale: "综合下列候选人群的引用材料；语义支持程度需另行评价。", taskId: researchTaskId,
+            evidence: candidates.flatMap((candidate) => candidate.evidence_ids.map((id) => ({ id, role: "context" as const }))) });
+          for (const [index, candidate] of candidates.entries()) await recordConclusion(tx, {
+            project, subjectType: "research", subjectId: researchTaskId, key: `candidate:${index}`,
+            statement: candidate.name, rationale: candidate.why, taskId: researchTaskId,
+            evidence: candidate.evidence_ids.map((id) => ({ id, role: "context" as const })),
+          });
+        });
         return { output: result, summary: mergeSummaries(summaries) };
       } catch (error) {
         if (error instanceof AgentRunError) summaries.push(error.summary);
@@ -618,12 +645,14 @@ async function runResearch(deps: EngineDeps, project: Project) {
     });
     return;
   }
-  if (project.productPlan === "free") {
+  const [currentProject] = await db.select().from(projects).where(eq(projects.id, project.id));
+  const effectiveProject = currentProject ?? project;
+  if (effectiveProject.productPlan === "free") {
     await transition(db, project, "free_ready", "research", "出海机会报告已生成", { pendingRequest: null });
     return;
   }
-  const order = usesQuoteFlow(project) ? await projectOrder(db, project.id) : null;
-  const next = usesQuoteFlow(project) && order?.status !== "paid" ? "drafting_quote" : "strategizing";
+  const order = usesQuoteFlow(effectiveProject) ? await projectOrder(db, project.id) : null;
+  const next = usesQuoteFlow(effectiveProject) && order?.status !== "paid" ? "drafting_quote" : "strategizing";
   await transition(db, project, next, "research", null, { pendingRequest: null });
   await deps.enqueue(project.id);
 }
@@ -654,6 +683,7 @@ async function runQuote(deps: EngineDeps, project: Project) {
     model: deps.model,
   }));
   await saveDraftProposal(deps.db, project, output);
+  if (project.customerId && (await customerMembership(deps.db, project.customerId)).plan === "pro") await activateAccountPro(deps.db, project.id, project.customerId, deps.enqueue);
 }
 
 async function runReceipt(deps: EngineDeps, project: Project) {
@@ -688,6 +718,7 @@ async function runReceipt(deps: EngineDeps, project: Project) {
     await tx.update(paymentReceipts).set({ analysis, analysisStatus: analysis ? "done" : "failed" })
       .where(eq(paymentReceipts.id, receipt.id));
   });
+  if (project.customerId && (await customerMembership(db, project.customerId)).plan === "pro") await activateAccountPro(db, project.id, project.customerId, deps.enqueue);
 }
 
 async function latestPositioning(db: Db, projectId: string) {
@@ -843,6 +874,14 @@ async function runStrategy(deps: EngineDeps, project: Project) {
         experiment: output.experiment,
       })
       .returning({ id: positionings.id });
+    await recordConclusion(tx, { project, subjectType: "positioning", subjectId: row.id, key: "rationale",
+      statement: output.rationale, rationale: "基于当前项目条件、研究输出和下列上下文材料制定定位。", taskId,
+      evidence: evidence.map((item) => ({ id: item.id, role: item.stance === "against" ? "against" : "context" })) });
+    for (const [index, option] of output.options.entries()) await recordConclusion(tx, {
+      project, subjectType: "positioning", subjectId: row.id, key: `option:${index}`,
+      statement: `${option.audience}：${option.problem} — ${option.value_prop}`, rationale: option.why, taskId,
+      evidence: evidence.map((item) => ({ id: item.id, role: item.stance === "against" ? "against" : "context" })),
+    });
     if (output.counter_responses.length) {
       await tx.insert(counterResponses).values(
         output.counter_responses
@@ -962,9 +1001,11 @@ async function runLaunch(deps: EngineDeps, project: Project) {
       now: new Date(),
     });
     found.push(...checkForbiddenTerms(output.page, output.channel.assets, settings?.terms ?? []));
+    found.push(...(await evidenceTraceProblems(db, project.id, output.claims.flatMap((claim) => claim.evidence_id ? [claim.evidence_id] : [])))
+      .map((message) => ({ target: "来源链", message })));
     found.push(...channelProblems(output.channel.name).map((message) => ({ target: output.channel.name, message })));
     if (found.length === 0) {
-      await saveLandingPage(deps, project, positioning.version, version, output);
+      await saveLandingPage(deps, project, positioning.version, version, output, taskId);
       return;
     }
 
@@ -994,6 +1035,7 @@ async function saveLandingPage(
   positioningVersion: number,
   version: number,
   output: Extract<LaunchOutput, { status: "done" }>,
+  taskId: string,
 ) {
   const { db } = deps;
   await db.transaction(async (tx) => {
@@ -1014,7 +1056,7 @@ async function saveLandingPage(
       })
       .returning({ id: landingPages.id });
     if (output.claims.length) {
-      await tx.insert(claims).values(
+      const savedClaims = await tx.insert(claims).values(
         output.claims.map((c) => ({
           landingPageId: page.id,
           location: c.location,
@@ -1023,7 +1065,12 @@ async function saveLandingPage(
           evidenceId: c.evidence_id,
           checkPassed: true,
         })),
-      );
+      ).returning();
+      for (const claim of savedClaims) await recordConclusion(tx, {
+        project, subjectType: "claim", subjectId: page.id, key: claim.id,
+        statement: claim.text, rationale: "模型登记的声明与引用；结构检查通过不代表语义支持已评价。", taskId,
+        evidence: claim.evidenceId ? [{ id: claim.evidenceId, role: "support" }] : [],
+      });
     }
     await tx.insert(campaigns).values({
       projectId: project.id,
@@ -1115,7 +1162,7 @@ async function runGrowth(deps: EngineDeps, project: Project) {
     verdict_label: VERDICT_LABELS[verdict],
     feedback,
   };
-  const { output } = await runTask(deps, project, { agent: "growth", input }, () =>
+  const { output, taskId } = await runTask(deps, project, { agent: "growth", input }, () =>
     runAgent({
       agent: "growth",
       tier: "flash",
@@ -1128,7 +1175,8 @@ async function runGrowth(deps: EngineDeps, project: Project) {
       model: deps.model,
     }),
   );
-  await db.insert(deliverables).values({
+  await db.transaction(async (tx) => {
+  const [report] = await tx.insert(deliverables).values({
     projectId: project.id,
     kind: "report",
     round: project.round,
@@ -1141,6 +1189,12 @@ async function runGrowth(deps: EngineDeps, project: Project) {
       verdict_label: VERDICT_LABELS[verdict],
       feedback,
     },
+  }).returning();
+  await recordConclusion(tx, { project, subjectType: "growth", subjectId: report.id, key: "summary",
+    statement: output.summary, rationale: `预设标准计算结果：${VERDICT_LABELS[verdict]}。留资不是支付。`, taskId, evidence: [],
+    basis: { metrics, experiment: plan, verdict, landingPageId: page.id, positioningId: positioning.id,
+      measuredAt: new Date().toISOString(), feedback },
+  });
   });
 }
 
@@ -1179,7 +1233,12 @@ async function runSupportInbox(deps: EngineDeps, project: Project) {
         ? (positioning.options as PositioningOption[])[positioning.chosenOption] : null,
       evidence: evidence.filter((item) => item.status === "verified").slice(0, 12).map(evidenceView),
       page: page?.status === "published" ? "已公开" : "尚未公开",
-      payment: order?.status === "paid" ? "老板已确认到账" : "尚未记录到账",
+      payment: order?.status === "paid" ? "老板已确认到账" : "尚未记录到账；不用于判断账号 Pro 权益",
+      pro_access: isAccountPro(project)
+        ? (await customerMembership(deps.db, project.customerId)).plan === "pro"
+          ? "账号 Pro 权益有效，直接使用模块，无需报价、付款截图或老板开通审核；不代表实际到账"
+          : "账号 Pro 权益已失效，需恢复权益后继续高级任务"
+        : isKeyActivatedPro(project) && order?.status === "key_activated" ? "密钥已开通 Pro，无需付款截图；不代表实际到账" : null,
       brand: settings?.brand ?? null,
       service: settings?.service ?? null,
       operations: settings?.operations ?? null,
@@ -1212,6 +1271,7 @@ export async function advanceProject(deps: EngineDeps, projectId: string) {
   if (!project || project.paused) return;
   if (await runSupportInbox(deps, project)) [project] = await load();
   if (!project || project.paused) return;
+  if (isAccountPro(project) && (await customerMembership(deps.db, project.customerId)).plan !== "pro") return;
   const step = STEPS[project.status as ProjectStatus];
   if (!step) return;
   try {

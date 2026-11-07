@@ -6,13 +6,19 @@ import { redirect } from "next/navigation";
 import { SiteHeader, SceneFooter } from "@/components/site-chrome";
 import { CustomerAuthForm } from "@/components/customer-auth-form";
 import { getCustomerSession } from "@/lib/customer-auth";
+import { customerLandingPath, customerReturnTo } from "@/lib/auth-return";
+import { getDb } from "@/db";
+import { customerMembership } from "@/workflow/membership";
 
-export async function CustomerAuthPage({ register = false }: { register?: boolean }) {
-  if (await getCustomerSession()) redirect("/account");
+export async function CustomerAuthPage({ register = false, returnTo }: { register?: boolean; returnTo?: unknown }) {
+  const next = customerReturnTo(returnTo);
+  const alternate = `${register ? "/login" : "/register"}?next=${encodeURIComponent(next)}`;
+  const session = await getCustomerSession();
+  if (session) redirect(customerLandingPath(next, (await customerMembership(getDb(), session.user.id)).plan));
   return (
     <div className="site-shell">
       <SiteHeader current="auth" extra={
-        <Link href={register ? "/login" : "/register"} className="btn btn--primary btn--sm"><T>{register ? "登录" : "注册账号"}</T></Link>
+        <Link href={alternate} className="btn btn--primary btn--sm"><T>{register ? "登录" : "注册账号"}</T></Link>
       } />
       <main className="site-main grid content-center">
         <div className="auth-card rise">
@@ -40,11 +46,11 @@ export async function CustomerAuthPage({ register = false }: { register?: boolea
               <p className="eyebrow">{register ? "Sign up" : "Sign in"}</p>
               <h1 id="customer-auth-title" className="page-head__title text-[clamp(1.9rem,3vw,2.5rem)]"><T>{register ? "创建首客账号" : "登录首客"}</T></h1>
             </header>
-            <CustomerAuthForm register={register} />
+            <CustomerAuthForm register={register} returnTo={next} />
             <Link href="/account" className="btn btn--ghost w-full"><T>暂不登录，进入试用工作台</T><ArrowRight size={14} className="arw" aria-hidden="true" /></Link>
             <p className="meta border-t pt-4">
               <T>{register ? "已有账号？" : "第一次来首客？"}</T>{" "}
-              <Link href={register ? "/login" : "/register"} className="link-u font-semibold"><T>{register ? "登录" : "注册账号"}</T></Link>
+              <Link href={alternate} className="link-u font-semibold"><T>{register ? "登录" : "注册账号"}</T></Link>
             </p>
           </section>
         </div>

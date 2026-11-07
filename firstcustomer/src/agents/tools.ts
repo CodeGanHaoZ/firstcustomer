@@ -2,22 +2,15 @@ import { and, eq, gt, ilike, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import type { AgentTool } from "@/ai/run-agent";
 import type { Db } from "@/db";
-import { evidenceItems, evidenceSearches, sourceDocuments, projects } from "@/db/schema";
+import { evidenceItems, evidenceSearches, projects } from "@/db/schema";
+import { captureSource, readCapturedSource } from "@/workflow/source-versions";
 import { expiresAt, gradeFor, normalizeText, vendorCopyProblem, verifyQuote, type EvidenceKind } from "@/domain/evidence";
 import { copyLibraryEvidence } from "./library";
 import type { SourceClient, SourceResult } from "./sources";
 
 const MAX_TEXT_FOR_MODEL = 6000;
 
-export async function cacheDocument(db: Db, doc: { url: string; title: string; text: string }) {
-  await db
-    .insert(sourceDocuments)
-    .values({ url: doc.url, title: doc.title, text: doc.text })
-    .onConflictDoUpdate({
-      target: sourceDocuments.url,
-      set: { title: doc.title, text: doc.text, fetchedAt: new Date() },
-    });
-}
+export const cacheDocument = captureSource;
 
 function sourceName(url: string) {
   try {
@@ -35,16 +28,18 @@ export function createResearchTools(context: {
   onSearchCalls: (count: number) => void;
   /** 现场检索的次数上限，资料已由程序预先检索好。 */
   searchLimit?: number;
+  taskId?: string;
 }): Record<string, AgentTool> {
   const { db, projectId, sources, searchLimit = 6 } = context;
   let searchesUsed = 0;
   const searchedKeys = new Set<string>();
+  const captured = new Map<string, string>();
   return {
     use_library_evidence: {
       description: "把输入 library 里的预存证据（已核对原文）加入本项目，返回本项目里的 evidence_id。可一次传多条。",
       parameters: z.object({ library_ids: z.array(z.string()).min(1), candidate: z.string() }),
       execute: async ({ library_ids, candidate }: { library_ids: string[]; candidate: string }) =>
-        copyLibraryEvidence(db, projectId, library_ids, candidate),
+        copyLibraryEvidence(db, projectId, library_ids, candidate, context.taskId),
     },
     lookup_evidence: {
       description: "查本地证据库里未过期的证据。",
@@ -104,7 +99,10 @@ export function createResearchTools(context: {
         searchedKeys.add(key);
         const { results, searchCalls } = await sources.search(args.source, args.query);
         context.onSearchCalls(searchCalls);
-        await Promise.all(results.map((r: SourceResult) => cacheDocument(db, r)));
+        for (const r of results) {
+          const version = await cacheDocument(db, r, { projectId, taskId: context.taskId, method: `search:${args.source}` });
+          captured.set(r.url, version.id);
+        }
         const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
         await db.insert(evidenceSearches).values({
           projectId,
@@ -128,7 +126,8 @@ export function createResearchTools(context: {
       parameters: z.object({ url: z.string() }),
       execute: async ({ url }: { url: string }) => {
         const page = await sources.readPage(url);
-        await cacheDocument(db, { url, title: page.title, text: page.text });
+        const version = await cacheDocument(db, { url, title: page.title, text: page.text }, { projectId, taskId: context.taskId, method: "read_page" });
+        captured.set(url, version.id);
         return { url, title: page.title, text: page.text.slice(0, MAX_TEXT_FOR_MODEL) };
       },
     },
@@ -156,13 +155,15 @@ export function createResearchTools(context: {
         number_value: string | null;
         metric: string | null;
       }) => {
-        return storeEvidence(db, projectId, args);
+        return storeEvidence(db, projectId, { ...args, sourceVersionId: captured.get(args.url), taskId: context.taskId });
       },
     },
   };
 }
 
 export type EvidencePick = {
+  sourceVersionId?: string;
+  taskId?: string;
   url: string;
   quote: string;
   kind: EvidenceKind;
@@ -178,10 +179,7 @@ export type EvidencePick = {
 export async function storeEvidence(db: Db, projectId: string, args: EvidencePick) {
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
   if (!project) throw new Error("项目不存在");
-  const [doc] = await db
-    .select()
-    .from(sourceDocuments)
-    .where(eq(sourceDocuments.url, args.url));
+  const doc = await readCapturedSource(db, { projectId, scopeVersion: project.scopeVersion, url: args.url, sourceVersionId: args.sourceVersionId });
   if (!doc) throw new Error("这个网址还没有读取过，不能保存为证据");
   const vendor = vendorCopyProblem(args.kind, args.url, args.quote);
   if (vendor) throw new Error(vendor);
@@ -191,7 +189,7 @@ export async function storeEvidence(db: Db, projectId: string, args: EvidencePic
   const sameUrl = await db
     .select({ id: evidenceItems.id, excerpt: evidenceItems.excerpt, grade: evidenceItems.grade, status: evidenceItems.status })
     .from(evidenceItems)
-    .where(and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.scopeVersion, project.scopeVersion), eq(evidenceItems.url, args.url)));
+    .where(and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.scopeVersion, project.scopeVersion), eq(evidenceItems.sourceVersionId, doc.id), eq(evidenceItems.url, args.url)));
   const duplicate = sameUrl.find((e) => normalizeText(e.excerpt) === normalizeText(args.quote));
   if (duplicate) {
     return { evidence_id: duplicate.id, status: duplicate.status, grade: duplicate.grade, note: "已经保存过，直接复用" };
@@ -202,6 +200,8 @@ export async function storeEvidence(db: Db, projectId: string, args: EvidencePic
     .values({
       projectId,
       scopeVersion: project.scopeVersion,
+      sourceVersionId: doc.id,
+      createdTaskId: args.taskId ?? null,
       candidate: args.candidate,
       product: args.product,
       category: args.category,

@@ -1,0 +1,81 @@
+ M PRODUCT.md
+ M README.md
+ M docs/requirements-and-verification.md
+ M firstcustomer/.env.example
+ M firstcustomer/README.md
+ M firstcustomer/drizzle/meta/_journal.json
+ M firstcustomer/package.json
+ M firstcustomer/scripts/build-library.ts
+ M firstcustomer/src/agents/gather.ts
+ M firstcustomer/src/agents/library.ts
+ M firstcustomer/src/agents/tools.ts
+ M firstcustomer/src/app/admin/actions.ts
+ M firstcustomer/src/app/admin/context/actions.ts
+ M firstcustomer/src/app/admin/context/export/route.ts
+ M firstcustomer/src/app/admin/knowledge/actions.ts
+ M firstcustomer/src/app/admin/knowledge/export/route.ts
+ M firstcustomer/src/app/admin/layout.tsx
+ M firstcustomer/src/app/admin/login/page.tsx
+ M firstcustomer/src/app/admin/page.tsx
+ M firstcustomer/src/app/admin/projects/[id]/page.tsx
+ M firstcustomer/src/app/admin/projects/new/actions.ts
+ M firstcustomer/src/app/admin/reports/actions.ts
+ M firstcustomer/src/app/login/page.tsx
+ M firstcustomer/src/app/p/[token]/actions.ts
+ M firstcustomer/src/app/p/[token]/page.tsx
+ M firstcustomer/src/app/register/page.tsx
+ M firstcustomer/src/components/admin-workspace.tsx
+ M firstcustomer/src/components/customer-auth-form.tsx
+ M firstcustomer/src/components/customer-auth-page.tsx
+ M firstcustomer/src/components/project-details.tsx
+ M firstcustomer/src/components/requirement-card.tsx
+ M firstcustomer/src/db/schema.ts
+ M firstcustomer/src/domain/approval.ts
+ M firstcustomer/src/domain/evidence.ts
+ M firstcustomer/src/domain/workflow.ts
+ M firstcustomer/src/lib/auth.ts
+ M firstcustomer/src/lib/customer-project.ts
+ M firstcustomer/src/lib/ui-messages.ts
+ M firstcustomer/src/lib/ui-translation.ts
+ M firstcustomer/src/workflow/actions.ts
+ M firstcustomer/src/workflow/commerce.ts
+ M firstcustomer/src/workflow/engine.ts
+ M firstcustomer/src/workflow/landing-edits.ts
+ M firstcustomer/src/workflow/operating-metrics.ts
+ M firstcustomer/src/workflow/queries.ts
+ M firstcustomer/src/workflow/support.ts
+ M firstcustomer/src/workflow/work-packages.ts
+ M firstcustomer/tests/auth.test.ts
+ M firstcustomer/tests/domain.test.ts
+ M firstcustomer/tests/workflow.test.ts
+?? docs/owner-console.md
+?? docs/product-trust-verification.md
+?? "docs/product-trust-verification_\345\211\257\346\234\254.md"
+?? "docs/product-trust-verification_\345\211\257\346\234\2542.md"
+?? docs/two-sided-workflow-design.md
+?? firstcustomer/drizzle/0012_evidence_provenance.sql
+?? firstcustomer/drizzle/meta/0012_snapshot.json
+?? firstcustomer/scripts/provision-owner.mjs
+?? firstcustomer/src/app/admin/access/
+?? firstcustomer/src/app/admin/audit/
+?? firstcustomer/src/app/admin/owner/
+?? firstcustomer/src/components/owner-quote-form.tsx
+?? firstcustomer/src/components/pro-key-form.tsx
+?? firstcustomer/src/components/provenance-details.tsx
+?? firstcustomer/src/domain/owner-permissions.ts
+?? firstcustomer/src/domain/provenance.ts
+?? firstcustomer/src/lib/auth-return.ts
+?? firstcustomer/src/lib/owner-ui-messages.ts
+?? firstcustomer/src/lib/pro-access-key.ts
+?? firstcustomer/src/lib/provenance-ui-messages.ts
+?? firstcustomer/src/workflow/audit-log.ts
+?? firstcustomer/src/workflow/owner-dashboard.ts
+?? firstcustomer/src/workflow/pro-access.ts
+?? firstcustomer/src/workflow/provenance.ts
+?? firstcustomer/src/workflow/source-versions.ts
+?? firstcustomer/tests/auth-return.test.ts
+?? firstcustomer/tests/customer-project-session.test.ts
+?? firstcustomer/tests/owner-dashboard.test.ts
+?? firstcustomer/tests/pro-access-key.test.ts
+?? firstcustomer/tests/provenance.test.ts
+?? reports/

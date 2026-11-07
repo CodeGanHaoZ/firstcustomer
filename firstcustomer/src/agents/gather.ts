@@ -13,6 +13,7 @@ export type PlannedQuery = {
 };
 
 export type GatheredResult = SourceResult & {
+  sourceVersionId: string;
   source: string;
   purpose: "support" | "counter";
   candidate: string;
@@ -46,7 +47,7 @@ export async function gatherSources(
   db: Db,
   sources: SourceClient,
   queries: PlannedQuery[],
-  options: { projectId?: string | null; concurrency?: number; maxResultsPerQuery?: number } = {},
+  options: { projectId?: string | null; taskId?: string; concurrency?: number; maxResultsPerQuery?: number } = {},
 ): Promise<GatherReport> {
   const { projectId = null, concurrency = 6, maxResultsPerQuery = 6 } = options;
   const seen = new Set<string>();
@@ -80,7 +81,7 @@ export async function gatherSources(
       const outcome = await sources.search(q.source, q.query);
       searchCalls += outcome.searchCalls;
       const results = outcome.results.slice(0, maxResultsPerQuery);
-      await Promise.all(results.map((r) => cacheDocument(db, r)));
+      const captured = await Promise.all(results.map((r) => cacheDocument(db, r, { projectId, taskId: options.taskId, method: `search:${q.source}` })));
       if (projectId) {
         await db.insert(evidenceSearches).values({
           projectId,
@@ -92,7 +93,7 @@ export async function gatherSources(
           resultCount: results.length,
         });
       }
-      return results.map((r) => ({ ...r, source: q.source, purpose: q.purpose, candidate: q.candidate }));
+      return results.map((r, index) => ({ ...r, sourceVersionId: captured[index].id, source: q.source, purpose: q.purpose, candidate: q.candidate }));
     } catch (error) {
       failures.push({ source: q.source, query: q.query, error: error instanceof Error ? error.message : String(error) });
       return [];

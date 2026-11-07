@@ -8,7 +8,8 @@ vi.mock("next/headers", () => ({ cookies: async () => ({
   delete: (key: string) => store.delete(key),
 }) }));
 
-import { adminCredentialsMatch, endAdminSession, hasAdminSession, isAdmin, startAdminSession } from "@/lib/auth";
+import { adminCredentialsMatch, endAdminSession, getOwnerIdentity, hasAdminSession, isAdmin, requireAdmin, startAdminSession } from "@/lib/auth";
+import { hasOwnerPermission, OWNER_PERMISSION_KEYS, type OwnerPermission } from "@/domain/owner-permissions";
 import { parseTrialTokens, rememberTrialProject, trialProjectTokens, TRIAL_PROJECTS_COOKIE } from "@/lib/trial-projects";
 
 beforeEach(() => {
@@ -38,6 +39,17 @@ describe("试用入口凭据", () => {
 });
 
 describe("首客独立账号", () => {
+  it("由签名会话分配公司经营者身份，所有内部操作都要匹配已知权限", async () => {
+    expect(await getOwnerIdentity()).toBeNull();
+    await startAdminSession();
+    expect(await getOwnerIdentity()).toEqual({ username: "hifirst", role: "owner", permissions: OWNER_PERMISSION_KEYS });
+    for (const permission of OWNER_PERMISSION_KEYS) expect((await requireAdmin(permission)).role).toBe("owner");
+    await expect(requireAdmin("unlisted.operation" as OwnerPermission)).rejects.toThrow("没有这项内部操作权限");
+    for (const role of ["customer", "provider", "requester", "admin", undefined]) {
+      for (const permission of OWNER_PERMISSION_KEYS) expect(hasOwnerPermission(role, permission)).toBe(false);
+    }
+    expect(hasOwnerPermission("owner", "__proto__")).toBe(false);
+  });
   it("同时验证账号和密码，未配置密码时拒绝登录", () => {
     expect(adminCredentialsMatch("hifirst", "test-password-not-for-use")).toBe(true);
     expect(adminCredentialsMatch("other", "test-password-not-for-use")).toBe(false);

@@ -130,7 +130,7 @@ export default async function Home() {
                 <p className="eyebrow">PRO</p>
                 <h3 className="h3">{copy.plans.proTitle}</h3>
                 <p className="meta">{copy.plans.proDescription}</p>
-                <Link href="/projects/new" className="split-pair__go">
+                <Link href="/account/upgrade" className="split-pair__go">
                   {copy.plans.proCta} <ArrowRight size={14} className="arw" aria-hidden="true" />
                 </Link>
               </div>

@@ -16,7 +16,7 @@ function readableError(error: unknown) {
 }
 
 export async function saveKnowledgeAction(_state: { error: string }, formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("knowledge.manage", "/admin/knowledge");
   let id: string;
   let publish: boolean;
   try {
@@ -40,7 +40,7 @@ export async function saveKnowledgeAction(_state: { error: string }, formData: F
 }
 
 export async function withdrawKnowledgeAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("knowledge.manage", "/admin/knowledge");
   const id = z.uuid().parse(formData.get("id"));
   try {
     const revision = z.coerce.number().int().positive().parse(formData.get("revision"));
@@ -53,7 +53,7 @@ export async function withdrawKnowledgeAction(formData: FormData) {
 }
 
 export async function initializeKnowledgeAction() {
-  await requireAdmin();
+  await requireAdmin("knowledge.manage", "/admin/knowledge");
   let added: number;
   try { added = await seedKnowledge(getDb()); }
   catch { redirect("/admin/knowledge?error=初始化失败，请稍后重试"); }

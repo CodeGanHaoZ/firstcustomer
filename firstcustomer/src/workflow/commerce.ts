@@ -69,6 +69,7 @@ export async function decideQuote(
 ) {
   await db.transaction(async (tx) => {
     const { project, order } = await lockOrder(tx, input.projectId);
+    if (project.paused) throw new Error("项目已暂停，请恢复后再处理报价");
     const founder = input.actor === "founder";
     const expectedStatus = founder ? "awaiting_quote" : "awaiting_quote_acceptance";
     if (project.status !== expectedStatus || order.quoteVersion !== input.version || !order.proposal) {
@@ -84,6 +85,8 @@ export async function decideQuote(
       subjectVersion: order.quoteVersion,
       actorRole: input.actor,
       verdict: input.verdict,
+      snapshot: { orderId: order.id, quoteVersion: order.quoteVersion,
+        quoteFen: approved && founder ? input.quoteFen : order.quoteFen, proposal: order.proposal },
       reason: approved && founder ? `确认报价 ${formatYuan(input.quoteFen!)}${reason ? ` · ${reason}` : ""}` : reason || null,
     });
     await tx.update(orders).set({
@@ -150,6 +153,7 @@ export async function uploadReceipt(
   const image = imageData(input.bytes);
   await db.transaction(async (tx) => {
     const { project, order } = await lockOrder(tx, input.projectId);
+    if (project.paused) throw new Error("项目已暂停，请恢复后再上传付款截图");
     if (project.status !== "awaiting_payment" || order.status !== "accepted") {
       throw new Error("接受报价后才能上传付款截图，请等待当前任务完成");
     }
@@ -167,6 +171,7 @@ export async function confirmReceipt(
   assertPositiveAmount(input.amountFen);
   await db.transaction(async (tx) => {
     const { project, order } = await lockOrder(tx, input.projectId);
+    if (project.paused) throw new Error("项目已暂停，请恢复后再确认到账");
     if (project.status !== "awaiting_payment" || order.status !== "accepted") {
       throw new Error("项目当前不在待确认到账状态");
     }
@@ -176,12 +181,12 @@ export async function confirmReceipt(
     }
     const reason = input.reason?.trim();
     if (input.amountFen !== order.quoteFen && !reason) throw new Error("实收与报价不一致，请写明原因");
-    await tx.insert(payments).values({
+    const [payment] = await tx.insert(payments).values({
       orderId: order.id,
       amountFen: input.amountFen,
       method: "收款码 · 老板核对",
       reference: input.reference?.trim() || null,
-    });
+    }).returning({ id: payments.id });
     await tx.update(orders).set({ status: "paid" }).where(eq(orders.id, order.id));
     await tx.insert(decisions).values({
       projectId: project.id,
@@ -189,6 +194,9 @@ export async function confirmReceipt(
       subjectVersion: order.quoteVersion,
       actorRole: "founder",
       verdict: "approve",
+      snapshot: { orderId: order.id, paymentId: payment.id, receiptId: receipt.id,
+        quoteVersion: order.quoteVersion, quoteFen: order.quoteFen, amountFen: input.amountFen,
+        reference: input.reference?.trim() || null },
       reason: reason || "已核对实际到账",
     });
     await transition(tx, project, "strategizing", "founder", "老板确认到账，开始正式服务");

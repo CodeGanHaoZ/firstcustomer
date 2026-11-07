@@ -1,6 +1,8 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { hasOwnerPermission, OWNER_PERMISSION_KEYS, type OwnerPermission } from "@/domain/owner-permissions";
+import { ownerReturnTo } from "./auth-return";
 
 const COOKIE = "fc_admin";
 export const NEW_CUSTOMER_LINK_COOKIE = "fc_new_customer_link";
@@ -64,6 +66,14 @@ export async function hasAdminSession() {
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
-export async function requireAdmin() {
-  if (!(await isAdmin())) redirect("/admin/login");
+export async function getOwnerIdentity() {
+  if (!(await hasAdminSession())) return null;
+  return { username: adminUsername(), role: "owner" as const, permissions: OWNER_PERMISSION_KEYS };
+}
+
+export async function requireAdmin(permission: OwnerPermission = "workspace.read", returnTo = "/admin/owner") {
+  const identity = await getOwnerIdentity();
+  if (!identity) redirect(`/admin/login?next=${encodeURIComponent(ownerReturnTo(returnTo))}`);
+  if (!hasOwnerPermission(identity.role, permission)) throw new Error("当前账号没有这项内部操作权限");
+  return identity;
 }

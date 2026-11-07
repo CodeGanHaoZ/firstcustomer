@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { and, asc, eq } from "drizzle-orm";
 import EmbeddedPostgres from "embedded-postgres";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createStubSources, stubModel } from "@/ai/stub-model";
 import type { ChatMessage, ModelClient, ModelRequest } from "@/ai/types";
 import { createDb, type Db } from "@/db";
@@ -15,15 +15,18 @@ import {
   claims,
   companyReports,
   companySettings,
+  customerMemberships,
   knowledgeArticles,
   projectRequirements,
   decisions,
   deliverables,
+  evidenceConclusions,
   events,
   evidenceItems,
   landingPages,
   leads,
   payments,
+  orders,
   projectImages,
   projects,
   stateTransitions,
@@ -69,6 +72,11 @@ import { requirementSnapshot, MAX_CLARIFICATION_ROUNDS } from "@/domain/requirem
 import { workPackageReadiness } from "@/workflow/work-packages";
 import { authUsers } from "@/db/customer-auth-schema";
 import { claimTrialProjects, listTrialProjects } from "@/lib/trial-projects";
+import { activateProByKey } from "@/workflow/pro-access";
+import { hasProAccess } from "@/domain/workflow";
+import { operatingMetrics } from "@/workflow/operating-metrics";
+import { activateAccountPro, customerMembership } from "@/workflow/membership";
+import { loadOwnerDashboard } from "@/workflow/owner-dashboard";
 
 let pg: EmbeddedPostgres;
 let db: Db;
@@ -104,6 +112,8 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  // Clear provenance links before the project cascades remove their evidence.
+  await db.delete(evidenceConclusions);
   await db.delete(projects);
   await db.delete(evidenceItems);
   await db.delete(companyReports);
@@ -227,6 +237,100 @@ async function bothApprove(enqueue: (id: string) => Promise<void>, projectId: st
   await decide(db, enqueue, { projectId, gate, actor: "founder", verdict: "approve" });
   await decide(db, enqueue, { projectId, gate, actor: "customer", verdict: "approve" });
 }
+
+describe("Pro 密钥开通", () => {
+  const key = "pro-workflow-test-key-" + "a".repeat(32);
+  beforeEach(() => vi.stubEnv("PRO_ACCESS_KEY", key));
+  afterEach(() => vi.unstubAllEnvs());
+  const readyProject = async () => {
+    const h = harness();
+    const { project } = await newProject({ productPlan: "free", isOwnProduct: false });
+    await startResearch(db, h.enqueue, project.id);
+    await h.drain();
+    expect(await statusOf(project.id)).toBe("free_ready");
+    return { h, project };
+  };
+
+  it("错误密钥、未完成初检、暂停和取消的项目不能开通", async () => {
+    const { h, project } = await readyProject();
+    await expect(activateProByKey(db, project.id, "wrong", h.enqueue)).rejects.toThrow("密钥无效");
+    for (const patch of [{ status: "researching" }, { status: "free_ready", paused: true }, { status: "cancelled", paused: false }]) {
+      await db.update(projects).set(patch).where(eq(projects.id, project.id));
+      await expect(activateProByKey(db, project.id, key, h.enqueue)).rejects.toThrow("请等待");
+    }
+    expect(await projectOrder(db, project.id)).toBeNull();
+    expect(await db.select().from(decisions).where(eq(decisions.gate, "pro_access"))).toHaveLength(0);
+  });
+
+  it("队列写入失败会回滚权限、订单和审计记录", async () => {
+    const { project } = await readyProject();
+    await expect(activateProByKey(db, project.id, key, async (_id, tx) => {
+      expect(tx).not.toBe(db);
+      expect(await projectOrder(tx, project.id)).toMatchObject({ status: "key_activated" });
+      throw new Error("queue unavailable");
+    })).rejects.toThrow("queue unavailable");
+    expect(await statusOf(project.id)).toBe("free_ready");
+    expect(await projectOrder(db, project.id)).toBeNull();
+    expect(await db.select().from(decisions).where(eq(decisions.gate, "pro_access"))).toHaveLength(0);
+  });
+
+  it("并发开通只派发一次，完整 Pro 流程可运行、审批和验收，不产生虚假实收", async () => {
+    const { h, project } = await readyProject();
+    const enqueue = vi.fn(h.enqueue);
+    const results = await Promise.all([activateProByKey(db, project.id, key, enqueue), activateProByKey(db, project.id, key, enqueue)]);
+    expect(results.sort()).toEqual([false, true]);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    const [active] = await db.select().from(projects).where(eq(projects.id, project.id));
+    expect(active).toMatchObject({ productPlan: "pro", requiresPayment: false, status: "strategizing" });
+    expect(hasProAccess(active, await projectOrder(db, project.id))).toBe(true);
+    expect(await db.select().from(orders).where(eq(orders.projectId, project.id))).toHaveLength(1);
+    const audit = await db.select().from(decisions).where(eq(decisions.gate, "pro_access"));
+    expect(audit).toHaveLength(1);
+    expect(JSON.stringify(audit)).not.toContain(key);
+    expect((await workPackageReadiness(db, active)).packages.find(({ key }) => key === "commerce")?.status).toBe("verified");
+    await h.drain();
+    expect(await statusOf(project.id)).toBe("awaiting_positioning");
+    await bothApprove(h.enqueue, project.id, "positioning");
+    await h.drain();
+    expect(await statusOf(project.id)).toBe("awaiting_publish");
+    await bothApprove(h.enqueue, project.id, "publish");
+    await startReview(db, h.enqueue, project.id);
+    await h.drain();
+    const [reviewed] = await db.select().from(projects).where(eq(projects.id, project.id));
+    expect((await workPackageReadiness(db, reviewed)).ready).toBe(true);
+    await deliverProject(db, project.id);
+    await acceptDelivery(db, { projectId: project.id, verdict: "approve" });
+    expect(await projectOrder(db, project.id)).toMatchObject({ status: "key_activated", deliveryStatus: "accepted" });
+    expect(await db.select().from(payments)).toHaveLength(0);
+    expect(await operatingMetrics(db)).toMatchObject({ revenueFen: 0, paid: 0, firstPaymentAt: null });
+    expect((await tasksOf(project.id)).some(({ agent }) => agent === "quote" || agent === "receipt")).toBe(false);
+    vi.stubEnv("PRO_ACCESS_KEY", "");
+    expect(hasProAccess(reviewed, await projectOrder(db, project.id))).toBe(true);
+  });
+
+  it.each(["awaiting_quote", "awaiting_quote_acceptance", "awaiting_payment", "failed"])("已有 Pro 申请在 %s 时可开通，保留原报价且不再要求付款", async (status) => {
+    const { h, project } = await readyProject();
+    await db.update(projects).set({ productPlan: "pro", status, failedFrom: status === "failed" ? "drafting_quote" : null }).where(eq(projects.id, project.id));
+    const [order] = await db.insert(orders).values({ projectId: project.id, sku: "首客 Pro", quoteFen: 29_900, quoteVersion: 2, status: "accepted" }).returning();
+    await activateProByKey(db, project.id, key, h.enqueue);
+    expect(await projectOrder(db, project.id)).toMatchObject({ id: order.id, status: "key_activated", quoteFen: 29_900, quoteVersion: 2 });
+    expect(await customerPaymentCode(db, project.id)).toBeNull();
+    await expect(uploadReceipt(db, h.enqueue, { projectId: project.id, bytes: new Uint8Array([137,80,78,71,13,10,26,10]), actor: "customer" })).rejects.toThrow("没有在线报价流程");
+    await h.drain();
+    expect(await statusOf(project.id)).toBe("awaiting_positioning");
+  });
+
+  it("已付费 Pro 不会被密钥覆盖或重复启动", async () => {
+    const { h, project } = await readyProject();
+    await db.update(projects).set({ productPlan: "pro", status: "strategizing" }).where(eq(projects.id, project.id));
+    await db.insert(orders).values({ projectId: project.id, sku: "首客 Pro", status: "paid" });
+    const enqueue = vi.fn();
+    expect(await activateProByKey(db, project.id, key, enqueue)).toBe(false);
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(await projectOrder(db, project.id)).toMatchObject({ status: "paid" });
+    await h.drain();
+  });
+});
 
 async function toPublished() {
   const h = harness();
@@ -1441,5 +1545,86 @@ describe("需求版本、澄清边界与成果核验回归", () => {
     const commercial = readiness.packages.find((item) => item.key === "commerce")!;
     expect(commercial.status).toBe("waiting");
     expect(commercial.checks.every((check) => check.passed === false)).toBe(true);
+  });
+});
+
+// Account-level Pro follows the self-service policy; legacy and project keys keep
+// their existing approval contract. All model calls here use the isolated stub.
+describe("账号级 Pro 全链路", () => {
+  async function member(plan: "free" | "pro" = "pro") {
+    const id = crypto.randomUUID();
+    await db.insert(authUsers).values({ id, email: `${id}@membership.test`, name: "Membership test" });
+    await db.insert(customerMemberships).values({ customerId: id, plan, source: "test", testAccount: true });
+    return id;
+  }
+  async function ownProject(customerId: string) {
+    return newProject({ customerId, productPlan: "free", isOwnProduct: false });
+  }
+  it("Pro 从建项直达研究、客户确认定位和发布、增长复盘，不经过老板报价或伪造审批", async () => {
+    const customerId = await member(); const { project } = await ownProject(customerId); const h = harness();
+    await activateAccountPro(db, project.id, customerId, h.enqueue);
+    await h.drain(); expect(await statusOf(project.id)).toBe("awaiting_positioning");
+    const [positioningProject] = await db.select().from(projects).where(eq(projects.id, project.id));
+    const view = await loadProjectView(db, positioningProject);
+    expect(view.gates.positioning).toMatchObject({ founder: "pending", founderRequired: false, complete: false });
+    expect((await loadDepartments(db, positioningProject)).find((item) => item.key === "strategy")?.detail).toContain("等客户确认");
+    expect(await projectAttention(db, positioningProject)).toMatchObject({ owner: false });
+    await expect(decide(db, h.enqueue, { projectId: project.id, gate: "positioning", actor: "founder", verdict: "approve" })).rejects.toThrow("无需老板审核");
+    await decide(db, h.enqueue, { projectId: project.id, gate: "positioning", actor: "customer", verdict: "approve" });
+    await h.drain(); expect(await statusOf(project.id)).toBe("awaiting_publish");
+    await decide(db, h.enqueue, { projectId: project.id, gate: "publish", actor: "customer", verdict: "approve" });
+    expect(await statusOf(project.id)).toBe("collecting");
+    await startReview(db, h.enqueue, project.id, "customer"); await h.drain();
+    const [current] = await db.select().from(projects).where(eq(projects.id, project.id));
+    expect((await loadProjectView(db, current)).report).toBeTruthy();
+    expect((await workPackageReadiness(db, current)).ready).toBe(true);
+    expect((await tasksOf(project.id)).some(({ agent }) => ["quote", "receipt"].includes(agent))).toBe(false);
+    expect(await projectOrder(db, project.id)).toMatchObject({ status: "account_active" });
+    expect(await db.select().from(decisions).where(and(eq(decisions.projectId, project.id), eq(decisions.actorRole, "founder")))).toHaveLength(0);
+    expect(await db.select().from(stateTransitions).where(and(eq(stateTransitions.projectId, project.id), eq(stateTransitions.toStatus, "reviewing")))).toEqual([expect.objectContaining({ actor: "customer" })]);
+    expect((await operatingMetrics(db)).revenueFen).toBe(0);
+  });
+  it("Free、过期权益和别人的项目都不能通过参数取得账号 Pro", async () => {
+    const free = await member("free"); const pro = await member(); const { project } = await ownProject(free);
+    const enqueue = vi.fn();
+    await expect(activateAccountPro(db, project.id, free, enqueue)).rejects.toThrow("未开通 Pro");
+    await expect(activateAccountPro(db, project.id, pro, enqueue)).rejects.toThrow("不属于");
+    await db.update(customerMemberships).set({ expiresAt: new Date(0) }).where(eq(customerMemberships.customerId, pro));
+    expect((await customerMembership(db, pro)).plan).toBe("free");
+    expect(enqueue).not.toHaveBeenCalled(); expect(await projectOrder(db, project.id)).toBeNull();
+  });
+  it("已有 Pro 账号可以跳过旧的待老板报价阶段，且不生成实际付款", async () => {
+    const id = await member(); const { project } = await ownProject(id); const h = harness();
+    await db.update(projects).set({ productPlan: "pro", status: "awaiting_quote", requiresPayment: true }).where(eq(projects.id, project.id));
+    await db.insert(orders).values({ projectId: project.id, sku: "旧项目报价", quoteFen: 29900 });
+    await activateAccountPro(db, project.id, id, h.enqueue);
+    expect(await statusOf(project.id)).toBe("strategizing");
+    expect(await projectOrder(db, project.id)).toMatchObject({ status: "account_active", quoteFen: 29900 });
+    expect(await db.select().from(payments)).toHaveLength(0);
+  });
+  it("撤销权益后 worker 不执行付费工作；恢复后可继续同一个项目", async () => {
+    const id = await member(); const { project } = await ownProject(id); const model = vi.fn(stubModel); const h = harness(model);
+    await activateAccountPro(db, project.id, id, h.enqueue);
+    await db.update(customerMemberships).set({ status: "revoked" }).where(eq(customerMemberships.customerId, id));
+    await h.drain(); expect(model).not.toHaveBeenCalled();
+    await db.update(customerMemberships).set({ status: "active" }).where(eq(customerMemberships.customerId, id));
+    await h.enqueue(project.id); await h.drain();
+    expect(await statusOf(project.id)).toBe("awaiting_positioning");
+  });
+  it("测试账号的订单、访客与留资不混入真实经营指标，但实际模型成本保留", async () => {
+    const id = await member(); const { project } = await ownProject(id);
+    const [order] = await db.insert(orders).values({ projectId: project.id, sku: "测试订单", status: "paid" }).returning();
+    await db.insert(payments).values({ orderId: order.id, amountFen: 10000, method: "隔离测试夹具" });
+    const [page] = await db.insert(landingPages).values({ projectId: project.id, slug: crypto.randomUUID(), version: 1, positioningVersion: 1, content: {}, status: "published", publishedAt: new Date() }).returning();
+    await db.insert(events).values({ landingPageId: page.id, type: "visit", visitorHash: "fixture" });
+    await db.insert(leads).values({ landingPageId: page.id, email: "fixture@example.test" });
+    await db.insert(agentTasks).values({ projectId: project.id, agent: "research", status: "succeeded", listCostYuan: 0.2 });
+    const metrics = await operatingMetrics(db);
+    expect(metrics).toMatchObject({ orders: 0, paid: 0, revenueFen: 0, growth: { visits: 0, leads: 0 }, modelCost: 0.2 });
+    const { project: pending } = await ownProject(id);
+    await db.insert(orders).values({ projectId: pending.id, sku: "测试待收款", status: "accepted", quoteFen: 10000 });
+    const dashboard = await loadOwnerDashboard(db);
+    expect(dashboard.pendingPaymentFen).toBe(0);
+    expect(dashboard.projects.find((item) => item.id === project.id)?.testAccount).toBe(true);
   });
 });

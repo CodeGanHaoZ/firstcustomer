@@ -18,7 +18,7 @@ function markdown(content: KnowledgeContent) {
 }
 
 export async function GET() {
-  await requireAdmin();
+  await requireAdmin("knowledge.manage", "/admin/knowledge");
   const articles = await listKnowledge(getDb());
   const files = articles.flatMap((article) => [
     { name: `drafts/${article.id}.md`, body: markdown(article.draft) },

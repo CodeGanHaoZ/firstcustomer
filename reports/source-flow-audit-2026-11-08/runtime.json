@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-11-07T18:31:39.221Z",
+  "scope": "Local runtime aggregate checks; no model work or payments started",
+  "provider": "mimo",
+  "migrations": [
+    {
+      "applied": 14
+    }
+  ],
+  "queue": [
+    {
+      "state": "completed",
+      "total": 23
+    }
+  ],
+  "runningTasks": 0,
+  "testMemberships": [
+    {
+      "plan": "free",
+      "total": 2
+    },
+    {
+      "plan": "pro",
+      "total": 2
+    }
+  ]
+}

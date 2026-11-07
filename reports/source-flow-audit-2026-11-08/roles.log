@@ -1,0 +1,5 @@
+
+> firstcustomer@0.1.0 verify:roles
+> tsx --env-file-if-exists=.env.local scripts/verify-role-flows.ts
+
+{"checks":61,"passed":61,"failed":[]}

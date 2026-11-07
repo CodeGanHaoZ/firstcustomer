@@ -1,3 +1,4 @@
+import { isAccountPro } from "@/domain/workflow";
 import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import type { ResearchOutput } from "@/agents/schemas";
 import type { Db } from "@/db";
@@ -21,6 +22,7 @@ import { gateState, type Gate } from "@/domain/approval";
 import type { ExperimentPlan, ExperimentVerdict, Metrics } from "@/domain/experiment";
 import { pageMetrics, reportFor } from "./engine";
 import { hasVersionImage, loadLandingVersion } from "./landing-edits";
+import { loadProjectProvenance } from "./provenance";
 
 export type Project = typeof projects.$inferSelect;
 
@@ -65,11 +67,11 @@ export async function runningProjectAgents(db: Db, project: Pick<Project, "id" |
 }
 
 export async function loadProjectView(db: Db, project: Project) {
-  const [diagnosis] = await db.select({ result: agentTasks.output }).from(agentTasks)
+  const [diagnosis] = await db.select({ taskId: agentTasks.id, result: agentTasks.output }).from(agentTasks)
     .where(and(eq(agentTasks.projectId, project.id), eq(agentTasks.agent, "research"),
       eq(agentTasks.scopeVersion, project.scopeVersion),
       eq(agentTasks.status, "succeeded"), sql`${agentTasks.output}->>'status' = 'done'`))
-    .orderBy(asc(agentTasks.startedAt)).limit(1);
+    .orderBy(desc(agentTasks.startedAt)).limit(1);
   const [positioning] = await db
     .select()
     .from(positionings)
@@ -116,6 +118,7 @@ export async function loadProjectView(db: Db, project: Project) {
           text: claims.text,
           kind: claims.kind,
           location: claims.location,
+          evidenceId: claims.evidenceId,
           excerpt: evidenceItems.excerpt,
           url: evidenceItems.url,
           grade: evidenceItems.grade,
@@ -133,7 +136,7 @@ export async function loadProjectView(db: Db, project: Project) {
   const report = await reportFor(db, project);
 
   const allDecisions = await db.select().from(decisions).where(eq(decisions.projectId, project.id));
-  const gateFor = (gate: Gate, version: number) => gateState(allDecisions, gate, version);
+  const gateFor = (gate: Gate, version: number) => gateState(allDecisions, gate, version, !isAccountPro(project));
 
   const questions = await db
     .select()
@@ -156,6 +159,9 @@ export async function loadProjectView(db: Db, project: Project) {
     .orderBy(asc(projectImages.createdAt));
 
   return {
+    provenance: await loadProjectProvenance(db, project.id),
+    projectScopeVersion: project.scopeVersion,
+    diagnosisTaskId: diagnosis?.taskId ?? null,
     diagnosis: (diagnosis?.result ?? null) as Extract<ResearchOutput, { status: "done" }> | null,
     clarifications: questions,
     images,

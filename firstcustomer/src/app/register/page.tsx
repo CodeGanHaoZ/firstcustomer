@@ -8,6 +8,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: translateUi(locale, "注册首客 · HiFirst") };
 }
 
-export default function RegisterPage() {
-  return <CustomerAuthPage register />;
+export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
+  return <CustomerAuthPage register returnTo={(await searchParams).next} />;
 }

@@ -45,4 +45,5 @@ next-env.d.ts
 .local-pg
 .local-knowledge/
 .local-admin-credentials.txt
+.local-test-accounts.json
 !.env.example

@@ -41,6 +41,35 @@ export function usesQuoteFlow(project: { requiresPayment: boolean; isOwnProduct:
   return project.requiresPayment && !project.isOwnProduct && project.productPlan !== "free";
 }
 
+export function isAccountPro(project: { productPlan: ProjectPlan; requiresPayment: boolean; proAccessSource?: string | null }) {
+  return project.productPlan === "pro" && !project.requiresPayment && project.proAccessSource === "account";
+}
+
+export function isKeyActivatedPro(project: { productPlan: ProjectPlan; requiresPayment: boolean; proAccessSource?: string | null }) {
+  return project.productPlan === "pro" && !project.requiresPayment && !isAccountPro(project);
+}
+
+export function hasProAccess(
+  project: { productPlan: ProjectPlan; requiresPayment: boolean; proAccessSource?: string | null },
+  order: { status: string } | null,
+) {
+  return project.productPlan === "pro" && (order?.status === "paid" ||
+    (isKeyActivatedPro(project) && order?.status === "key_activated") ||
+    (isAccountPro(project) && order?.status === "account_active"));
+}
+
+export function canActivateProByKey(project: {
+  productPlan: ProjectPlan; status: string; paused: boolean; isOwnProduct: boolean;
+  requiresPayment: boolean; failedFrom: string | null;
+}) {
+  if (project.paused || project.isOwnProduct) return false;
+  if (project.productPlan === "free") return project.status === "free_ready";
+  return project.productPlan === "pro" && project.requiresPayment && (
+    ["awaiting_quote", "awaiting_quote_acceptance", "awaiting_payment"].includes(project.status) ||
+    (project.status === "failed" && ["drafting_quote", "reading_receipt"].includes(project.failedFrom ?? ""))
+  );
+}
+
 export function canStartFreeDiagnosis(
   project: { productPlan: ProjectPlan; status: string; paused: boolean; isOwnProduct: boolean; failedFrom: string | null },
   order: { status: string; quoteVersion: number; quoteFen: number | null; proposal: unknown } | null,
@@ -56,10 +85,10 @@ const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   submitted: ["researching"],
   needs_info: ["researching"],
   researching: ["free_ready", "drafting_quote", "strategizing", "needs_info", "awaiting_founder", "failed"],
-  free_ready: ["drafting_quote"],
+  free_ready: ["drafting_quote", "strategizing"],
   drafting_quote: ["awaiting_quote", "failed"],
-  awaiting_quote: ["awaiting_quote_acceptance", "drafting_quote"],
-  awaiting_quote_acceptance: ["awaiting_payment", "drafting_quote"],
+  awaiting_quote: ["awaiting_quote_acceptance", "drafting_quote", "strategizing"],
+  awaiting_quote_acceptance: ["awaiting_payment", "drafting_quote", "strategizing"],
   awaiting_payment: ["reading_receipt", "strategizing"],
   reading_receipt: ["awaiting_payment", "failed"],
   strategizing: [

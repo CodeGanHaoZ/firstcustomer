@@ -3,7 +3,7 @@
 import { LocalizedLink } from "@/components/localized-controls";
 import { T, I18n } from "@/components/ui-text";
 
-import { Archive, BookOpen, CalendarDays, ChartColumn, ClipboardList, FolderClosed, Grid2X2, Menu, Plus, Wallet, X } from "lucide-react";
+import { Archive, BookOpen, CalendarDays, ChartColumn, ClipboardList, FolderClosed, Grid2X2, Menu, Plus, Wallet, X, ListChecks, History, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState, type ReactNode } from "react";
@@ -13,6 +13,14 @@ import { useLocale } from "./locale-provider";
 import { BrandMark } from "./brand-mark";
 
 const groups = [
+  {
+    title: "老板工作台",
+    links: [
+      { label: "经营总览", href: "/admin/owner", icon: ListChecks },
+      { label: "决策与操作记录", href: "/admin/audit", icon: History },
+      { label: "账号与权限", href: "/admin/access", icon: ShieldCheck },
+    ],
+  },
   {
     title: "项目协作",
     links: [
@@ -33,7 +41,7 @@ const groups = [
   },
 ];
 
-export function AdminWorkspace({ children, logout }: { children: ReactNode; logout: ReactNode }) {
+export function AdminWorkspace({ children, logout, ownerUsername }: { children: ReactNode; logout: ReactNode; ownerUsername?: string }) {
   const locale = useLocale();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -53,7 +61,7 @@ export function AdminWorkspace({ children, logout }: { children: ReactNode; logo
         }
       }}>
         <div className="admin-side-heading">
-          <LocalizedLink href="/admin" onClick={close} className="admin-brand-link" aria-label="首客内部经营台">
+          <LocalizedLink href="/admin/owner" onClick={close} className="admin-brand-link" aria-label="首客内部经营台">
             <BrandMark />
             <span><T>内部经营台</T></span>
           </LocalizedLink>
@@ -88,9 +96,9 @@ export function AdminWorkspace({ children, logout }: { children: ReactNode; logo
             ))}
           </nav></I18n>
           <div className="admin-sidebar-footer">
-            <Link href={onOffice ? "#office-desk-title" : "/admin#office-desk-title"} className="admin-desk-shortcut" onClick={close}>
+            <Link href="/admin/access" className="admin-desk-shortcut" onClick={close}>
               <span className="admin-avatar" aria-hidden="true"><T>首</T></span>
-              <span><strong>{OFFICE_CHARACTERS.owner.name}<T> · 老板</T></strong><small>{characterDisplayName("coo", locale)} · COO</small></span>
+              <span><strong>{ownerUsername ?? OFFICE_CHARACTERS.owner.name}<T> · 老板</T></strong><small>{characterDisplayName("coo", locale)} · COO</small></span>
             </Link>
             {logout}
           </div>

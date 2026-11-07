@@ -5,7 +5,7 @@ export type Stance = "support" | "against" | "neutral";
 export type Grade = "A" | "B" | "C" | "D" | "E";
 
 export const GRADE_LABELS: Record<Grade | "unknown", string> = {
-  A: "A 支付数据验证",
+  A: "A 客户授权材料（非交易核验）",
   B: "B 交易平台披露",
   C: "C 创始人公开说法",
   D: "D 第三方估算",
@@ -33,7 +33,7 @@ export type QuoteCheck = {
   reason?: string;
 };
 
-// 第一道证据闸门：只有摘录原样出现在来源文本中才算已验证；近似匹配只留给人工核对。
+// verified is retained for storage compatibility: it means quote matched, not factual or semantic verification.
 export function verifyQuote(quote: string, sourceText: string): QuoteCheck {
   const q = normalizeText(quote);
   const source = normalizeText(sourceText);

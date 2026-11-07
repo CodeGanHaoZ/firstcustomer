@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { ProposalOutput, ReceiptOutput } from "@/agents/schemas";
 import type { ProjectPlan } from "@/domain/workflow";
+import type { CustomerPlan, MembershipSource } from "@/domain/membership";
 import type { KnowledgeContent, PublishedKnowledge } from "@/knowledge/types";
 import type { RequirementSnapshot } from "@/domain/requirements";
 import {
@@ -24,6 +25,17 @@ const id = () => uuid("id").primaryKey().default(sql`gen_random_uuid()`);
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
+
+export const customerMemberships = pgTable("customer_memberships", {
+  customerId: text("customer_id").primaryKey().references(() => authUsers.id, { onDelete: "cascade" }),
+  plan: text("plan").$type<CustomerPlan>().notNull().default("free"),
+  source: text("source").$type<MembershipSource>().notNull().default("manual"),
+  status: text("status").$type<"active" | "revoked">().notNull().default("active"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  testAccount: boolean("test_account").notNull().default(false),
+  createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const knowledgeArticles = pgTable("knowledge_articles", {
   id: id(),
@@ -66,6 +78,7 @@ export const projects = pgTable("projects", {
   isOwnProduct: boolean("is_own_product").notNull().default(false),
   requiresPayment: boolean("requires_payment").notNull().default(false),
   productPlan: text("product_plan").$type<ProjectPlan>().notNull().default("legacy"),
+  proAccessSource: text("pro_access_source").$type<"key" | "account">(),
   paused: boolean("paused").notNull().default(false),
   status: text("status").notNull().default("submitted"),
   failedFrom: text("failed_from"),
@@ -255,6 +268,7 @@ export const agentTasks = pgTable(
     round: integer("round").notNull().default(1),
     provider: text("provider"),
     model: text("model"),
+    promptHash: text("prompt_hash"),
     input: jsonb("input"),
     output: jsonb("output"),
     error: text("error"),
@@ -270,6 +284,21 @@ export const agentTasks = pgTable(
   (t) => [index("agent_tasks_project_idx").on(t.projectId)],
 );
 
+// 每次采集独立保存正文。数据库触发器禁止覆盖；旧缓存不回填为历史快照。
+export const sourceVersions = pgTable("source_versions", {
+  id: id(),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  scopeVersion: integer("scope_version").notNull().default(1),
+  url: text("url").notNull(),
+  title: text("title").notNull(),
+  text: text("text").notNull(),
+  sha256: text("sha256").notNull(),
+  method: text("method").notNull(),
+  actor: text("actor").notNull(),
+  taskId: uuid("task_id").references(() => agentTasks.id),
+  capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("source_versions_lookup_idx").on(t.projectId, t.scopeVersion, t.url)]);
+
 // project_id 为空表示赛前手工录入、各项目可共用的种子证据。
 export const evidenceItems = pgTable(
   "evidence_items",
@@ -281,6 +310,9 @@ export const evidenceItems = pgTable(
     candidate: text("candidate"),
     scopeVersion: integer("scope_version").notNull().default(1),
     product: text("product"),
+    sourceVersionId: uuid("source_version_id").references(() => sourceVersions.id),
+    originEvidenceId: uuid("origin_evidence_id"),
+    createdTaskId: uuid("created_task_id").references(() => agentTasks.id),
     category: text("category"),
     kind: text("kind").notNull(),
     stance: text("stance").notNull(),
@@ -309,6 +341,41 @@ export const sourceDocuments = pgTable("source_documents", {
   fetchedAt: timestamp("fetched_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+});
+
+export const evidenceConclusions = pgTable("evidence_conclusions", {
+  id: id(),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  scopeVersion: integer("scope_version").notNull(),
+  requirementVersion: integer("requirement_version").notNull(),
+  subjectType: text("subject_type").notNull(),
+  subjectId: uuid("subject_id").notNull(),
+  key: text("key").notNull(),
+  statement: text("statement").notNull(),
+  rationale: text("rationale").notNull(),
+  taskId: uuid("task_id").references(() => agentTasks.id),
+  actor: text("actor").notNull(),
+  basis: jsonb("basis").$type<Record<string, unknown>>(),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex("evidence_conclusions_subject_idx").on(t.subjectType, t.subjectId, t.key),
+  index("evidence_conclusions_project_idx").on(t.projectId)]);
+
+export const conclusionEvidence = pgTable("conclusion_evidence", {
+  id: id(),
+  conclusionId: uuid("conclusion_id").notNull().references(() => evidenceConclusions.id, { onDelete: "cascade" }),
+  evidenceId: uuid("evidence_id").notNull().references(() => evidenceItems.id),
+  role: text("role").notNull(),
+}, (t) => [uniqueIndex("conclusion_evidence_pair_idx").on(t.conclusionId, t.evidenceId)]);
+
+export const conclusionReviews = pgTable("conclusion_reviews", {
+  id: id(),
+  conclusionId: uuid("conclusion_id").notNull().references(() => evidenceConclusions.id, { onDelete: "cascade" }),
+  level: text("level").notNull(),
+  reason: text("reason").notNull(),
+  reviewer: text("reviewer").notNull(),
+  basisHash: text("basis_hash").notNull(),
+  ruleVersion: text("rule_version").notNull(),
+  createdAt: createdAt(),
 });
 
 export const evidenceSearches = pgTable(

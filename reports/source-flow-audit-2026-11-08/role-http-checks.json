@@ -1,0 +1,299 @@
+{
+  "scope": "Local HTTP role and workspace checks; credentials and cookies omitted",
+  "checks": [
+    {
+      "check": "pro1@hifirst.test: login",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro1@hifirst.test: session",
+      "passed": true
+    },
+    {
+      "check": "pro1@hifirst.test: server plan routing",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "check": "pro1@hifirst.test: Pro access gate",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro1@hifirst.test: own project",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro1@hifirst.test: matching project workflow",
+      "passed": true
+    },
+    {
+      "check": "pro1@hifirst.test: foreign project denied",
+      "passed": true,
+      "status": 404
+    },
+    {
+      "check": "pro1@hifirst.test: internal access denied /admin/owner",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro1@hifirst.test: internal access denied /admin/access",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "check": "pro1@hifirst.test: internal access denied /admin/audit",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro1@hifirst.test: internal access denied /admin/status",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "check": "pro2@hifirst.test: login",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro2@hifirst.test: session",
+      "passed": true
+    },
+    {
+      "check": "pro2@hifirst.test: server plan routing",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "check": "pro2@hifirst.test: Pro access gate",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro2@hifirst.test: own project",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro2@hifirst.test: matching project workflow",
+      "passed": true
+    },
+    {
+      "check": "pro2@hifirst.test: foreign project denied",
+      "passed": true,
+      "status": 404
+    },
+    {
+      "check": "pro2@hifirst.test: internal access denied /admin/owner",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro2@hifirst.test: internal access denied /admin/access",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "check": "pro2@hifirst.test: internal access denied /admin/audit",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "pro2@hifirst.test: internal access denied /admin/status",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "check": "free1@hifirst.test: login",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free1@hifirst.test: session",
+      "passed": true
+    },
+    {
+      "check": "free1@hifirst.test: server plan routing",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free1@hifirst.test: Pro access gate",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "check": "free1@hifirst.test: own project",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free1@hifirst.test: matching project workflow",
+      "passed": true
+    },
+    {
+      "check": "free1@hifirst.test: foreign project denied",
+      "passed": true,
+      "status": 404
+    },
+    {
+      "check": "free1@hifirst.test: internal access denied /admin/owner",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free1@hifirst.test: internal access denied /admin/access",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "check": "free1@hifirst.test: internal access denied /admin/audit",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free1@hifirst.test: internal access denied /admin/status",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "check": "free2@hifirst.test: login",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free2@hifirst.test: session",
+      "passed": true
+    },
+    {
+      "check": "free2@hifirst.test: server plan routing",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free2@hifirst.test: Pro access gate",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "check": "free2@hifirst.test: own project",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free2@hifirst.test: matching project workflow",
+      "passed": true
+    },
+    {
+      "check": "free2@hifirst.test: foreign project denied",
+      "passed": true,
+      "status": 404
+    },
+    {
+      "check": "free2@hifirst.test: internal access denied /admin/owner",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free2@hifirst.test: internal access denied /admin/access",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "check": "free2@hifirst.test: internal access denied /admin/audit",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "free2@hifirst.test: internal access denied /admin/status",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "check": "anonymous: Pro requires login",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "check": "anonymous: trial remains available",
+      "passed": true
+    },
+    {
+      "check": "cron: requires service credential",
+      "passed": true
+    },
+    {
+      "check": "owner: independent login form",
+      "passed": true
+    },
+    {
+      "check": "owner: valid internal credential",
+      "passed": true,
+      "status": 303
+    },
+    {
+      "check": "owner: /admin",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/owner",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/access",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/audit",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/tasks",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/reports",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/metrics",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/knowledge",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/payment",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/context",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: /admin/status",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "check": "owner: internal session does not impersonate a customer",
+      "passed": true,
+      "status": 307
+    }
+  ]
+}
