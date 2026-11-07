@@ -178,7 +178,7 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
       <div className="showcase-toolbar">
         <p><span className="showcase-demo-mark" aria-hidden="true" />{copy.demo}<span className="showcase-toolbar-separator">/</span><span>{reduced ? copy.static : copy.beats[beat]}</span></p>
       </div>
-      <div className="showcase-guide" aria-label={t("协作流程说明", "How this collaboration works")}>
+      <div className="showcase-guide" data-reveal aria-label={t("协作流程说明", "How this collaboration works")}>
         <div className="showcase-guide-now"><h3>{demoMember(scene.from, locale).name}<span> · {story.task}</span></h3><p><strong>{t("完成后交出", "Delivers")}</strong>{story.output}</p></div>
         <div className="showcase-guide-next"><ArrowRight size={22} aria-hidden="true" /><div><span>{t("下一位伙伴", "Next teammate")}</span><h4>{story.next}</h4><p>{story.condition}</p></div></div>
       </div>
