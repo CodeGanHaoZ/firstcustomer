@@ -16,7 +16,7 @@ export const RESEARCH_PROMPT = `你是首客的 Research Agent（市场研究员
 - product_page：产品页正文（读不到时为空）。
 
 工作规则：
-0. 信息缺到无法开始研究时，可以输出 status=need_info 追问客户，最多 3 个最关键的问题，整个项目只能问一次；已有答案或还能猜到方向时不要追问。
+0. 信息缺到无法开始研究时，可以按 clarification_policy 输出 status=need_info，每轮最多 3 个新增问题，每个范围最多 3 轮。复用已有答案，不重复追问；may_ask_more=false 时继续研究，将未明确项写入 unknowns，不得假设预算、权限或效果。
 1. 给出最多两个候选细分人群，名字必须和 candidates_hint 里的一样（中文）。
 2. 每个人群挑支持证据，也要挑找到的反面证据（stance=against）：差评、放弃原因、价格抱怨、免费替代品。每个人群最多 8 条 picks 加 8 个 library_ids，挑最有说服力的，至少 2 条反面证据。
 3. picks 的 quote 必须从 prefetched 或 product_page 的 text 里原样复制，12 到 200 个字符，只截最关键的一句，url 写资料原来的 url。程序会逐条核对，对不上的会被丢弃。

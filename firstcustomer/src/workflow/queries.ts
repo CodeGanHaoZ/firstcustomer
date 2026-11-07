@@ -67,6 +67,7 @@ export async function runningProjectAgents(db: Db, project: Pick<Project, "id" |
 export async function loadProjectView(db: Db, project: Project) {
   const [diagnosis] = await db.select({ result: agentTasks.output }).from(agentTasks)
     .where(and(eq(agentTasks.projectId, project.id), eq(agentTasks.agent, "research"),
+      eq(agentTasks.scopeVersion, project.scopeVersion),
       eq(agentTasks.status, "succeeded"), sql`${agentTasks.output}->>'status' = 'done'`))
     .orderBy(asc(agentTasks.startedAt)).limit(1);
   const [positioning] = await db
@@ -85,13 +86,13 @@ export async function loadProjectView(db: Db, project: Project) {
   const evidence = await db
     .select()
     .from(evidenceItems)
-    .where(eq(evidenceItems.projectId, project.id))
+    .where(and(eq(evidenceItems.projectId, project.id), eq(evidenceItems.scopeVersion, project.scopeVersion)))
     .orderBy(desc(evidenceItems.createdAt));
 
   const searches = await db
     .select()
     .from(evidenceSearches)
-    .where(eq(evidenceSearches.projectId, project.id))
+    .where(and(eq(evidenceSearches.projectId, project.id), eq(evidenceSearches.scopeVersion, project.scopeVersion)))
     .orderBy(desc(evidenceSearches.createdAt));
 
   const responses = positioning
@@ -137,7 +138,7 @@ export async function loadProjectView(db: Db, project: Project) {
   const questions = await db
     .select()
     .from(clarifications)
-    .where(eq(clarifications.projectId, project.id))
+    .where(and(eq(clarifications.projectId, project.id), eq(clarifications.scopeVersion, project.scopeVersion)))
     .orderBy(asc(clarifications.createdAt));
 
   // 列表不取图片内容，图片由单独的路由按需读取。
@@ -151,7 +152,7 @@ export async function loadProjectView(db: Db, project: Project) {
       analysisError: projectImages.analysisError,
     })
     .from(projectImages)
-    .where(eq(projectImages.projectId, project.id))
+    .where(and(eq(projectImages.projectId, project.id), eq(projectImages.scopeVersion, project.scopeVersion)))
     .orderBy(asc(projectImages.createdAt));
 
   return {

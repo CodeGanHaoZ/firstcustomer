@@ -16,6 +16,7 @@ import {
   companyReports,
   companySettings,
   knowledgeArticles,
+  projectRequirements,
   decisions,
   deliverables,
   events,
@@ -63,6 +64,9 @@ import { copyLibraryEvidence, libraryEvidence } from "@/agents/library";
 import type { SourceClient } from "@/agents/sources";
 import { createResearchTools } from "@/agents/tools";
 import { seedKnowledge } from "@/knowledge/seed";
+import { requirementHistory, reviseRequirements } from "@/workflow/requirements";
+import { requirementSnapshot, MAX_CLARIFICATION_ROUNDS } from "@/domain/requirements";
+import { workPackageReadiness } from "@/workflow/work-packages";
 
 let pg: EmbeddedPostgres;
 let db: Db;
@@ -385,13 +389,24 @@ describe("完整流程", () => {
       decide(db, h.enqueue, { projectId: project.id, gate: "next_round", actor: "founder", verdict: "approve" }),
     ).rejects.toThrow("不能开启下一轮");
 
-    const deliveries = await Promise.allSettled([deliverProject(db, project.id), deliverProject(db, project.id)]);
+    const [beforeDelivery] = await db.select().from(projects).where(eq(projects.id, project.id));
+    const readiness = await workPackageReadiness(db, beforeDelivery);
+    expect(readiness.ready).toBe(true);
+    expect(readiness.packages).toHaveLength(4);
+    await expect(deliverProject(db, project.id, "stale")).rejects.toThrow("交付版本已变化");
+    const originalReport = report.content;
+    await db.update(deliverables).set({ content: { ...originalReport as object, verdict: "passed" } }).where(eq(deliverables.id, report.id));
+    await expect(deliverProject(db, project.id)).rejects.toThrow("结论与预先标准");
+    await db.update(deliverables).set({ content: originalReport }).where(eq(deliverables.id, report.id));
+    const deliveries = await Promise.allSettled([deliverProject(db, project.id, readiness.stamp), deliverProject(db, project.id, readiness.stamp)]);
     expect(deliveries.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
     expect(await statusOf(project.id)).toBe("delivered");
-    await acceptDelivery(db, { projectId: project.id, verdict: "reject", reason: "请说明有效线索口径" });
+    await expect(acceptDelivery(db, { projectId: project.id, verdict: "approve", stamp: "stale" })).rejects.toThrow("交付版本已变化");
+    await acceptDelivery(db, { projectId: project.id, verdict: "reject", reason: "请说明有效线索口径", stamp: readiness.stamp });
     await acceptDelivery(db, { projectId: project.id, verdict: "approve" });
     const acceptance = await db.select().from(decisions).where(and(eq(decisions.projectId, project.id), eq(decisions.gate, "acceptance")));
     expect(acceptance).toHaveLength(3);
+    expect(acceptance.every((decision) => Boolean(decision.snapshot))).toBe(true);
     expect(acceptance).toEqual(expect.arrayContaining([
         expect.objectContaining({ actorRole: "founder", verdict: "approve", subjectId: report.id, subjectVersion: report.round }),
         expect.objectContaining({ actorRole: "customer", verdict: "reject", subjectId: report.id, reason: "请说明有效线索口径" }),
@@ -958,7 +973,7 @@ describe("信息不足时追问客户", () => {
     expect(answered.clarifications[0].answer).toContain("没有回答");
   });
 
-  it("整个项目只能追问一次", async () => {
+  it("已有回答后可以提出第二轮新增问题，回答后继续", async () => {
     let asks = 0;
     const model: ModelClient = async (request) => {
       const input = request.agent === "research" ? JSON.parse(String(request.messages[1].content)) : null;
@@ -994,8 +1009,13 @@ describe("信息不足时追问客户", () => {
     });
     await h.drain();
     expect(asks).toBe(2);
+    expect(await statusOf(project.id)).toBe("needs_info");
+    const all = await db.select().from(clarifications).where(eq(clarifications.projectId, project.id));
+    expect(all).toHaveLength(3);
+    const second = all.find((question) => question.batch === 2)!;
+    await answerClarifications(db, h.enqueue, { projectId: project.id, by: "customer", answers: { [second.id]: "新增答案" } });
+    await h.drain();
     expect(await statusOf(project.id)).toBe("awaiting_positioning");
-    expect(await db.select().from(clarifications).where(eq(clarifications.projectId, project.id))).toHaveLength(2);
   });
 
   it("不需要补充信息时不能提交回答", async () => {
@@ -1253,5 +1273,141 @@ describe("预检索和品类证据库", () => {
     expect(input).toHaveProperty("library");
     const [task] = (await tasksOf(project.id)).filter((t) => t.agent === "research");
     expect(task.model).toBe("stub-model");
+  });
+});
+
+
+describe("需求版本、澄清边界与成果核验回归", () => {
+  it("初次提交形成需求快照，预算未知不会被补造", async () => {
+    const { project } = await newProject({ productPlan: "free", currentWorkflow: "手动制作演示", successCriteria: "确认首批人群", constraints: "不投广告" });
+    const [version] = await requirementHistory(db, project.id);
+    expect(version.version).toBe(1);
+    expect(version.actor).toBe("customer");
+    expect(version.snapshot).toMatchObject({ currentWorkflow: "手动制作演示", successCriteria: "确认首批人群", constraints: "不投广告", budgetNote: "" });
+    expect(version.snapshot.unknowns).toContain("预算和时间");
+  });
+
+  it("范围修订保留历史并隔离旧证据，过期页面不能覆盖新需求", async () => {
+    const h = harness();
+    const { project } = await newProject({ productPlan: "free" });
+    await db.insert(agentTasks).values({ projectId: project.id, agent: "research", status: "succeeded", scopeVersion: 1,
+      output: { status: "done", summary: "OLD_SCOPE_SHOULD_NOT_REACH_PRO", candidates: [] } });
+    const old = await addManualEvidence(db, { projectId: project.id, url: "https://example.com/old", kind: "pain", stance: "support",
+      quote: "The old workflow had a difficult manual step.", sourceText: "The old workflow had a difficult manual step." });
+    await addProjectImage(db, { projectId: project.id, bytes: new Uint8Array([137,80,78,71,13,10,26,10]), kind: "product", uploadedBy: "customer" });
+    await db.update(projects).set({ status: "free_ready" }).where(eq(projects.id, project.id));
+    const fields = { ...requirementSnapshot(project), productName: "New product", successCriteria: "新的验证目标" };
+    const saved = await reviseRequirements(db, h.enqueue, { projectId: project.id, version: 1, fields });
+    expect(saved).toMatchObject({ requirementVersion: 2, scopeVersion: 2, status: "researching" });
+    expect(await requirementHistory(db, project.id)).toHaveLength(2);
+    expect((await visibleEvidence(db, project.id)).some((item) => item.id === old.id)).toBe(false);
+    expect(await db.select().from(evidenceItems).where(eq(evidenceItems.id, old.id))).toHaveLength(1);
+    expect((await loadProjectView(db, saved)).diagnosis).toBeNull();
+    expect((await loadProjectView(db, saved)).images).toHaveLength(0);
+    expect(await db.select().from(projectImages).where(eq(projectImages.projectId, project.id))).toHaveLength(1);
+    await expect(reviseRequirements(db, h.enqueue, { projectId: project.id, version: 1, fields })).rejects.toThrow("需求版本已更新");
+    await h.drain();
+    const current = (await tasksOf(project.id)).find((task) => task.agent === "research" && task.scopeVersion === 2)!;
+    expect(current).toMatchObject({ requirementVersion: 2, scopeVersion: 2 });
+    expect(JSON.stringify(current.input)).toContain("新的验证目标");
+    expect((await tasksOf(project.id)).some((task) => task.agent === "vision")).toBe(false);
+    await db.update(projects).set({ productPlan: "pro", status: "strategizing" }).where(eq(projects.id, project.id));
+    await advanceProject(h.deps, project.id);
+    const strategy = (await tasksOf(project.id)).find((task) => task.agent === "strategy")!;
+    expect(JSON.stringify(strategy.input)).not.toContain("OLD_SCOPE_SHOULD_NOT_REACH_PRO");
+    expect(JSON.stringify(strategy.input)).toContain("新的验证目标");
+  });
+
+  it("已运行、Pro 和超过免费范围修订额度时不偷偷改范围", async () => {
+    const { project } = await newProject({ productPlan: "pro" });
+    const fields = requirementSnapshot(project);
+    await expect(reviseRequirements(db, async () => {}, { projectId: project.id, version: 1, fields })).rejects.toThrow("范围变更");
+    await db.update(projects).set({ productPlan: "free", status: "free_ready", scopeVersion: 3 }).where(eq(projects.id, project.id));
+    await expect(reviseRequirements(db, async () => {}, { projectId: project.id, version: 1, fields })).rejects.toThrow("修订上限");
+    await db.update(projects).set({ scopeVersion: 1 }).where(eq(projects.id, project.id));
+    await db.insert(agentTasks).values({ projectId: project.id, agent: "research", status: "running" });
+    await expect(reviseRequirements(db, async () => {}, { projectId: project.id, version: 1, fields })).rejects.toThrow("仍有任务运行");
+  });
+
+  it("部分补充形成新版本，旧页面及其他项目问题不能覆写回答", async () => {
+    const h = harness();
+    const { project } = await newProject({ targetMarket: null });
+    await startResearch(db, h.enqueue, project.id);
+    await h.drain();
+    const questions = await db.select().from(clarifications).where(eq(clarifications.projectId, project.id));
+    await answerClarifications(db, h.enqueue, { projectId: project.id, version: 1, by: "customer", answers: { [questions[0].id]: "北美" } });
+    expect(await requirementHistory(db, project.id)).toHaveLength(2);
+    const [latest] = await db.select().from(projects).where(eq(projects.id, project.id));
+    await expect(answerClarifications(db, h.enqueue, { projectId: project.id, version: 1, by: "customer", answers: { [questions[0].id]: "旧页面覆盖" } })).rejects.toThrow("需求版本已更新");
+    const { project: other } = await newProject();
+    const [foreign] = await db.insert(clarifications).values({ projectId: other.id, question: "另一个项目", why: "w" }).returning();
+    await expect(answerClarifications(db, h.enqueue, { projectId: project.id, version: latest.requirementVersion, by: "customer", answers: { [foreign.id]: "禁止串项目" } })).rejects.toThrow("不属于当前项目");
+    const snapshots = await db.select().from(projectRequirements).where(eq(projectRequirements.projectId, project.id));
+    expect(snapshots[0].snapshot.answers).toEqual([]);
+    expect(snapshots[1].snapshot.answers.some((answer) => answer.answer === "北美")).toBe(true);
+  });
+
+  for (const duplicate of [false, true]) it(duplicate ? "重复问题停止自动追问并转人工" : "三轮澄清后转人工，等待期间不新增模型调用", async () => {
+    let calls = 0;
+    const model: ModelClient = async (request) => {
+      if (request.agent !== "research") return stubModel(request);
+      calls++;
+      const content = JSON.stringify({ status: "need_info", questions: [{ question: duplicate ? "需要什么环境？" : `第 ${calls} 个缺失信息？`, why: "影响验证" }] });
+      return { content, message: { role: "assistant", content }, toolCalls: [], citations: [], provider: "stub", model: "stub-model", usage: { inputTokens: 0, outputTokens: 0, searchCalls: 0 } };
+    };
+    const h = harness(model);
+    const { project } = await newProject({ productPlan: "free" });
+    await startResearch(db, h.enqueue, project.id);
+    await h.drain();
+    const rounds = duplicate ? 1 : MAX_CLARIFICATION_ROUNDS;
+    for (let i = 0; i < rounds; i++) {
+      expect(await statusOf(project.id)).toBe("needs_info");
+      const questions = await db.select().from(clarifications).where(eq(clarifications.projectId, project.id));
+      await answerClarifications(db, h.enqueue, { projectId: project.id, by: "customer", answers: Object.fromEntries(questions.filter((q) => !q.answer).map((q) => [q.id, "已确认的答案"])) });
+      await h.drain();
+    }
+    expect(await statusOf(project.id)).toBe("awaiting_founder");
+    expect(await db.select().from(clarifications).where(eq(clarifications.projectId, project.id))).toHaveLength(rounds);
+    const before = calls;
+    await h.drain();
+    expect(calls).toBe(before);
+    const [current] = await db.select().from(projects).where(eq(projects.id, project.id));
+    const packages = await workPackageReadiness(db, current);
+    expect(packages.packages).toHaveLength(1);
+    expect(packages.packages[0].attempts).toBe(rounds + 1);
+    expect(packages.ready).toBe(false);
+  });
+
+  it("只有模型自称完成、缺实际成果时不能交付", async () => {
+    const { project } = await newProject();
+    await db.update(projects).set({ status: "reviewing" }).where(eq(projects.id, project.id));
+    await db.insert(agentTasks).values({ projectId: project.id, agent: "growth", output: { summary: "我已完成全部交付", verdict: "passed" }, status: "succeeded" });
+    await db.insert(deliverables).values({ projectId: project.id, kind: "report", round: 1, content: { summary: "我已完成全部交付" } });
+    await expect(deliverProject(db, project.id)).rejects.toThrow("交付检查未通过");
+    expect(await statusOf(project.id)).toBe("reviewing");
+    expect(await db.select().from(decisions).where(eq(decisions.projectId, project.id))).toHaveLength(0);
+  });
+
+  it("有效运行不会重复派发，失效运行租期能恢复并保留未知结果记录", async () => {
+    const h = harness();
+    const { project } = await newProject({ productPlan: "free" });
+    await db.update(projects).set({ status: "researching" }).where(eq(projects.id, project.id));
+    const [old] = await db.insert(agentTasks).values({ projectId: project.id, agent: "research", status: "running" }).returning();
+    await advanceProject(h.deps, project.id);
+    expect(await tasksOf(project.id)).toHaveLength(1);
+    await db.update(agentTasks).set({ startedAt: new Date(Date.now() - 7_200_000) }).where(eq(agentTasks.id, old.id));
+    await advanceProject(h.deps, project.id);
+    expect(await statusOf(project.id)).toBe("free_ready");
+    const attempts = await tasksOf(project.id);
+    expect(attempts).toHaveLength(2);
+    expect(attempts.find((task) => task.id === old.id)).toMatchObject({ status: "failed", error: expect.stringContaining("结果未知") });
+  });
+
+  it("Pro 交付检查需要实际到账记录，模型或截图表述不能替代", async () => {
+    const { project } = await newProject({ productPlan: "pro", isOwnProduct: false });
+    const readiness = await workPackageReadiness(db, project);
+    const commercial = readiness.packages.find((item) => item.key === "commerce")!;
+    expect(commercial.status).toBe("waiting");
+    expect(commercial.checks.every((check) => check.passed === false)).toBe(true);
   });
 });

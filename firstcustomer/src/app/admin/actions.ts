@@ -128,8 +128,8 @@ export async function startReviewAction(projectId: string, formData: FormData) {
   return startReviewHandler(projectId, formData);
 }
 
-const deliverHandler = adminAction(async (_formData, projectId) => {
-  await deliverProject(getDb(), projectId);
+const deliverHandler = adminAction(async (formData, projectId) => {
+  await deliverProject(getDb(), projectId, z.string().regex(/^[a-f0-9]{64}$/).parse(formData.get("deliveryStamp")));
 });
 export async function deliverAction(projectId: string, formData: FormData) {
   return deliverHandler(projectId, formData);
@@ -335,6 +335,7 @@ const founderAnswersHandler = adminAction(async (formData, projectId) => {
     projectId,
     answers,
     by: "founder",
+    version: z.coerce.number().int().positive().parse(formData.get("requirementVersion")),
   });
   if (!result.complete) return `已保存，还有 ${result.remaining} 个问题没有回答`;
 });

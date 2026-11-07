@@ -64,6 +64,27 @@
       "when": 1794032969596,
       "tag": "0008_knowledge_library",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794041595431,
+      "tag": "0009_requirement_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794042297654,
+      "tag": "0010_scope_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794042833572,
+      "tag": "0011_scope_searches",
+      "breakpoints": true
     }
   ]
 }

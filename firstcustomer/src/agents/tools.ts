@@ -2,7 +2,7 @@ import { and, eq, gt, ilike, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import type { AgentTool } from "@/ai/run-agent";
 import type { Db } from "@/db";
-import { evidenceItems, evidenceSearches, sourceDocuments } from "@/db/schema";
+import { evidenceItems, evidenceSearches, sourceDocuments, projects } from "@/db/schema";
 import { expiresAt, gradeFor, normalizeText, vendorCopyProblem, verifyQuote, type EvidenceKind } from "@/domain/evidence";
 import { copyLibraryEvidence } from "./library";
 import type { SourceClient, SourceResult } from "./sources";
@@ -51,6 +51,7 @@ export function createResearchTools(context: {
       parameters: z.object({ query: z.string() }),
       execute: async ({ query }: { query: string }) => {
         const like = `%${query}%`;
+        const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
         return db
           .select({
             id: evidenceItems.id,
@@ -67,7 +68,7 @@ export function createResearchTools(context: {
           .where(
             and(
               gt(evidenceItems.expiresAt, new Date()),
-              or(isNull(evidenceItems.projectId), eq(evidenceItems.projectId, projectId)),
+              or(isNull(evidenceItems.projectId), and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.scopeVersion, project?.scopeVersion ?? 1))),
               or(
                 ilike(evidenceItems.product, like),
                 ilike(evidenceItems.category, like),
@@ -104,8 +105,10 @@ export function createResearchTools(context: {
         const { results, searchCalls } = await sources.search(args.source, args.query);
         context.onSearchCalls(searchCalls);
         await Promise.all(results.map((r: SourceResult) => cacheDocument(db, r)));
+        const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
         await db.insert(evidenceSearches).values({
           projectId,
+          scopeVersion: project?.scopeVersion ?? 1,
           candidate: args.candidate,
           purpose: args.purpose,
           source: args.source,
@@ -173,6 +176,8 @@ export type EvidencePick = {
 
 // 保存一条证据：网址必须读取过，摘录由程序核对，等级由程序决定；同一项目里同一摘录只存一次。
 export async function storeEvidence(db: Db, projectId: string, args: EvidencePick) {
+  const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+  if (!project) throw new Error("项目不存在");
   const [doc] = await db
     .select()
     .from(sourceDocuments)
@@ -186,7 +191,7 @@ export async function storeEvidence(db: Db, projectId: string, args: EvidencePic
   const sameUrl = await db
     .select({ id: evidenceItems.id, excerpt: evidenceItems.excerpt, grade: evidenceItems.grade, status: evidenceItems.status })
     .from(evidenceItems)
-    .where(and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.url, args.url)));
+    .where(and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.scopeVersion, project.scopeVersion), eq(evidenceItems.url, args.url)));
   const duplicate = sameUrl.find((e) => normalizeText(e.excerpt) === normalizeText(args.quote));
   if (duplicate) {
     return { evidence_id: duplicate.id, status: duplicate.status, grade: duplicate.grade, note: "已经保存过，直接复用" };
@@ -196,6 +201,7 @@ export async function storeEvidence(db: Db, projectId: string, args: EvidencePic
     .insert(evidenceItems)
     .values({
       projectId,
+      scopeVersion: project.scopeVersion,
       candidate: args.candidate,
       product: args.product,
       category: args.category,

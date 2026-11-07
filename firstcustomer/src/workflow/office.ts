@@ -54,7 +54,7 @@ export async function projectAttention(db: Db, project: typeof projects.$inferSe
         ? owner(positioning ? "代为确认自有产品定位" : "代为确认自有产品发布")
         : waiting(positioning ? "等客户确认定位" : "等客户确认发布");
     }
-    case "awaiting_founder": return owner("打回超限，等你裁决");
+    case "awaiting_founder": return owner((project.escalation as { route?: string } | null)?.route === "clarification-limit" ? "补充信息需你处理" : "打回超限，等你裁决");
     case "failed": return owner("执行失败，决定是否重试");
     case "collecting": return owner("数据够了就开始复盘", null);
     case "reviewing": {
@@ -90,7 +90,7 @@ export async function loadDepartments(db: Db, project: typeof projects.$inferSel
     db.select({ version: landingPages.version, status: landingPages.status }).from(landingPages)
       .where(eq(landingPages.projectId, project.id)).orderBy(desc(landingPages.version)).limit(1),
     reportFor(db, project),
-    db.select({ answer: clarifications.answer }).from(clarifications).where(eq(clarifications.projectId, project.id)),
+    db.select({ answer: clarifications.answer }).from(clarifications).where(and(eq(clarifications.projectId, project.id), eq(clarifications.scopeVersion, project.scopeVersion))),
     db.select({ status: supportMessages.status }).from(supportMessages).where(eq(supportMessages.projectId, project.id)),
   ]);
   return departmentViews({

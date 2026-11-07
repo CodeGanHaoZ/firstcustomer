@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 type Intake = "admin" | "public";
 const draftKey = (intake: Intake) => `fc:intake:${intake}`;
-const fields = ["stage", "productName", "productUrl", "targetMarket", "goal", "budgetNote", "contact", "own"];
+const fields = ["stage", "productName", "productUrl", "targetMarket", "goal", "budgetNote", "contact", "own", "currentWorkflow", "successCriteria", "constraints"];
 
 export function ProjectDraftForm({ action, intake, children }: {
   action: (formData: FormData) => Promise<void>;

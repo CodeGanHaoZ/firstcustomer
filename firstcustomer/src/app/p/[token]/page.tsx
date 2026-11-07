@@ -7,6 +7,11 @@ import { PaymentCodeImage, ProposalDetails, ReceiptUpload } from "@/components/c
 import { OfficeMap, type OfficeStation } from "@/components/office-map";
 import { OfficeStage } from "@/components/office-stage";
 import { ClearProjectDraft } from "@/components/project-draft";
+import { RequirementCard } from "@/components/requirement-card";
+import { WorkPackageList } from "@/components/work-package-list";
+import { requirementHistory } from "@/workflow/requirements";
+import { workPackageReadiness } from "@/workflow/work-packages";
+import { customerRequirementsAction } from "./actions";
 import {
   ClarificationSection,
   DeliverablesSection,
@@ -57,6 +62,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
   const db = getDb();
   const project = await findCustomerProject(db, token);
   if (!project) notFound();
+  const [requirements, readiness] = await Promise.all([requirementHistory(db, project.id), workPackageReadiness(db, project)]);
   const [view, order, support, runningAgents, transfer] = await Promise.all([
     loadProjectView(db, project), projectOrder(db, project.id), projectSupport(db, project.id), runningProjectAgents(db, project),
     project.status === "submitted" || project.status === "cancelled" ? null : loadOfficeTransfer(db, project.id),
@@ -252,8 +258,11 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         </Card>
       ) : null}
 
+      <RequirementCard project={project} history={requirements} action={customerRequirementsAction.bind(null, token)} />
+      <WorkPackageList readiness={readiness} />
       <div id="clarifications" hidden={!view.clarifications.length}><ClarificationSection
         questions={view.clarifications}
+        requirementVersion={project.requirementVersion}
         canAnswer={project.status === "needs_info"}
         answerAction={customerAnswers.bind(null, token)}
       /></div>
@@ -271,11 +280,12 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           <CardContent className="flex flex-col gap-3 text-sm">
             {order?.deliveryStatus === "accepted" ? <p>你已确认验收。</p> : (
               <form action={customerAcceptanceAction.bind(null, token)} className="flex flex-col gap-3">
+                <input type="hidden" name="deliveryStamp" value={readiness.stamp} />
                 {order?.deliveryStatus === "changes_requested" ? <p>修改意见已提交，可补充意见或确认验收。</p> : null}
                 <Label htmlFor="acceptance-note">需要修改的地方（退回时必填）</Label>
                 <Textarea id="acceptance-note" name="reason" maxLength={500} />
                 <div className="flex gap-2">
-                  <Button name="verdict" value="approve" type="submit">确认验收</Button>
+                  <Button name="verdict" value="approve" type="submit" disabled={!readiness.ready}>确认验收</Button>
                   <Button name="verdict" value="reject" type="submit" variant="outline">提出修改</Button>
                 </div>
               </form>

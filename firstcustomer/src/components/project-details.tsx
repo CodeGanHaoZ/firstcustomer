@@ -125,6 +125,7 @@ export function ClarificationSection(props: {
   questions: ProjectView["clarifications"];
   canAnswer: boolean;
   answerAction: (formData: FormData) => Promise<void>;
+  requirementVersion: number;
 }) {
   const { questions, canAnswer, answerAction } = props;
   if (!questions.length) return null;
@@ -154,9 +155,10 @@ export function ClarificationSection(props: {
       </CardHeader>
       <CardContent>
         <form action={answerAction} className="flex flex-col gap-4 text-sm">
+          <input type="hidden" name="requirementVersion" value={props.requirementVersion} />
           {questions.map((q) => (
             <div key={q.id} className="flex flex-col gap-1">
-              <Label htmlFor={`answer_${q.id}`}>{q.question}</Label>
+              <Label htmlFor={`answer_${q.id}`}>第 {q.batch} 轮 · {q.question}</Label>
               <p className="text-muted-foreground">{q.why}</p>
               <Textarea
                 id={`answer_${q.id}`}

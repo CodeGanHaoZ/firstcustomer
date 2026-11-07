@@ -55,7 +55,7 @@ export function canStartFreeDiagnosis(
 const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   submitted: ["researching"],
   needs_info: ["researching"],
-  researching: ["free_ready", "drafting_quote", "strategizing", "needs_info", "failed"],
+  researching: ["free_ready", "drafting_quote", "strategizing", "needs_info", "awaiting_founder", "failed"],
   free_ready: ["drafting_quote"],
   drafting_quote: ["awaiting_quote", "failed"],
   awaiting_quote: ["awaiting_quote_acceptance", "drafting_quote"],

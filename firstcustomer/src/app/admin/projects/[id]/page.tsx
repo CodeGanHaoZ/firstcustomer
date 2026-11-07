@@ -38,6 +38,10 @@ import { latestReceipt } from "@/workflow/commerce";
 import type { Escalation } from "@/workflow/engine";
 import { loadLeads, loadProjectAudit, loadProjectView } from "@/workflow/queries";
 import { projectSupport } from "@/workflow/support";
+import { RequirementCard } from "@/components/requirement-card";
+import { WorkPackageList } from "@/components/work-package-list";
+import { requirementHistory } from "@/workflow/requirements";
+import { workPackageReadiness } from "@/workflow/work-packages";
 import {
   adminDeleteImageAction,
   adminUploadImagesAction,
@@ -143,6 +147,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   const db = getDb();
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) notFound();
+  const [requirements, readiness] = await Promise.all([requirementHistory(db, project.id), workPackageReadiness(db, project)]);
   const issuedToken = created === "1" ? (await cookies()).get(NEW_CUSTOMER_LINK_COOKIE)?.value : undefined;
   const customerHref = issuedToken && hashToken(issuedToken) === project.tokenHash ? `/p/${issuedToken}` : null;
   const [view, audit, projectLeads, [order], support] = await Promise.all([
@@ -280,7 +285,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           {project.status === "awaiting_founder" && escalation ? (
             <form action={bind(escalationAction)} className="flex flex-col gap-3 text-sm">
               <p>
-                打回超限（{escalation.route}）：{escalation.request.missing}。{escalation.request.reason}
+                {escalation.route === "clarification-limit" ? "补充信息转人工" : "打回超限"}：{escalation.request.missing}。{escalation.request.reason}
               </p>
               <div className="flex flex-col gap-1">
                 <Label htmlFor="note">你的决定</Label>
@@ -290,8 +295,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                 <Label htmlFor="target">接下来交给</Label>
                 <select id="target" name="target" className="h-9 rounded-md border bg-background px-3" defaultValue={escalation.from}>
                   <option value="researching">Research 继续补查</option>
-                  <option value="strategizing">Strategy 继续制定</option>
-                  <option value="preparing_page">Launch 继续准备页面</option>
+                  {escalation.route !== "clarification-limit" ? <><option value="strategizing">Strategy 继续制定</option><option value="preparing_page">Launch 继续准备页面</option></> : null}
                 </select>
               </div>
               <Button type="submit" className="self-start">
@@ -315,7 +319,8 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           {project.status === "reviewing" && view.report ? (
             <div className="flex flex-col gap-3">
               <form action={bind(deliverAction)}>
-                <Button type="submit">确认交付</Button>
+                <input type="hidden" name="deliveryStamp" value={readiness.stamp} />
+                <Button type="submit" disabled={!readiness.ready}>检查通过，确认交付</Button>
               </form>
               {canStartNextRound ? (
                 <GateForm
@@ -339,6 +344,8 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         </CardContent>
       </Card>
 
+      <RequirementCard project={project} history={requirements} />
+      <WorkPackageList readiness={readiness} />
       <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#finance" />
 
       <Card id="frontdesk">
@@ -366,6 +373,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
 
       <ClarificationSection
         questions={view.clarifications}
+        requirementVersion={project.requirementVersion}
         canAnswer={project.status === "needs_info"}
         answerAction={bind(founderAnswersAction)}
       />

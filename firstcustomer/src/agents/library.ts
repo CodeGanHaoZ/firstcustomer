@@ -1,6 +1,6 @@
 import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import type { Db } from "@/db";
-import { evidenceItems } from "@/db/schema";
+import { evidenceItems, projects } from "@/db/schema";
 import { normalizeText } from "@/domain/evidence";
 
 type LibraryQuery = { source: string; query: string; purpose: "support" | "counter" };
@@ -140,6 +140,8 @@ export async function libraryEvidence(db: Db, categoryIds: string[]) {
 // 把选中的预存证据复制进项目；项目里已有同一网址、同一摘录的就直接复用。
 export async function copyLibraryEvidence(db: Db, projectId: string, ids: string[], candidate: string) {
   if (!ids.length) return [];
+  const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+  if (!project) throw new Error("项目不存在");
   const rows = await db
     .select()
     .from(evidenceItems)
@@ -147,7 +149,7 @@ export async function copyLibraryEvidence(db: Db, projectId: string, ids: string
   const existing = await db
     .select({ id: evidenceItems.id, url: evidenceItems.url, excerpt: evidenceItems.excerpt })
     .from(evidenceItems)
-    .where(eq(evidenceItems.projectId, projectId));
+    .where(and(eq(evidenceItems.projectId, projectId), eq(evidenceItems.scopeVersion, project.scopeVersion)));
   const key = (url: string, excerpt: string) => `${url}|${normalizeText(excerpt)}`;
   const known = new Map(existing.map((e) => [key(e.url, e.excerpt), e.id]));
   const out: { library_id: string; evidence_id: string }[] = [];
@@ -159,6 +161,7 @@ export async function copyLibraryEvidence(db: Db, projectId: string, ids: string
         .insert(evidenceItems)
         .values({
           projectId,
+          scopeVersion: project.scopeVersion,
           candidate,
           product: row.product,
           category: row.category,

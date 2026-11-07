@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import type { ProposalOutput, ReceiptOutput } from "@/agents/schemas";
 import type { ProjectPlan } from "@/domain/workflow";
 import type { KnowledgeContent, PublishedKnowledge } from "@/knowledge/types";
+import type { RequirementSnapshot } from "@/domain/requirements";
 import {
   boolean,
   customType,
@@ -54,6 +55,13 @@ export const projects = pgTable("projects", {
   goal: text("goal").notNull(),
   targetMarket: text("target_market"),
   budgetNote: text("budget_note"),
+  currentWorkflow: text("current_workflow").notNull().default(""),
+  successCriteria: text("success_criteria").notNull().default(""),
+  constraints: text("constraints").notNull().default(""),
+  requirementVersion: integer("requirement_version").notNull().default(1),
+  scopeVersion: integer("scope_version").notNull().default(1),
+  clarificationRounds: integer("clarification_rounds").notNull().default(0),
+  clarificationsClosed: boolean("clarifications_closed").notNull().default(false),
   contact: text("contact").notNull(),
   isOwnProduct: boolean("is_own_product").notNull().default(false),
   requiresPayment: boolean("requires_payment").notNull().default(false),
@@ -72,6 +80,14 @@ export const projects = pgTable("projects", {
     .notNull()
     .defaultNow(),
 }, (table) => [index("projects_customer_idx").on(table.customerId)]);
+
+export const projectRequirements = pgTable("project_requirements", {
+  id: id(), projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(), scopeVersion: integer("scope_version").notNull(),
+  snapshot: jsonb("snapshot").$type<RequirementSnapshot>().notNull(),
+  actor: text("actor").notNull(), reason: text("reason").notNull(), confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (table) => [uniqueIndex("project_requirements_version_idx").on(table.projectId, table.version)]);
 
 export const stateTransitions = pgTable(
   "state_transitions",
@@ -96,6 +112,8 @@ export const clarifications = pgTable(
     projectId: uuid("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
+    scopeVersion: integer("scope_version").notNull().default(1),
+    batch: integer("batch").notNull().default(1),
     question: text("question").notNull(),
     why: text("why").notNull(),
     answer: text("answer"),
@@ -114,6 +132,7 @@ export const projectImages = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
+    scopeVersion: integer("scope_version").notNull().default(1),
     note: text("note"),
     mimeType: text("mime_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
@@ -226,6 +245,8 @@ export const agentTasks = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     agent: text("agent").notNull(),
+    requirementVersion: integer("requirement_version").notNull().default(1),
+    scopeVersion: integer("scope_version").notNull().default(1),
     status: text("status").notNull().default("running"),
     trigger: text("trigger").notNull().default("normal"),
     parentTaskId: uuid("parent_task_id"),
@@ -258,6 +279,7 @@ export const evidenceItems = pgTable(
       onDelete: "cascade",
     }),
     candidate: text("candidate"),
+    scopeVersion: integer("scope_version").notNull().default(1),
     product: text("product"),
     category: text("category"),
     kind: text("kind").notNull(),
@@ -297,6 +319,7 @@ export const evidenceSearches = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     candidate: text("candidate"),
+    scopeVersion: integer("scope_version").notNull().default(1),
     purpose: text("purpose").notNull(),
     source: text("source").notNull(),
     query: text("query").notNull(),
@@ -346,6 +369,7 @@ export const decisions = pgTable(
     subjectVersion: integer("subject_version").notNull(),
     actorRole: text("actor_role").notNull(),
     verdict: text("verdict").notNull(),
+    snapshot: jsonb("snapshot"),
     reason: text("reason"),
     createdAt: createdAt(),
   },

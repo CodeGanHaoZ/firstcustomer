@@ -18,6 +18,8 @@ import {
 } from "@/workflow/actions";
 import { openSupportMessage } from "@/workflow/support";
 import { requestPro, startFreeDiagnosis } from "@/workflow/plans";
+import { reviseRequirements } from "@/workflow/requirements";
+import { requirementFields } from "@/domain/requirements";
 
 const schema = z.object({
   gate: z.enum(["positioning", "publish", "next_round"]),
@@ -57,6 +59,7 @@ export async function customerAnswers(token: string, formData: FormData) {
       projectId,
       answers,
       by: "customer",
+      version: z.coerce.number().int().positive().parse(formData.get("requirementVersion")),
     });
     if (!result.complete) return `已保存，还有 ${result.remaining} 个问题没有回答`;
   });
@@ -128,7 +131,21 @@ export async function customerAcceptanceAction(token: string, formData: FormData
       projectId,
       verdict: z.enum(["approve", "reject"]).parse(formData.get("verdict")),
       reason: String(formData.get("reason") ?? "").trim().slice(0, 500),
+      stamp: z.string().regex(/^[a-f0-9]{64}$/).parse(formData.get("deliveryStamp")),
     });
+  });
+}
+
+export async function customerRequirementsAction(token: string, formData: FormData) {
+  await withProject(token, async (projectId) => {
+    if (!(await withinLimit("requirements-revise", 4, 3600))) throw new Error("修订太频繁，请稍后重试");
+    const version = z.coerce.number().int().positive().parse(formData.get("version"));
+    const saved = await reviseRequirements(getDb(), enqueueAdvance, { projectId,
+      version,
+      fields: requirementFields.parse(Object.fromEntries(formData)),
+    });
+    if (saved.requirementVersion === version) return "需求内容没有变化，继续使用当前版本。";
+    return "新需求版本已保存，正在重新初诊；历史资料可在需求卡中查看。";
   });
 }
 

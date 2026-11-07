@@ -1,0 +1,1 @@
+ALTER TABLE "evidence_searches" ADD COLUMN "scope_version" integer DEFAULT 1 NOT NULL;

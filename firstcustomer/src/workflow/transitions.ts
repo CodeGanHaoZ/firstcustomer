@@ -7,7 +7,7 @@ export class ConflictError extends Error {}
 
 export async function transition(
   db: Db,
-  project: { id: string; status: string },
+  project: { id: string; status: string; requirementVersion?: number; paused?: boolean },
   to: ProjectStatus,
   actor: string,
   reason: string | null,
@@ -19,7 +19,9 @@ export async function transition(
     const rows = await tx
       .update(projects)
       .set({ ...patch, status: to, updatedAt: new Date() })
-      .where(and(eq(projects.id, project.id), eq(projects.status, from)))
+      .where(and(eq(projects.id, project.id), eq(projects.status, from),
+        project.requirementVersion === undefined ? undefined : eq(projects.requirementVersion, project.requirementVersion),
+        project.paused === undefined ? undefined : eq(projects.paused, project.paused)))
       .returning({ id: projects.id });
     if (!rows.length) throw new ConflictError(`项目状态已不是 ${from}`);
     await tx.insert(stateTransitions).values({

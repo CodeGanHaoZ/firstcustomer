@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Db } from "@/db";
-import { evidenceSearches } from "@/db/schema";
+import { evidenceSearches, projects } from "@/db/schema";
 import { normalizeText } from "@/domain/evidence";
 import type { SourceClient, SourceResult } from "./sources";
 import { cacheDocument } from "./tools";
@@ -50,11 +50,15 @@ export async function gatherSources(
 ): Promise<GatherReport> {
   const { projectId = null, concurrency = 6, maxResultsPerQuery = 6 } = options;
   const seen = new Set<string>();
+  let scopeVersion = 1;
   if (projectId) {
+    const [project] = await db.select({ scopeVersion: projects.scopeVersion }).from(projects).where(eq(projects.id, projectId));
+    if (!project) throw new Error("项目不存在");
+    scopeVersion = project.scopeVersion;
     const past = await db
       .select({ source: evidenceSearches.source, query: evidenceSearches.query })
       .from(evidenceSearches)
-      .where(eq(evidenceSearches.projectId, projectId));
+      .where(and(eq(evidenceSearches.projectId, projectId), eq(evidenceSearches.scopeVersion, scopeVersion)));
     for (const p of past) seen.add(queryKey(p.source, p.query));
   }
   let skippedDuplicates = 0;
@@ -80,6 +84,7 @@ export async function gatherSources(
       if (projectId) {
         await db.insert(evidenceSearches).values({
           projectId,
+          scopeVersion,
           candidate: q.candidate,
           purpose: q.purpose,
           source: q.source,

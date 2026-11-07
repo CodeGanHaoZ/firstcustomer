@@ -56,6 +56,7 @@ export function ProjectIntake({ action, founder = false }: {
           <Label htmlFor="contact">联系方式</Label>
           <Input id="contact" name="contact" required maxLength={200} placeholder="微信或邮箱，用于交付与必要联系" />
         </div>
+        {([ ["currentWorkflow", "现行做法"], ["successCriteria", "希望验证的结果"], ["constraints", "限制条件"] ] as const).map(([name, label]) => <div key={name} className="flex flex-col gap-2 sm:col-span-2"><Label htmlFor={name}>{label}（选填）</Label><Textarea id={name} name={name} maxLength={1000} /></div>)}
         <div className="flex min-w-0 flex-col gap-2 sm:col-span-2">
           <Label htmlFor="screenshots">产品截图（选填，最多 3 张，{hostedUploadLimit ? "合计不超过 4 MB" : "每张不超过 5 MB"}）</Label>
           <ImageUploadInput id="screenshots" name="screenshots" multiple maxTotalBytes={hostedUploadLimit} />

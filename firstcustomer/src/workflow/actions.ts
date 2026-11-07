@@ -30,6 +30,8 @@ import { expiresAt, gradeFor, verifyQuote, type EvidenceKind } from "@/domain/ev
 import type { ProjectStatus } from "@/domain/workflow";
 import { reportFor, type Escalation, type PendingRequest } from "./engine";
 import { transition } from "./transitions";
+import { recordRequirementVersion } from "./requirements";
+import { workPackageReadiness } from "./work-packages";
 
 export type Enqueue = (projectId: string, transaction?: Db) => Promise<void>;
 
@@ -61,6 +63,9 @@ export async function createProject(
     goal: string;
     targetMarket?: string | null;
     budgetNote?: string | null;
+    currentWorkflow?: string;
+    successCriteria?: string;
+    constraints?: string;
     contact: string;
     customerId?: string | null;
     isOwnProduct?: boolean;
@@ -76,6 +81,7 @@ export async function createProject(
     if (project.productPlan !== "free") {
       await tx.insert(orders).values({ projectId: project.id, sku: "首客启动包" });
     }
+    await recordRequirementVersion(tx, project, project.productPlan === "free" ? "customer" : "founder", "确认提交项目资料");
     return { project, token };
   });
 }
@@ -111,42 +117,40 @@ export async function startResearch(db: Db, enqueue: Enqueue, projectId: string)
 export async function answerClarifications(
   db: Db,
   enqueue: Enqueue,
-  input: { projectId: string; answers: Record<string, string>; by: ActorRole },
+  input: { projectId: string; answers: Record<string, string>; by: ActorRole; version?: number },
 ) {
-  const project = await getProject(db, input.projectId);
-  if (project.status !== "needs_info") throw new Error("现在不需要补充信息");
-  const questions = await db
-    .select()
-    .from(clarifications)
-    .where(eq(clarifications.projectId, project.id));
-  let remaining = 0;
-  for (const question of questions) {
-    const answer = input.answers[question.id]?.trim();
-    if (answer) {
-      await db
-        .update(clarifications)
-        .set({ answer, answeredBy: input.by, answeredAt: new Date() })
-        .where(eq(clarifications.id, question.id));
-    } else if (!question.answer) {
-      remaining++;
+  return db.transaction(async (tx) => {
+    let [project] = await tx.select().from(projects).where(eq(projects.id, input.projectId)).for("update");
+    if (!project || project.status !== "needs_info" || project.paused) throw new Error("现在不需要补充信息，或项目已暂停");
+    if (input.version !== undefined && input.version !== project.requirementVersion) throw new Error("需求版本已更新，请刷新后补充");
+    const questions = await tx.select().from(clarifications).where(and(eq(clarifications.projectId, project.id), eq(clarifications.scopeVersion, project.scopeVersion)));
+    const ids = new Set(questions.map((question) => question.id));
+    if (Object.keys(input.answers).some((id) => !ids.has(id))) throw new Error("补充问题不属于当前项目范围");
+    let remaining = 0;
+    let changed = false;
+    for (const question of questions) {
+      const answer = input.answers[question.id]?.trim();
+      if (answer && answer.length > 2000) throw new Error("每个回答最多 2000 字");
+      if (answer && answer !== question.answer) {
+        await tx.update(clarifications).set({ answer, answeredBy: input.by, answeredAt: new Date() }).where(eq(clarifications.id, question.id));
+        changed = true;
+      } else if (!answer && !question.answer) remaining++;
     }
-  }
-  if (remaining > 0) return { complete: false, remaining };
-  if (project.productPlan === "free") {
-    await db.transaction(async (tx) => {
-      await transition(tx, project, "researching", input.by, "问题已回答");
-      await enqueue(project.id, tx);
-    });
-  } else {
-    await transition(db, project, "researching", input.by, "问题已回答");
-    await enqueue(project.id);
-  }
-  return { complete: true, remaining: 0 };
+    if (changed) {
+      [project] = await tx.update(projects).set({ requirementVersion: project.requirementVersion + 1, updatedAt: new Date() })
+        .where(eq(projects.id, project.id)).returning();
+      await recordRequirementVersion(tx, project, input.by, "保存补充回答");
+    }
+    if (remaining > 0) return { complete: false, remaining };
+    await transition(tx, project, "researching", input.by, "问题已回答");
+    await enqueue(project.id, tx);
+    return { complete: true, remaining: 0 };
+  });
 }
 
 export async function skipClarifications(db: Db, enqueue: Enqueue, projectId: string) {
   const project = await getProject(db, projectId);
-  await transition(db, project, "researching", "founder", "老板决定不再等客户回答");
+  await transition(db, project, "researching", "founder", "老板决定不再等客户回答", { clarificationsClosed: true });
   await enqueue(projectId);
 }
 
@@ -173,6 +177,7 @@ export async function addProjectImage(
   await db.insert(projectImages).values({
     projectId: input.projectId,
     kind: input.kind,
+    scopeVersion: project.scopeVersion,
     note: input.note || null,
     mimeType: detectImageType(input.bytes) as string,
     sizeBytes: input.bytes.length,
@@ -409,7 +414,7 @@ export async function setPaused(db: Db, enqueue: Enqueue, projectId: string, pau
 // 交付后由客户验收；验收不改变项目状态，只记录决定和订单的交付状态。
 export async function acceptDelivery(
   db: Db,
-  input: { projectId: string; verdict: Verdict; reason?: string | null },
+  input: { projectId: string; verdict: Verdict; reason?: string | null; stamp?: string },
 ) {
   if (input.verdict === "reject" && !input.reason?.trim()) throw new Error("请写明哪里需要改");
   await db.transaction(async (tx) => {
@@ -418,9 +423,12 @@ export async function acceptDelivery(
     const [order] = await tx.select().from(orders).where(eq(orders.projectId, project.id));
     if (!order || order.deliveryStatus === "accepted") throw new Error("项目已完成验收或没有订单");
     const report = await reportFor(tx, project);
+    const readiness = await workPackageReadiness(tx, project);
+    if (input.stamp !== undefined && input.stamp !== readiness.stamp) throw new Error("交付版本已变化，请刷新后核对");
+    if (input.verdict === "approve" && !readiness.ready) throw new Error("交付材料尚未通过核对，暂不能确认验收");
     await tx.insert(decisions).values({
       projectId: project.id, subjectId: report?.id, gate: "acceptance", subjectVersion: project.round, actorRole: "customer",
-      verdict: input.verdict, reason: input.reason ?? null,
+      verdict: input.verdict, reason: input.reason ?? null, snapshot: readiness.snapshot,
     });
     await tx.update(orders).set({ deliveryStatus: input.verdict === "approve" ? "accepted" : "changes_requested" })
       .where(eq(orders.id, order.id));
@@ -435,17 +443,20 @@ export async function setLeadTest(db: Db, projectId: string, leadId: string, isT
     .where(and(eq(leads.id, leadId), inArray(leads.landingPageId, pages)));
 }
 
-export async function deliverProject(db: Db, projectId: string) {
+export async function deliverProject(db: Db, projectId: string, stamp?: string) {
   await db.transaction(async (tx) => {
     const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
     if (!project) throw new Error("项目不存在");
     const report = await reportFor(tx, project);
     if (!report) throw new Error("复盘报告还没有生成");
+    const readiness = await workPackageReadiness(tx, project);
+    if (stamp !== undefined && stamp !== readiness.stamp) throw new Error("交付版本已变化，请刷新后核对");
+    if (!readiness.ready) throw new Error(`交付检查未通过：${readiness.packages.flatMap((item) => item.checks.filter((check) => !check.passed).map((check) => check.label)).join("；")}`);
     await transition(tx, project, "delivered", "founder", "老板确认交付");
     await tx.update(orders).set({ deliveryStatus: "delivered" }).where(eq(orders.projectId, projectId));
     await tx.insert(decisions).values({
       projectId, subjectId: report.id, gate: "acceptance", subjectVersion: project.round,
-      actorRole: "founder", verdict: "approve", reason: "老板确认交付",
+      actorRole: "founder", verdict: "approve", reason: "老板确认交付", snapshot: readiness.snapshot,
     });
   });
 }
@@ -476,6 +487,7 @@ export async function resolveEscalation(
   }
   if (!input.note.trim()) throw new Error("裁决时必须写明决定");
   const escalation = project.escalation as Escalation;
+  if (escalation.route === "clarification-limit" && input.target !== "researching") throw new Error("补充信息超限后请先回到研究，未确认的内容列为未知");
   await db.insert(decisions).values({
     projectId: project.id,
     gate: "escalation",
@@ -566,11 +578,13 @@ export async function addManualEvidence(
   if (check.status === "rejected") throw new Error(check.reason);
   const url = new URL(input.url).toString();
   const collectedAt = input.collectedAt ?? new Date();
+  const project = input.projectId ? await getProject(db, input.projectId) : null;
   await cacheDocument(db, { url, title: input.product ?? url, text: input.sourceText });
   const [row] = await db
     .insert(evidenceItems)
     .values({
       projectId: input.projectId ?? null,
+      scopeVersion: project?.scopeVersion ?? 1,
       product: input.product ?? null,
       category: input.category ?? null,
       kind: input.kind,

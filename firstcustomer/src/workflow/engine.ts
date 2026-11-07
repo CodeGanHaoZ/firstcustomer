@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, asc, count, countDistinct, desc, eq, gt, inArray, max } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, gt, inArray, max, sql } from "drizzle-orm";
 import {
   GROWTH_PROMPT,
   LAUNCH_PROMPT,
@@ -79,6 +79,7 @@ import { latestReceipt, loadReceiptImage, projectOrder, quoteFeedback, saveDraft
 import { recordClaimCheck } from "./landing-edits";
 import { needsFounder } from "./support";
 import { knowledgeForAgent } from "@/knowledge/store";
+import { clarificationProblem, MAX_CLARIFICATION_ROUNDS, requirementSnapshot } from "@/domain/requirements";
 
 export type EngineDeps = {
   db: Db;
@@ -97,7 +98,7 @@ export type PendingRequest = {
 };
 
 export type Escalation = {
-  route: SendBackRoute;
+  route: SendBackRoute | "clarification-limit";
   request: SendBackRequest;
   from: ProjectStatus;
   taskId: string;
@@ -125,9 +126,22 @@ async function runTask<T>(
       .where(and(eq(projects.id, project.id), eq(projects.status, project.status), eq(projects.paused, false)))
       .for("update");
     if (!active) throw new ConflictError("项目已暂停或已进入其他阶段");
+    const [current] = await tx.select().from(projects).where(eq(projects.id, project.id));
+    if (current.requirementVersion !== project.requirementVersion) throw new ConflictError("需求版本已更新");
+    const [running] = await tx.select({ id: agentTasks.id, startedAt: agentTasks.startedAt }).from(agentTasks).where(and(
+      eq(agentTasks.projectId, project.id), eq(agentTasks.agent, options.agent), eq(agentTasks.status, "running"),
+    )).limit(1);
+    if (running) {
+      const leaseMs = process.env.VERCEL === "1" ? 310_000 : 3_600_000;
+      if (Date.now() - running.startedAt.getTime() < leaseMs) throw new ConflictError("该任务正在执行，请等待原运行结果");
+      await tx.update(agentTasks).set({ status: "failed", finishedAt: new Date(), error: "运行租期已过，结果未知；恢复前重新核对已有产物" })
+        .where(eq(agentTasks.id, running.id));
+    }
     return tx.insert(agentTasks).values({
       projectId: project.id,
       agent: options.agent,
+      requirementVersion: project.requirementVersion,
+      scopeVersion: project.scopeVersion,
       input: options.input,
       trigger: options.trigger ?? "normal",
       parentTaskId: options.parentTaskId ?? null,
@@ -199,16 +213,21 @@ function productInput(project: Project) {
     goal: project.goal,
     target_market: project.targetMarket,
     budget: project.budgetNote,
+    requirement_version: project.requirementVersion,
+    scope_version: project.scopeVersion,
+    requirement: requirementSnapshot(project),
   };
 }
 
 // 只看本项目的证据。预存证据库（project_id 为空）要由 Research 选中、复制进项目后才可见，
 // 免得 Strategy 和 Launch 看到不相关品类的证据。
 export async function visibleEvidence(db: Db, projectId: string) {
+  const [project] = await db.select({ scopeVersion: projects.scopeVersion }).from(projects).where(eq(projects.id, projectId));
+  if (!project) return [];
   return db
     .select()
     .from(evidenceItems)
-    .where(and(gt(evidenceItems.expiresAt, new Date()), eq(evidenceItems.projectId, projectId)));
+    .where(and(gt(evidenceItems.expiresAt, new Date()), eq(evidenceItems.projectId, projectId), eq(evidenceItems.scopeVersion, project.scopeVersion)));
 }
 
 async function sendBack(
@@ -281,7 +300,7 @@ async function analyzePendingImages(deps: EngineDeps, project: Project) {
   const pending = await db
     .select()
     .from(projectImages)
-    .where(and(eq(projectImages.projectId, project.id), eq(projectImages.analysisStatus, "pending")));
+    .where(and(eq(projectImages.projectId, project.id), eq(projectImages.scopeVersion, project.scopeVersion), eq(projectImages.analysisStatus, "pending")));
   for (const image of pending) {
     const question = {
       kind: image.kind === "competitor" ? "竞品截图" : "客户产品截图",
@@ -327,6 +346,7 @@ async function analyzePendingImages(deps: EngineDeps, project: Project) {
 }
 
 async function screenshotContext(db: Db, projectId: string) {
+  const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
   const rows = await db
     .select({
       kind: projectImages.kind,
@@ -334,7 +354,7 @@ async function screenshotContext(db: Db, projectId: string) {
       analysis: projectImages.analysis,
     })
     .from(projectImages)
-    .where(and(eq(projectImages.projectId, projectId), eq(projectImages.analysisStatus, "done")));
+    .where(and(eq(projectImages.projectId, projectId), eq(projectImages.scopeVersion, project?.scopeVersion ?? 1), eq(projectImages.analysisStatus, "done")));
   return rows;
 }
 
@@ -370,20 +390,23 @@ async function runResearch(deps: EngineDeps, project: Project) {
   const asked = await db
     .select()
     .from(clarifications)
-    .where(eq(clarifications.projectId, project.id))
+    .where(and(eq(clarifications.projectId, project.id), eq(clarifications.scopeVersion, project.scopeVersion)))
     .orderBy(asc(clarifications.createdAt));
   const input = {
-    knowledge: await knowledgeForAgent(db, "research", project.productName),
+    knowledge: await knowledgeForAgent(db, "research", `${project.productName} ${project.goal} 需求澄清 市场证据`),
     product: productInput(project),
     request: pending?.request ?? null,
     founder_note: project.founderNote,
+    clarification_policy: { rounds_used: project.clarificationRounds, maximum_rounds: MAX_CLARIFICATION_ROUNDS,
+      may_ask_more: !project.clarificationsClosed && project.clarificationRounds < MAX_CLARIFICATION_ROUNDS,
+      instruction: "每轮最多三题，只问会影响判断的新增信息；额度用尽时将未明确项写入 unknowns。不得承诺预算、结果或自行扩大范围。" },
     clarifications: asked.map((c) => ({
       question: c.question,
       answer: c.answer ?? "（客户没有回答，把这项写进 unknowns）",
     })),
     screenshots: await screenshotContext(db, project.id),
   };
-  const { output } = await runTask(
+  const { output, taskId } = await runTask(
     deps,
     project,
     { agent: "research", input, ...triggerFor(pending) },
@@ -484,9 +507,7 @@ async function runResearch(deps: EngineDeps, project: Project) {
             model: deps.model,
             validate: async (output) => {
               if (output.status === "need_info") {
-                return asked.length || pending
-                  ? ["这个项目不能再追问客户了，请继续研究，把不确定的内容写进 unknowns"]
-                  : [];
+                return [];
               }
               await loadCachedDocs(output.candidates.flatMap((c) => c.picks.map((p) => p.url)));
               const problems: string[] = [];
@@ -579,14 +600,22 @@ async function runResearch(deps: EngineDeps, project: Project) {
     },
   );
   if (output.status === "need_info") {
-    await db.insert(clarifications).values(
-      output.questions.map((q) => ({
-        projectId: project.id,
-        question: q.question,
-        why: q.why,
-      })),
-    );
-    await transition(db, project, "needs_info", "research", `追问客户 ${output.questions.length} 个问题`);
+    const problem = clarificationProblem({ rounds: project.clarificationRounds, closed: project.clarificationsClosed,
+      previous: asked.map((question) => question.question), questions: output.questions.map((question) => question.question) });
+    if (problem) {
+      await transition(db, project, "awaiting_founder", "research", problem, { clarificationsClosed: true,
+        escalation: { route: "clarification-limit", request: { missing: problem, reason: "补充信息需人工处理", source_types: [] },
+          from: "researching", taskId },
+      });
+      return;
+    }
+    await db.transaction(async (tx) => {
+      await transition(tx, project, "needs_info", "research", `第 ${project.clarificationRounds + 1} 轮：补充 ${output.questions.length} 个问题`, {
+        clarificationRounds: project.clarificationRounds + 1,
+      });
+      await tx.insert(clarifications).values(output.questions.map((q) => ({ projectId: project.id, question: q.question,
+        why: q.why, scopeVersion: project.scopeVersion, batch: project.clarificationRounds + 1 })));
+    });
     return;
   }
   if (project.productPlan === "free") {
@@ -603,11 +632,12 @@ async function runQuote(deps: EngineDeps, project: Project) {
   const order = await projectOrder(deps.db, project.id);
   if (!order) throw new Error("项目没有订单");
   const [diagnosis] = await deps.db.select({ output: agentTasks.output }).from(agentTasks)
-    .where(and(eq(agentTasks.projectId, project.id), eq(agentTasks.agent, "research"), eq(agentTasks.status, "succeeded")))
+    .where(and(eq(agentTasks.projectId, project.id), eq(agentTasks.agent, "research"), eq(agentTasks.scopeVersion, project.scopeVersion),
+      eq(agentTasks.status, "succeeded"), sql`${agentTasks.output}->>'status' = 'done'`))
     .orderBy(desc(agentTasks.finishedAt))
     .limit(1);
   const input = {
-    knowledge: await knowledgeForAgent(deps.db, "quote", project.productName),
+    knowledge: await knowledgeForAgent(deps.db, "quote", `${project.productName} 服务范围 需求版本 验收`),
     product: productInput(project),
     diagnosis: diagnosis?.output ?? null,
     service: order.sku,
@@ -706,17 +736,18 @@ async function runStrategy(deps: EngineDeps, project: Project) {
       and(
         eq(agentTasks.projectId, project.id),
         eq(agentTasks.agent, "research"),
+        eq(agentTasks.scopeVersion, project.scopeVersion),
         eq(agentTasks.status, "succeeded"),
       ),
     );
   const answers = await db
     .select({ question: clarifications.question, answer: clarifications.answer })
     .from(clarifications)
-    .where(eq(clarifications.projectId, project.id));
+    .where(and(eq(clarifications.projectId, project.id), eq(clarifications.scopeVersion, project.scopeVersion)));
 
   const input = {
     product: productInput(project),
-    knowledge: await knowledgeForAgent(db, "strategy", project.productName),
+    knowledge: await knowledgeForAgent(db, "strategy", `${project.productName} 定位 验证计划 需求版本`),
     research: research
       .map((r) => r.output as { status?: string })
       .filter((output) => output.status === "done"),
@@ -871,7 +902,7 @@ async function runLaunch(deps: EngineDeps, project: Project) {
   let violations: { target: string; message: string }[] | null = null;
   let parentTaskId = pending?.fromTaskId ?? null;
   const MAX_ATTEMPTS = 2;
-  const knowledge = await knowledgeForAgent(db, "launch", project.productName);
+  const knowledge = await knowledgeForAgent(db, "launch", `${project.productName} 英文发布 声明核对 范围版本`);
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const input = {
@@ -1077,7 +1108,7 @@ async function runGrowth(deps: EngineDeps, project: Project) {
     .where(and(eq(events.landingPageId, page.id), inArray(events.type, ["reply", "comment"])));
   const input = {
     product: productInput(project),
-    knowledge: await knowledgeForAgent(db, "growth", project.productName),
+    knowledge: await knowledgeForAgent(db, "growth", `${project.productName} 增长复盘 结果验收 回归`),
     experiment: plan,
     metrics,
     verdict,

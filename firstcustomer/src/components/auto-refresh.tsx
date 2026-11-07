@@ -7,7 +7,10 @@ import { useEffect } from "react";
 export function AutoRefresh({ seconds = 3 }: { seconds?: number }) {
   const router = useRouter();
   useEffect(() => {
-    const timer = setInterval(() => router.refresh(), seconds * 1000);
+    const timer = setInterval(() => {
+      if (document.hidden || document.activeElement?.closest("form")) return;
+      router.refresh();
+    }, seconds * 1000);
     return () => clearInterval(timer);
   }, [router, seconds]);
   return null;

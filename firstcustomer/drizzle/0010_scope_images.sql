@@ -1,0 +1,1 @@
+ALTER TABLE "project_images" ADD COLUMN "scope_version" integer DEFAULT 1 NOT NULL;
