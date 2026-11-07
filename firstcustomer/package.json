@@ -16,7 +16,8 @@
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
     "library:build": "tsx --env-file-if-exists=.env.local scripts/build-library.ts",
-    "knowledge:seed": "tsx --env-file-if-exists=.env.local scripts/seed-knowledge.ts"
+    "knowledge:seed": "tsx --env-file-if-exists=.env.local scripts/seed-knowledge.ts",
+    "knowledge:import": "tsx --env-file-if-exists=.env.local scripts/import-knowledge.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

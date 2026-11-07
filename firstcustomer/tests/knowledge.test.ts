@@ -8,6 +8,7 @@ import { beforeAll, afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createDb, type Db } from "@/db";
 import { knowledgeArticles } from "@/db/schema";
 import { seedKnowledge } from "@/knowledge/seed";
+import { importKnowledgeBundle, knowledgeBundleSchema } from "@/knowledge/import";
 import { findKnowledge, knowledgeForAgent, knowledgeVersions, listKnowledge, saveKnowledge, withdrawKnowledge } from "@/knowledge/store";
 import { emptyKnowledge, type KnowledgeContent } from "@/knowledge/types";
 import { knowledgeContentSchema } from "@/knowledge/validation";
@@ -44,8 +45,61 @@ const content = (extra: Partial<KnowledgeContent> = {}): KnowledgeContent => ({
   reviewedOn: "2026-11-07", ...extra,
 });
 const publicContent = (extra: Partial<KnowledgeContent> = {}) => content({ visibility: "public", agents: ["lumi", "support"], ...extra });
+const handoffBundle = {
+  bundleId: "test-handoff-v2", sourceFile: "test-handoff.json", sourceSha256: "0".repeat(64),
+  articles: [
+    { key: "market-rules", content: content({ title: "市场证据规范", category: "research", agents: ["research"], content: "本资料是内部市场证据规范，不是已发生的项目事实，不包含可入库的市场证据。" }) },
+    { key: "public-guide", content: publicContent({ title: "Lumi 项目登记说明", content: "Lumi 帮助访客整理项目资料，确认提交后开始免费初诊。" }) },
+  ],
+};
 
 describe("资料库发布与读取权限", () => {
+  it("导入包保留来源信息，且只向 Lumi 提供选定的公开摘要", async () => {
+    const bundle = knowledgeBundleSchema.parse(handoffBundle);
+    expect(bundle.sourceFile).toBe("test-handoff.json");
+    expect(bundle.articles.filter((item) => item.content.visibility === "internal")).toHaveLength(1);
+    const result = await importKnowledgeBundle(db, bundle, true);
+    expect(result.added).toHaveLength(2);
+    const [publicReference] = await knowledgeForAgent(db, "lumi", "项目登记与服务协作");
+    expect(publicReference.title).toBe("Lumi 项目登记说明");
+    expect(await knowledgeForAgent(db, "lumi")).toHaveLength(1);
+    expect(publicReference.content).not.toMatch(/quote_fen|token_hash|¥299|退款承诺/);
+    const references = await knowledgeForAgent(db, "research", "市场证据 付费证据等级");
+    expect(references[0].title).toBe("市场证据规范");
+    expect((await findKnowledge(db, references[0].id))?.published?.content).toContain("不是已发生的项目事实");
+    expect(references[0].content).toContain("不包含可入库的市场证据");
+    for (const article of bundle.articles) expect(article.content.content).not.toMatch(/id=xxxxx|ORD-001|\$XXk|a1b2c3/);
+  });
+
+  it("交接包可重复导入，不覆盖已修改资料，也不重新发布已撤下的资料", async () => {
+    const first = await importKnowledgeBundle(db, handoffBundle, true);
+    let saved = (await findKnowledge(db, first.added[0].id))!;
+    saved = await saveKnowledge(db, { id: saved.id, revision: saved.revision,
+      content: { ...saved.draft, title: "经营者修订后的宪章规范" }, publish: false });
+    await withdrawKnowledge(db, saved.id, saved.revision);
+    const again = await importKnowledgeBundle(db, handoffBundle, true);
+    expect(again.added).toHaveLength(0);
+    expect(again.skipped).toHaveLength(2);
+    const preserved = await findKnowledge(db, saved.id);
+    expect(preserved?.draft.title).toBe("经营者修订后的宪章规范");
+    expect(preserved?.published).toBeNull();
+    expect(await knowledgeVersions(db, saved.id)).toHaveLength(1);
+    expect(await listKnowledge(db)).toHaveLength(2);
+  });
+
+  it("整包校验失败不发生部分导入，重复 key 和内部 Lumi 授权被拒绝", async () => {
+    const invalid = structuredClone(handoffBundle);
+    invalid.articles[0].content.agents.push("lumi");
+    await expect(importKnowledgeBundle(db, invalid, true)).rejects.toThrow();
+    const duplicate = structuredClone(handoffBundle);
+    duplicate.articles[1].key = duplicate.articles[0].key;
+    await expect(importKnowledgeBundle(db, duplicate, true)).rejects.toThrow("key 不能重复");
+    expect(await listKnowledge(db)).toHaveLength(0);
+    await importKnowledgeBundle(db, handoffBundle, false);
+    expect(await knowledgeForAgent(db, "lumi")).toHaveLength(0);
+    expect(await knowledgeForAgent(db, "research")).toHaveLength(0);
+  });
+
   it("未发布草稿不进入任何 Agent 上下文，发布后仅供选定角色使用", async () => {
     let article = await saveKnowledge(db, { content: publicContent(), publish: false });
     expect(await knowledgeForAgent(db, "lumi")).toEqual([]);
