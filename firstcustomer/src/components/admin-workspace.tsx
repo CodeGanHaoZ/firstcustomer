@@ -4,6 +4,7 @@ import { Archive, BookOpen, CalendarDays, ChartColumn, ClipboardList, FolderClos
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState, type ReactNode } from "react";
+import { OFFICE_CHARACTERS, characterDisplayName } from "@/lib/brand";
 import { BrandMark } from "./brand-mark";
 
 const groups = [
@@ -82,7 +83,7 @@ export function AdminWorkspace({ children, logout }: { children: ReactNode; logo
           <div className="admin-sidebar-footer">
             <Link href={onOffice ? "#office-desk-title" : "/admin#office-desk-title"} className="admin-desk-shortcut" onClick={close}>
               <span className="admin-avatar" aria-hidden="true">首</span>
-              <span><strong>老板工位</strong><small>COO · 云团</small></span>
+              <span><strong>{OFFICE_CHARACTERS.owner.name} · 老板</strong><small>{characterDisplayName("coo")} · COO</small></span>
             </Link>
             {logout}
           </div>

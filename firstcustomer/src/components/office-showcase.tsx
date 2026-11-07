@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight, Pause, Play, RotateCcw, SkipForward } from "l
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import type { DepartmentKey } from "@/domain/office";
+import { characterDisplayName } from "@/lib/brand";
 import { DEMO_DURATION, OFFICE_MEMBERS, OFFICE_SCENES, demoMember } from "@/lib/office-showcase";
 import { desks } from "./office-map";
 import { drawOfficeActors } from "./office-showcase-canvas";
@@ -182,6 +183,6 @@ export function OfficeShowcase() {
         <button type="button" onClick={() => watchMember(member.scene, member.key)} aria-pressed={member.key === activeMember} aria-label={`观看${member.name}的协作片段`}>{member.key === activeMember ? "正在了解" : "观看协作"}<ArrowUpRight size={16} aria-hidden="true" /></button>
       </div>
     </article>)}</div>
-    <p className="showcase-owner-note">右上角还有金毛老板与绵羊 COO：一位把关关键审批，一位整理站会与经营复盘。</p>
+    <p className="showcase-owner-note">右上角还有 <strong>{characterDisplayName("owner")}</strong> · 金毛老板，负责关键审批；<strong>{characterDisplayName("coo")}</strong> · 绵羊 COO，负责站会与经营复盘。</p>
   </div>;
 }

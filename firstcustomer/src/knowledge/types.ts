@@ -1,12 +1,15 @@
+import { AGENT_LABELS } from "@/domain/office";
+import { BRAND } from "@/lib/brand";
+
 export const KNOWLEDGE_CATEGORIES = {
   service: "服务说明", faq: "常见问题", brand: "品牌规范", research: "研究与证据",
   strategy: "定位与实验", launch: "文案与发布", growth: "数据与复盘", operations: "运营流程",
 } as const;
 
 export const KNOWLEDGE_AGENTS = {
-  lumi: "Lumi · 官网接待", quote: "接待报价员", support: "项目客服", research: "Research · 研究员",
-  strategy: "Strategy · 策略师", launch: "Launch · 发布员", growth: "Growth · 增长员",
-  standup: "COO · 站会", weekly: "经营秘书 · 周报",
+  lumi: `${BRAND.mascotName} · 官网接待`, quote: AGENT_LABELS.quote, support: AGENT_LABELS.support, research: AGENT_LABELS.research,
+  strategy: AGENT_LABELS.strategy, launch: AGENT_LABELS.launch, growth: AGENT_LABELS.growth,
+  standup: AGENT_LABELS.standup, weekly: AGENT_LABELS.weekly,
 } as const;
 
 export type KnowledgeCategory = keyof typeof KNOWLEDGE_CATEGORIES;

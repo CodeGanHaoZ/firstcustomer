@@ -1,21 +1,21 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowDownRight, ArrowUpRight, FolderOpen, Grid2X2, List } from "lucide-react";
-import { AGENT_STATE_LABELS, DEPARTMENTS, type DepartmentKey, type DepartmentView, type OfficeTransfer } from "@/domain/office";
+import { AGENT_LABELS, AGENT_STATE_LABELS, DEPARTMENTS, type DepartmentKey, type DepartmentView, type OfficeTransfer } from "@/domain/office";
 import { STATUS_LABELS, type ProjectStatus } from "@/domain/workflow";
-import { BRAND } from "@/lib/brand";
+import { OFFICE_CHARACTERS, characterDisplayName } from "@/lib/brand";
 import { formatDateTime } from "@/lib/format";
 import { OfficeConnection } from "./office-connection";
 import { OfficeMap, roomName, type OfficeStation } from "./office-map";
 import { OfficeStage } from "./office-stage";
 
 const rooms: Record<DepartmentKey, { scene: string; name: string }> = {
-  frontdesk: { scene: "0 0", name: `${BRAND.mascotName} · 接待报价` },
-  research: { scene: "50% 0", name: "小枭 · Research" },
-  strategy: { scene: "100% 0", name: "赤狐 · Strategy" },
-  finance: { scene: "0 100%", name: "松栗 · 票据员" },
-  launch: { scene: "50% 100%", name: "蓝狸 · Launch" },
-  growth: { scene: "100% 100%", name: "芽芽 · Growth" },
+  frontdesk: { scene: "0 0", name: AGENT_LABELS.quote },
+  research: { scene: "50% 0", name: AGENT_LABELS.research },
+  strategy: { scene: "100% 0", name: AGENT_LABELS.strategy },
+  finance: { scene: "0 100%", name: AGENT_LABELS.receipt },
+  launch: { scene: "50% 100%", name: AGENT_LABELS.launch },
+  growth: { scene: "100% 100%", name: AGENT_LABELS.growth },
 };
 
 type ProjectBrief = { id: string; productName: string; status: string; paused: boolean };
@@ -148,8 +148,8 @@ export function OfficeBoard({
         <aside className="office-desk" aria-labelledby="office-desk-title">
           {listMode ? <div className="office-owner-scene" aria-hidden="true" /> : null}
           <div className="office-desk-heading">
-            <h2 id="office-desk-title">老板工位</h2>
-            <span>COO · 云团</span>
+            <h2 id="office-desk-title">{OFFICE_CHARACTERS.owner.name} · 老板工位</h2>
+            <span>{characterDisplayName("coo")} · COO</span>
           </div>
           <div className="office-milestones">
             <div><span>首客首笔服务实收</span><strong>{firstPaymentAt ? formatDateTime(firstPaymentAt) : "待确认到账"}</strong></div>

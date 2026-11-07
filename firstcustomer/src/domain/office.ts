@@ -1,4 +1,4 @@
-import { BRAND } from "@/lib/brand";
+import { OFFICE_CHARACTERS } from "@/lib/brand";
 import type { GateState } from "./approval";
 import type { ProjectStatus } from "./workflow";
 
@@ -42,16 +42,16 @@ export const AGENT_STATE_LABELS: Record<AgentState, string> = {
 };
 
 export const AGENT_LABELS: Record<string, string> = {
-  quote: "接待报价员",
-  receipt: "票据员",
-  support: "客服",
-  vision: "截图读取",
-  research: "Research",
-  strategy: "Strategy",
-  launch: "Launch",
-  growth: "Growth",
-  weekly: "秘书 · 周报",
-  standup: "COO · 站会",
+  quote: `${OFFICE_CHARACTERS.frontdesk.name} · 接待报价员`,
+  receipt: `${OFFICE_CHARACTERS.finance.name} · 票据员`,
+  support: `${OFFICE_CHARACTERS.frontdesk.name} · 客服`,
+  vision: `${OFFICE_CHARACTERS.research.name} · 截图读取`,
+  research: `${OFFICE_CHARACTERS.research.name} · Research`,
+  strategy: `${OFFICE_CHARACTERS.strategy.name} · Strategy`,
+  launch: `${OFFICE_CHARACTERS.launch.name} · Launch`,
+  growth: `${OFFICE_CHARACTERS.growth.name} · Growth`,
+  weekly: `${OFFICE_CHARACTERS.coo.name} · 经营周报`,
+  standup: `${OFFICE_CHARACTERS.coo.name} · COO 站会`,
 };
 
 export const TASK_STATUS_LABELS: Record<string, string> = {
@@ -71,12 +71,12 @@ export const TASK_TRIGGER_LABELS: Record<string, string> = {
 };
 
 export const DEPARTMENTS: { key: DepartmentKey; room: string; agent: string; duty: string }[] = [
-  { key: "frontdesk", room: "前台", agent: `${BRAND.mascotName} · 接待报价员`, duty: "整理初诊结果，起草提案和报价，接待客户问题" },
-  { key: "research", room: "市场研究室", agent: "研究员 Research", duty: "研究海外需求、竞品定价和反面证据，每条结论都带来源" },
-  { key: "strategy", room: "战略决策室", agent: "策略师 Strategy", duty: "比较两个目标人群，写出定位和实验计划，证据不够就打回研究室" },
-  { key: "finance", room: "财务室", agent: "松栗 · 票据员", duty: "读取付款截图，等老板核对到账，汇总真实收款和费用" },
-  { key: "launch", room: "产品发布室", agent: "发布员 Launch", duty: "写英文验证页和渠道素材，没有证据的声明不能送审" },
-  { key: "growth", room: "增长运营室", agent: "增长员 Growth", duty: "读取真实访问和留资，按预设标准判断实验结果" },
+  { key: "frontdesk", room: "前台", agent: AGENT_LABELS.quote, duty: "整理初诊结果，起草提案和报价，接待客户问题" },
+  { key: "research", room: "市场研究室", agent: AGENT_LABELS.research, duty: "研究海外需求、竞品定价和反面证据，每条结论都带来源" },
+  { key: "strategy", room: "战略决策室", agent: AGENT_LABELS.strategy, duty: "比较两个目标人群，写出定位和实验计划，证据不够就打回研究室" },
+  { key: "finance", room: "财务室", agent: AGENT_LABELS.receipt, duty: "读取付款截图，等老板核对到账，汇总真实收款和费用" },
+  { key: "launch", room: "产品发布室", agent: AGENT_LABELS.launch, duty: "写英文验证页和渠道素材，没有证据的声明不能送审" },
+  { key: "growth", room: "增长运营室", agent: AGENT_LABELS.growth, duty: "读取真实访问和留资，按预设标准判断实验结果" },
 ];
 
 export type OfficeTask = {
