@@ -6,17 +6,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BRAND } from "@/lib/brand";
-import { LUMI_HISTORY_LIMIT, LUMI_MESSAGE_LIMIT, LUMI_STARTERS, type LumiMessage } from "@/lib/lumi-chat";
+import { LUMI_HISTORY_LIMIT, LUMI_MESSAGE_LIMIT, LUMI_STARTERS, LUMI_STARTERS_EN, LUMI_CHAT_COPY, type LumiMessage } from "@/lib/lumi-chat";
+import { localeTag, type Locale } from "@/lib/locale";
 import { LumiWelcome } from "@/components/lumi-welcome";
 
 const rabbit = "/brand/front-desk-rabbit.webp";
 
-export function LumiChat() {
+export function LumiChat({ locale = "zh" }: { locale?: Locale }) {
+  const copy = LUMI_CHAT_COPY[locale];
+  const starters = locale === "en" ? LUMI_STARTERS_EN : LUMI_STARTERS;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<LumiMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<"rateLimit" | "unavailable" | null>(null);
   const [anchor, setAnchor] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
 
@@ -71,15 +74,15 @@ export function LumiChat() {
 
   async function replyTo(history: LumiMessage[]) {
     setPending(true);
-    setError("");
+    setError(null);
     try {
       const response = await fetch("/api/lumi", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-HiFirst-Language": locale },
         body: JSON.stringify(history.slice(-LUMI_HISTORY_LIMIT)),
       });
       if (response.status === 429) {
-        setError("消息有点多，请稍等再试。你也可以直接开始免费初诊。");
+        setError("rateLimit");
         return;
       }
       if (!response.ok) throw new Error("Chat unavailable");
@@ -87,7 +90,7 @@ export function LumiChat() {
       if (typeof data.reply !== "string" || !data.reply.trim()) throw new Error("Empty reply");
       setMessages([...history, { role: "assistant", content: data.reply }]);
     } catch {
-      setError("这次没收到回复。你可以重试，或直接开始免费初诊。");
+      setError("unavailable");
     } finally {
       setPending(false);
     }
@@ -105,12 +108,13 @@ export function LumiChat() {
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <LumiWelcome paused={open} />
+      <LumiWelcome paused={open} locale={locale} />
 
       <Dialog.Portal keepMounted>
         <Dialog.Backdrop className="lumi-chat-backdrop" />
         <Dialog.Popup
           className="lumi-chat"
+          lang={localeTag(locale)}
           style={anchor ? {
             "--lumi-left": `${anchor.left}px`,
             "--lumi-top": `${anchor.top}px`,
@@ -123,33 +127,33 @@ export function LumiChat() {
               <Image src={rabbit} alt="" width={44} height={44} unoptimized />
             </span>
             <div>
-              <Dialog.Title className="lumi-chat-title"><span lang="en">{BRAND.mascotName}</span> · 首客前台</Dialog.Title>
-              <Dialog.Description className="lumi-chat-description">AI 出海引导</Dialog.Description>
+              <Dialog.Title className="lumi-chat-title"><span lang="en">{BRAND.mascotName}</span> · {copy.frontdesk}</Dialog.Title>
+              <Dialog.Description className="lumi-chat-description">{copy.guide}</Dialog.Description>
             </div>
-            <Dialog.Close className="lumi-chat-close" aria-label="关闭对话">
+            <Dialog.Close className="lumi-chat-close" aria-label={copy.close}>
               <X size={20} aria-hidden="true" />
             </Dialog.Close>
           </header>
 
           <div className="lumi-chat-scroll" ref={scrollArea}>
-            <div className="lumi-chat-log" role="log" aria-label="对话记录" aria-live="polite">
-              <p className="lumi-chat-message">嗨，我是 {BRAND.mascotName}！你在做什么产品？还在想法阶段、有了 MVP，还是已经上线了？</p>
+            <div className="lumi-chat-log" role="log" aria-label={copy.log} aria-live="polite">
+              <p className="lumi-chat-message">{copy.hello} {BRAND.mascotName}{locale === "en" ? "! " : "！"}{copy.greeting}</p>
               {messages.map(({ role, content }, index) => (
                 <p className="lumi-chat-message" data-speaker={role} key={index}>
-                  <span className="sr-only">{role === "user" ? "你说：" : `${BRAND.mascotName} 说：`}</span>{content}
+                  <span className="sr-only">{role === "user" ? copy.user : `${BRAND.mascotName} ${copy.said}`}</span>{content}
                 </p>
               ))}
             </div>
             {!messages.length && (
-              <div className="lumi-chat-starters" aria-label="试着这样开场">
-                {LUMI_STARTERS.map(({ question }) => <button key={question} type="button" onClick={() => send(question)}>{question}</button>)}
+              <div className="lumi-chat-starters" aria-label={copy.starters}>
+                {starters.map(({ question }) => <button key={question} type="button" onClick={() => send(question)}>{question}</button>)}
               </div>
             )}
-            {pending && <p className="lumi-chat-status" role="status"><LoaderCircle size={15} aria-hidden="true" /> {BRAND.mascotName} 正在回复</p>}
+            {pending && <p className="lumi-chat-status" role="status"><LoaderCircle size={15} aria-hidden="true" /> {BRAND.mascotName} {copy.replying}</p>}
             {error && (
               <div className="lumi-chat-retry">
-                <p role="alert">{error}</p>
-                <button type="button" onClick={() => void replyTo(messages)}>重试</button>
+                <p role="alert">{copy[error]}</p>
+                <button type="button" onClick={() => void replyTo(messages)}>{copy.retry}</button>
               </div>
             )}
           </div>
@@ -157,8 +161,8 @@ export function LumiChat() {
           <footer className="lumi-chat-footer">
             <form className="lumi-chat-compose" onSubmit={(event) => { event.preventDefault(); send(draft); }}>
               <textarea
-                aria-label="给 lumi 发消息"
-                placeholder="说说你的产品，或问个问题…"
+                aria-label={copy.input}
+                placeholder={copy.placeholder}
                 rows={2}
                 maxLength={LUMI_MESSAGE_LIMIT}
                 value={draft}
@@ -169,11 +173,11 @@ export function LumiChat() {
                   send(draft);
                 }}
               />
-              <button type="submit" aria-label="发送消息" disabled={pending || !draft.trim()}>
+              <button type="submit" aria-label={copy.send} disabled={pending || !draft.trim()}>
                 <ArrowUp size={19} aria-hidden="true" />
               </button>
             </form>
-            <Link href="/projects/new" className="lumi-chat-next">开始免费初诊 <ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link href="/projects/new" className="lumi-chat-next">{copy.cta} <ArrowRight size={15} aria-hidden="true" /></Link>
           </footer>
         </Dialog.Popup>
       </Dialog.Portal>

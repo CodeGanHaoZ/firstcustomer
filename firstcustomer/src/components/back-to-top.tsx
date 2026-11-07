@@ -2,6 +2,7 @@
 
 import { ArrowUp } from "lucide-react";
 import { useCallback } from "react";
+import type { Locale } from "@/lib/locale";
 
 /**
  * 回到顶部按钮（三种形态，全站可复用）：
@@ -9,7 +10,8 @@ import { useCallback } from "react";
  * - pill：页脚胶囊钮
  * - text：分区末尾的文字链
  */
-export function BackToTop({ variant = "float" }: { variant?: "float" | "pill" | "text" }) {
+export function BackToTop({ variant = "float", locale = "zh" }: { variant?: "float" | "pill" | "text"; locale?: Locale }) {
+  const label = locale === "en" ? "Back to top" : "回到顶部";
   const go = useCallback(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
@@ -18,14 +20,14 @@ export function BackToTop({ variant = "float" }: { variant?: "float" | "pill" | 
   if (variant === "pill") {
     return (
       <button type="button" className="btn btn--ghost btn--sm" onClick={go}>
-        回到顶部 <ArrowUp size={14} aria-hidden="true" />
+        {label} <ArrowUp size={14} aria-hidden="true" />
       </button>
     );
   }
   if (variant === "text") {
     return (
       <button type="button" className="backtop-text" onClick={go}>
-        回到顶部 <ArrowUp size={13} aria-hidden="true" />
+        {label} <ArrowUp size={13} aria-hidden="true" />
       </button>
     );
   }
@@ -34,7 +36,7 @@ export function BackToTop({ variant = "float" }: { variant?: "float" | "pill" | 
       type="button"
       className="backtop-float"
       data-backtop="float"
-      aria-label="回到顶部"
+      aria-label={label}
       onClick={go}
     >
       <ArrowUp size={20} aria-hidden="true" />

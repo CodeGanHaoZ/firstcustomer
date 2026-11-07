@@ -5,11 +5,12 @@ import { ArrowRight, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { BRAND } from "@/lib/brand";
+import type { Locale } from "@/lib/locale";
 
 const poster = "/brand/lumi-welcome-poster.webp";
 const motion = "/brand/lumi-welcome.mp4";
 
-export function LumiWelcome({ paused }: { paused: boolean }) {
+export function LumiWelcome({ paused, locale = "zh" }: { paused: boolean; locale?: Locale }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pausedRef = useRef(paused);
   const syncRef = useRef<() => void>(() => {});
@@ -73,10 +74,10 @@ export function LumiWelcome({ paused }: { paused: boolean }) {
           <Image src={poster} alt="" width={640} height={640} unoptimized />
         </video>
         <span className="brand-welcome-caption">
-          <strong lang="en">{BRAND.mascotName}</strong><span>首客办公室 · 前台</span>
+          <strong lang="en">{BRAND.mascotName}</strong><span>{locale === "en" ? "HiFirst office · Front desk" : "首客办公室 · 前台"}</span>
         </span>
         <span className="brand-welcome-cta">
-          <MessageCircle size={16} aria-hidden="true" /> 聊聊你的产品 <ArrowRight size={15} aria-hidden="true" />
+          <MessageCircle size={16} aria-hidden="true" /> {locale === "en" ? "Tell me about your product" : "聊聊你的产品"} <ArrowRight size={15} aria-hidden="true" />
         </span>
         </Dialog.Trigger>
     </div>

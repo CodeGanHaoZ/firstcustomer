@@ -1,3 +1,5 @@
+import type { Locale } from "@/lib/locale";
+
 export const OFFICE_CHARACTERS = {
   frontdesk: { name: "lumi", chineseName: "露米", animal: "奶油兔" },
   research: { name: "nori", chineseName: "小枭", animal: "猫头鹰" },
@@ -10,7 +12,7 @@ export const OFFICE_CHARACTERS = {
 } as const;
 
 export type OfficeCharacterKey = keyof typeof OFFICE_CHARACTERS;
-export const characterDisplayName = (key: OfficeCharacterKey) => `${OFFICE_CHARACTERS[key].name} ${OFFICE_CHARACTERS[key].chineseName}`;
+export const characterDisplayName = (key: OfficeCharacterKey, locale: Locale = "zh") => locale === "en" ? OFFICE_CHARACTERS[key].name : `${OFFICE_CHARACTERS[key].name} ${OFFICE_CHARACTERS[key].chineseName}`;
 
 export const BRAND = {
   name: "首客",

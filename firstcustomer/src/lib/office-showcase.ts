@@ -1,5 +1,9 @@
 import type { DepartmentKey } from "@/domain/office";
 import { characterDisplayName } from "@/lib/brand";
+import type { Locale } from "@/lib/locale";
+
+export type OfficeMember = { key: DepartmentKey; name: string; animal: string; role: string; room: string;
+  portrait: readonly [number, number]; scene: number; description: string; output: string; collaboration: string };
 
 export const OFFICE_MEMBERS = [
   { key: "frontdesk", name: characterDisplayName("frontdesk"), animal: "奶油兔", role: "接待与报价 Agent", room: "前台", portrait: [0, 0], scene: 0,
@@ -20,8 +24,7 @@ export const OFFICE_MEMBERS = [
   { key: "growth", name: characterDisplayName("growth"), animal: "青蛙", role: "Growth · 增长复盘", room: "增长运营室", portrait: [0, 1], scene: 5,
     description: "用真实反馈回答下一步。整理访问、留资与回复，按预设标准复盘；样本不足时，也会如实告诉你。",
     output: "指标复盘、下一步建议", collaboration: "把实验结果带回策略室，决定继续、调整或停止。" },
-] as const satisfies readonly { key: DepartmentKey; name: string; animal: string; role: string; room: string;
-  portrait: readonly [number, number]; scene: number; description: string; output: string; collaboration: string }[];
+] as const satisfies readonly OfficeMember[];
 
 export type DemoScene = { chapter: string; title: string; from: DepartmentKey; to: DepartmentKey;
   document: string; lines: readonly [string, string] };
@@ -43,4 +46,25 @@ export const OFFICE_SCENES: readonly DemoScene[] = [
 
 export const DEMO_DURATION = 12_000;
 
-export const demoMember = (key: DepartmentKey) => OFFICE_MEMBERS.find((member) => member.key === key)!;
+const englishMembers: Record<DepartmentKey, Pick<OfficeMember, "animal" | "role" | "room" | "description" | "output" | "collaboration">> = {
+  frontdesk: { animal: "Cream rabbit", role: "Reception & proposals", room: "Front desk", description: "Turns a rough idea into a clear brief. From your first conversation to proposals and support, lumi keeps the handoffs organized.", output: "Project brief, proposal, support replies", collaboration: "Passes your goals and constraints to nori for research." },
+  research: { animal: "Sage owl", role: "Research · Market research", room: "Research room", description: "Looks for evidence before making a call. Studies overseas needs, competitor pricing, and counterevidence, with sources and uncertainties attached.", output: "Potential audiences, evidence cards", collaboration: "Shares findings with fino and investigates missing evidence." },
+  strategy: { animal: "Red fox", role: "Strategy · Positioning", room: "Strategy room", description: "Finds a direction worth testing first. Compares audiences and defines positioning, hypotheses, and success criteria for your approval.", output: "Positioning options, validation plan", collaboration: "Briefs kito on the approved direction or asks nori to investigate further." },
+  finance: { animal: "Squirrel", role: "Receipt · Payment records", room: "Finance room", description: "Keeps payment records clear. Reads submitted receipts and organizes details for review. The owner confirms whether funds actually arrived.", output: "Receipt details, items to verify", collaboration: "Checks the order with lumi before paid work continues." },
+  launch: { animal: "Blue-gray raccoon", role: "Launch · Pages & channels", room: "Launch room", description: "Turns strategy into something people can see. Prepares English pages and channel materials, checks factual claims, and waits for approval to publish.", output: "English validation page, channel action card", collaboration: "Works from fino’s plan and passes launch records to pogo." },
+  growth: { animal: "Frog", role: "Growth · Experiment review", room: "Growth room", description: "Uses real feedback to guide the next step. Reviews visits, leads, and replies against preset criteria, and says when the sample is too small.", output: "Metrics review, next-step recommendations", collaboration: "Returns findings to fino to continue, adjust, or stop the experiment." },
+};
+const membersEn: readonly OfficeMember[] = OFFICE_MEMBERS.map((member) => ({ ...member, ...englishMembers[member.key], name: characterDisplayName(member.key, "en") }));
+
+const scenesEn: readonly DemoScene[] = [
+  { chapter: "Welcome", title: "Get your idea to the right teammate.", from: "frontdesk", to: "research", document: "Project brief", lines: ["Goals and constraints are ready. Who might need this?", "Got it. I’ll look into needs, competitors, and counterevidence."] },
+  { chapter: "Research", title: "Find the evidence. Then choose a direction.", from: "research", to: "strategy", document: "Evidence card", lines: ["Here are the audiences, sources, and what’s still unknown.", "I’ll compare the audiences and define the first test."] },
+  { chapter: "Receipts", title: "Every step has a record to check.", from: "frontdesk", to: "finance", document: "Payment receipt", lines: ["Here’s the customer’s receipt. Could you read the details?", "I’ll extract them. The owner still needs to confirm payment."] },
+  { chapter: "Positioning", title: "Turn an approved direction into a real page.", from: "strategy", to: "launch", document: "Positioning plan", lines: ["Once the direction and test are approved, use this version.", "Understood. I’ll check every factual claim on the English page."] },
+  { chapter: "Launch", title: "Approve before publishing. Learn from what follows.", from: "launch", to: "growth", document: "Channel action card", lines: ["The page and materials are ready. Approval comes before publishing.", "I’ll track real visits, leads, and replies."] },
+  { chapter: "Review", title: "A review should tell us what to do next.", from: "growth", to: "strategy", document: "Review report", lines: ["The sample is still too small. Here are the actual results.", "Let’s use our original criteria to decide what happens next."] },
+];
+
+export const getOfficeMembers = (locale: Locale): readonly OfficeMember[] => locale === "en" ? membersEn : OFFICE_MEMBERS;
+export const getOfficeScenes = (locale: Locale) => locale === "en" ? scenesEn : OFFICE_SCENES;
+export const demoMember = (key: DepartmentKey, locale: Locale = "zh") => getOfficeMembers(locale).find((member) => member.key === key)!;
