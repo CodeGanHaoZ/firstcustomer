@@ -1,4 +1,4 @@
-import { I18n } from "@/components/ui-text";
+import { LocalizedTag } from "@/components/localized-controls";
 import { LogOut } from "lucide-react";
 import { AdminWorkspace } from "@/components/admin-workspace";
 import { logoutAction } from "./actions";
@@ -8,9 +8,9 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
     <AdminWorkspace logout={
       <form action={logoutAction}>
-        <I18n><button className="admin-logout" type="submit" aria-label="退出经营台" title="退出经营台">
+        <LocalizedTag as="button" className="admin-logout" type="submit" aria-label="退出经营台" title="退出经营台">
           <LogOut size={17} aria-hidden="true" />
-        </button></I18n>
+        </LocalizedTag>
       </form>
     }>{children}</AdminWorkspace>
   );

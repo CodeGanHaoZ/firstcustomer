@@ -10,6 +10,10 @@ export function T({ children }: { children: ReactNode }) {
   return typeof children === "string" ? translateUi(locale, children) : children;
 }
 
+// Use I18n only inside client components. During SSR, an element created by a server
+// component reaches this client boundary without readable props, so its attributes would
+// stay untranslated and then mismatch on hydration. Server components use LocalizedTag
+// (or LocalizedLink / LocalizedInput) from localized-controls instead.
 export function I18n({ children }: { children: ReactElement<Record<string, unknown>> }) {
   const locale = useLocale();
   if (!isValidElement(children)) return children;

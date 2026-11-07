@@ -1,6 +1,6 @@
-.lumi-intake-page { width: 100%; max-width: 1360px; height: 100dvh; min-height: 560px; margin: 0 auto; padding: 24px 32px; display: flex; flex-direction: column; }
-.lumi-intake-nav { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex: none; margin-bottom: 30px; }
-.lumi-intake-nav > div { font-size: 13px; }
+/* 外壳：统一顶栏 + 占满剩余高度的对话工作区 */
+.lumi-intake-shell { display: flex; flex-direction: column; height: 100dvh; min-height: 620px; background: var(--paper); }
+.lumi-intake-page { width: 100%; max-width: var(--container); flex: 1; min-height: 0; margin: 0 auto; padding: clamp(20px, 3vw, 36px) var(--gutter) 20px; display: flex; flex-direction: column; }
 .lumi-guide { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .lumi-guide-title { flex: none; margin-bottom: 24px; }
 .lumi-guide-title h1 { font-size: 28px; font-weight: 700; line-height: 1.3; letter-spacing: -.025em; }
@@ -66,22 +66,18 @@
 .lumi-guide-spinner { animation: lumi-guide-spin 1s linear infinite; }
 @keyframes lumi-guide-spin { to { transform: rotate(360deg); } }
 @media (max-width: 999px) {
-  .lumi-intake-page { padding: 18px 20px; min-height: 600px; }
-  .lumi-intake-nav { margin-bottom: 22px; }
+  .lumi-intake-page { padding: 18px 20px 14px; }
   .lumi-guide-workspace { display: flex; flex-direction: column; gap: 14px; }
   .lumi-guide-thread { flex: 1; }
   .lumi-guide-brief { flex: none; max-height: 40dvh; }
   .lumi-guide-scroll { padding-inline-end: 6px; }
-  .lumi-guide-title h1 { font-size: 24px; }
+  .lumi-guide-title h1 { font-size: 1.75rem; }
   .lumi-guide-brief summary { padding: 12px 16px; }
 }
 @media (max-width: 480px) {
-  .lumi-intake-page { padding: 16px 16px 12px; }
-  .lumi-intake-nav { gap: 12px; margin-bottom: 20px; }
-  .lumi-intake-nav > div { gap: 12px; }
-  .lumi-intake-nav a { font-size: 12px; }
+  .lumi-intake-page { padding: 14px 16px 12px; }
   .lumi-guide-title { margin-bottom: 14px; }
-  .lumi-guide-title h1 { font-size: 22px; }
+  .lumi-guide-title h1 { font-size: 1.6rem; }
   .lumi-guide-title > p { font-size: 12px; line-height: 1.7; }
   .lumi-guide-message > p { font-size: 14px; line-height: 1.85; }
   .lumi-guide-composer { padding: 10px; }
@@ -89,3 +85,53 @@
   .lumi-guide-starters button, .lumi-guide-choices button { font-size: 13px; padding: 10px 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .lumi-guide-spinner { animation: none; } }
+
+/* ==========================================================================
+   全站纸感规则（与首页、客户项目页同源）：衬线标题、近黑主操作、纸面卡片、入场动效
+   ========================================================================== */
+.lumi-guide-title { animation: rise 0.72s var(--ease-out) both; }
+.lumi-guide-title h1 { font-family: var(--font-serif); font-weight: 400; font-size: clamp(1.9rem, 3.4vw, 2.75rem); line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); }
+.lumi-guide-title > p { color: var(--muted); font-size: var(--fs-body); }
+.lumi-guide-message { animation: rise 0.5s var(--ease-out) both; }
+.lumi-guide-author strong { font-weight: 600; color: var(--ink); }
+.lumi-guide-message[data-role="assistant"] > p { color: var(--ink-2); }
+.lumi-guide-message[data-role="user"] { background: var(--ink); color: var(--paper); border-radius: 18px 18px 6px 18px; }
+.lumi-guide-message[data-role="user"] .lumi-guide-author > span { color: rgba(251, 250, 248, 0.6); }
+.lumi-guide-starters, .lumi-guide-choices { animation: rise 0.6s var(--ease-out) 120ms both; }
+.lumi-guide-starters button, .lumi-guide-choices button {
+  border-color: var(--line);
+  border-radius: 14px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  transition: transform var(--dur) var(--ease), border-color var(--dur) var(--ease), background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.lumi-guide-starters button:hover:not(:disabled), .lumi-guide-choices button:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--line-strong); background: var(--paper); box-shadow: var(--shadow-1); }
+.lumi-guide-starters button:hover svg, .lumi-guide-choices button:hover svg { color: var(--forest); }
+.lumi-guide-choices legend { color: var(--faint); font-size: var(--fs-micro); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.lumi-guide-composer { border-color: var(--line-strong); border-radius: 20px; background: var(--paper-2); box-shadow: var(--shadow-1); transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.lumi-guide-composer:focus-within { outline: 0; border-color: var(--forest); box-shadow: 0 0 0 3px rgba(69, 100, 71, 0.12); }
+.lumi-guide-composer textarea { caret-color: var(--forest); color: var(--ink-2); }
+.lumi-guide-compose-tools button { border-radius: 50%; color: var(--muted); }
+.lumi-guide-compose-tools button:hover { background: rgba(16, 18, 16, 0.05); color: var(--ink); }
+.lumi-guide-compose-tools .lumi-guide-send { background: var(--ink); color: var(--paper); transition: background var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.lumi-guide-compose-tools .lumi-guide-send:hover:not(:disabled) { background: var(--forest); color: var(--paper); transform: translateY(-1px); }
+.lumi-guide-footnote, .lumi-guide-note, .lumi-guide-compose-tools > span { color: var(--faint); }
+.lumi-guide-error { color: var(--fail); }
+.lumi-guide-attachments > span { border-color: var(--line-strong); border-radius: var(--r-pill); padding: 5px 12px; background: var(--paper-2); }
+.lumi-guide-brief details { border-color: var(--line); border-radius: var(--r-card); background: var(--paper-2); animation: rise 0.72s var(--ease-out) 120ms both; }
+.lumi-guide-brief summary { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 400; color: var(--ink); }
+.lumi-guide-brief summary svg { color: var(--forest); }
+.lumi-guide-brief summary .lumi-guide-summary-status { padding: 2px 10px; border-radius: var(--r-pill); background: var(--ok-bg); color: var(--ok); font-family: var(--font-sans); font-size: 11px; font-weight: 600; }
+.lumi-guide-brief details[open] summary > svg:last-child { transform: rotate(180deg); }
+.lumi-guide-brief summary > svg:last-child { transition: transform var(--dur) var(--ease); color: var(--muted); }
+.lumi-guide-brief-content > p { color: var(--muted); }
+.lumi-guide-brief dl > div { border-top-color: var(--line); }
+.lumi-guide-brief dt { color: var(--faint); font-size: var(--fs-micro); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.lumi-guide-brief dd { color: var(--ink); transition: color var(--dur) var(--ease); }
+.lumi-guide-brief dd[data-empty="true"] { color: var(--faint); }
+.lumi-guide-brief dd:not([data-empty="true"]) { animation: rise 0.45s var(--ease-out) both; }
+.lumi-guide-readiness[data-ready="true"] { color: var(--ok); }
+.lumi-guide-confirm { border-radius: var(--r-pill); background: var(--ink); color: var(--paper); font-weight: 600; transition: background var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.lumi-guide-confirm:hover:not(:disabled) { background: var(--forest); transform: translateY(-1px); }
+.lumi-guide-confirm:disabled { background: var(--line-strong); color: var(--muted); opacity: 1; }
+.lumi-intake-page :is(a,button,summary,input):focus-visible { outline-color: var(--forest); }

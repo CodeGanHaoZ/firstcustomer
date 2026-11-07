@@ -1,5 +1,5 @@
-import { LocalizedLink } from "@/components/localized-controls";
-import { T, I18n } from "@/components/ui-text";
+import { LocalizedLink, LocalizedTag } from "@/components/localized-controls";
+import { T } from "@/components/ui-text";
 import { Check, FileText } from "lucide-react";
 import type { CSSProperties } from "react";
 import { AGENT_STATE_LABELS, DEPARTMENTS, type AgentState, type DepartmentKey } from "@/domain/office";
@@ -63,7 +63,7 @@ export function OfficeMap({ stations, cooWorking = false, customerView = false }
       {stations?.map(({ key, state, detail, href }) => {
         const label = <><i aria-hidden="true" /><strong>{OFFICE_CHARACTERS[key].name} · <T>{roomName(key)}</T></strong>{!customerView || state !== "idle" ? <small><T>{AGENT_STATE_LABELS[state]}</T></small> : null}</>;
         const props = { className: "office-map-label", "data-state": state, style: position(desks[key].label), title: `${OFFICE_CHARACTERS[key].name} · ${detail}` };
-        return href ? <LocalizedLink key={key} href={href} {...props}>{label}</LocalizedLink> : <I18n key={key}><span {...props}>{label}</span></I18n>;
+        return href ? <LocalizedLink key={key} href={href} {...props}>{label}</LocalizedLink> : <LocalizedTag as="span" key={key} {...props}>{label}</LocalizedTag>;
       })}
       {stations && !customerView ? <a className="office-map-label" style={position([85.5, 17.6])} href="#office-desk-title"><strong>{OFFICE_CHARACTERS.owner.name}<T> · 老板 / </T>{OFFICE_CHARACTERS.coo.name} · COO</strong></a> : null}
       {(stations ?? DEPARTMENTS).map((entry) => <Actor key={entry.key} person={entry.key} working={"state" in entry && entry.state === "running"} />)}

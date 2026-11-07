@@ -1,6 +1,7 @@
 import { getLocale } from "@/lib/locale-server";
 import { translateUi } from "@/lib/ui-translation";
-import { T, I18n } from "@/components/ui-text";
+import { T } from "@/components/ui-text";
+import { LocalizedTag } from "@/components/localized-controls";
 import { Download, Pencil } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -32,7 +33,7 @@ export default async function ContextPage({ searchParams }: PageProps<"/admin/co
         </div>
       </header>
       {error ? <p role="alert" className="notice notice--fail"><T>{String(error)}</T></p> : null}
-      <I18n><section aria-label="九份卷宗" className="grid items-start gap-3 md:grid-cols-2">
+      <LocalizedTag as="section" aria-label="九份卷宗" className="grid items-start gap-3 md:grid-cols-2">
         {docs.map((doc, index) => (
           <details key={doc.name} className="fold rise" style={{ "--i": index } as CSSProperties}>
             <summary>
@@ -44,7 +45,7 @@ export default async function ContextPage({ searchParams }: PageProps<"/admin/co
             <pre className="fold__body m-0 font-sans text-sm leading-relaxed break-words whitespace-pre-wrap text-muted-foreground">{doc.body}</pre>
           </details>
         ))}
-      </section></I18n>
+      </LocalizedTag>
       <details id="company-settings" className="fold scroll-mt-24">
         <summary>
           <span>

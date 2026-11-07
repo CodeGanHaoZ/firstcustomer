@@ -1,6 +1,7 @@
 import { getLocale } from "@/lib/locale-server";
 import { translateUi } from "@/lib/ui-translation";
-import { T, I18n } from "@/components/ui-text";
+import { T } from "@/components/ui-text";
+import { LocalizedTag } from "@/components/localized-controls";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -34,13 +35,13 @@ export default async function KnowledgeDetailPage({ params, searchParams }: Page
       {notice ? <p role="status" className="notice notice--ok"><T>{notice}</T></p> : null}
       {query.error ? <p role="alert" className="notice notice--fail"><T>{String(query.error)}</T></p> : null}
       <KnowledgeEditor key={`${article?.id ?? "new"}:${article?.revision ?? 1}`} id={article?.id} revision={article?.revision ?? 1} initial={article?.draft ?? emptyKnowledge()} />
-      {article?.published ? <I18n><section className="grid gap-3 border-t pt-5" aria-label="当前发布版">
+      {article?.published ? <LocalizedTag as="section" className="grid gap-3 border-t pt-5" aria-label="当前发布版">
         <details className="fold"><summary><span className="fold__title"><T>查看当前发布版</T></span></summary><div className="fold__body"><p className="mb-3 text-sm text-muted-foreground"><T>当前可读：</T><T>{article.published.agents.map((agent) => KNOWLEDGE_AGENTS[agent]).join("、")}</T><T> · 核对于 </T>{article.published.reviewedOn}</p><pre className="rounded-lg bg-card p-4 font-sans text-sm leading-relaxed break-words whitespace-pre-wrap">{article.published.content}</pre></div></details>
         <form action={withdrawKnowledgeAction} className="flex flex-wrap items-center gap-3">
           <input type="hidden" name="id" value={article.id} /><input type="hidden" name="revision" value={article.revision} />
           <Button className="min-h-10" type="submit" variant="outline"><T>撤下当前发布版</T></Button><p className="text-xs text-muted-foreground"><T>撤下后不再供 Agent 使用，草稿和历史仍保留。</T></p>
         </form>
-      </section></I18n> : null}
+      </LocalizedTag> : null}
       {versions.length ? <section className="grid gap-3 border-t pt-5" aria-labelledby="knowledge-history-title"><h2 id="knowledge-history-title" className="eyebrow m-0"><T>发布历史</T></h2><div className="divide-y rounded-2xl border bg-card">{versions.map((item) => <details key={item.id} className="px-4 py-3"><summary className="cursor-pointer text-sm font-medium"><T>第 </T>{item.version}<T> 版 · </T>{item.snapshot.title} · {knowledgeDate(item.createdAt)}</summary><p className="mt-3 text-xs text-muted-foreground"><T>{item.snapshot.visibility === "public" ? "可公开" : "仅内部"}</T><T> · 核对于 </T>{item.snapshot.reviewedOn}{item.snapshot.sourceNote ? ` · ${item.snapshot.sourceNote}` : ""}</p><pre className="mt-3 font-sans text-sm leading-relaxed break-words whitespace-pre-wrap">{item.snapshot.content}</pre></details>)}</div></section> : null}
     </main>
   );

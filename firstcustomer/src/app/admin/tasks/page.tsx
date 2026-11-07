@@ -1,6 +1,7 @@
 import { getLocale } from "@/lib/locale-server";
 import { translateUi } from "@/lib/ui-translation";
-import { T, I18n } from "@/components/ui-text";
+import { T } from "@/components/ui-text";
+import { LocalizedTag } from "@/components/localized-controls";
 import Link from "next/link";
 import { hasModelListPrice } from "@/ai/call-model";
 import { AutoRefresh } from "@/components/auto-refresh";
@@ -36,7 +37,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/admin/task
         </div>
       </header>
       {rows.some(({ status }) => status === "running" || status === "queued") ? <AutoRefresh /> : null}
-      <I18n><section className="paper min-w-0 overflow-hidden p-0" aria-label="任务记录">
+      <LocalizedTag as="section" className="paper min-w-0 overflow-hidden p-0" aria-label="任务记录">
         <nav className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-sm" aria-label="任务状态">
           {[["", "全部状态"], ...Object.entries(TASK_STATUS_LABELS)].map(([value, label]) => (
             <Link key={value || "all"} href={value ? `/admin/tasks?status=${value}` : "/admin/tasks"}
@@ -82,13 +83,13 @@ export default async function TasksPage({ searchParams }: PageProps<"/admin/task
           </ol>
         ) : <p className="px-4 py-5 text-sm text-muted-foreground"><T>当前条件下没有任务记录。</T></p>}
         {page > 1 || hasMore ? (
-          <I18n><nav className="flex flex-wrap items-center gap-4 border-t px-4 py-3 text-sm" aria-label="任务分页">
+          <LocalizedTag as="nav" className="flex flex-wrap items-center gap-4 border-t px-4 py-3 text-sm" aria-label="任务分页">
             {page > 1 ? <Link href={pageHref(page - 1)} className="btn btn--ghost btn--sm"><T>上一页</T></Link> : null}
             <span><T>第 </T>{page}<T> 页</T></span>
             {hasMore ? <Link href={pageHref(page + 1)} className="btn btn--ghost btn--sm"><T>下一页</T></Link> : null}
-          </nav></I18n>
+          </LocalizedTag>
         ) : null}
-      </section></I18n>
+      </LocalizedTag>
     </main>
   );
 }

@@ -1,5 +1,5 @@
 import { LocalizedInput, LocalizedTag } from "@/components/localized-controls";
-import { T, I18n } from "@/components/ui-text";
+import { T } from "@/components/ui-text";
 import type { PositioningOption, VisionOutput } from "@/agents/schemas";
 import { ImageUploadInput } from "@/components/image-upload-input";
 import { Button } from "@/components/ui/button";
@@ -232,8 +232,7 @@ export function ScreenshotsSection(props: {
           return (
             <div key={image.id} className="flex flex-col gap-3 rounded-2xl border bg-background p-3 sm:flex-row">
               <a href={hrefFor(image.id)} target="_blank" rel="noreferrer" className="shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <I18n><img src={hrefFor(image.id)} alt="上传的截图" className="h-24 w-36 rounded-xl object-cover" /></I18n>
+                <LocalizedTag as="img" src={hrefFor(image.id)} alt="上传的截图" className="h-24 w-36 rounded-xl object-cover" />
               </a>
               <div className="flex flex-1 flex-col gap-1">
                 <p className="font-medium">
