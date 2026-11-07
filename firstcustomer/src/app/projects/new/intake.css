@@ -1,6 +1,7 @@
-/* 外壳：统一顶栏 + 占满剩余高度的对话工作区 */
-.lumi-intake-shell { display: flex; flex-direction: column; height: 100dvh; min-height: 620px; background: var(--paper); }
-.lumi-intake-page { width: 100%; max-width: var(--container); flex: 1; min-height: 0; margin: 0 auto; padding: clamp(20px, 3vw, 36px) var(--gutter) 20px; display: flex; flex-direction: column; }
+/* 外壳：统一顶栏 + 视口高度的对话工作区 + 底部统一页脚。
+   shell 放开固定高度让页脚可滚动到达；工作区锁定为视口减顶栏的高度，聊天仍在区内滚动 */
+.lumi-intake-shell { display: flex; flex-direction: column; min-height: 100dvh; background: var(--paper); }
+.lumi-intake-page { width: 100%; max-width: var(--container); flex: none; height: calc(100dvh - 69px); min-height: 552px; margin: 0 auto; padding: clamp(20px, 3vw, 36px) var(--gutter) 20px; display: flex; flex-direction: column; }
 .lumi-guide { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .lumi-guide-title { flex: none; margin-bottom: 24px; }
 .lumi-guide-title h1 { font-size: 28px; font-weight: 700; line-height: 1.3; letter-spacing: -.025em; }

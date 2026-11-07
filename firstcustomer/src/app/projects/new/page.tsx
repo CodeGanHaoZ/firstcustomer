@@ -1,5 +1,5 @@
 import { LumiProjectIntake } from "@/components/lumi-project-intake";
-import { SiteHeader } from "@/components/site-chrome";
+import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { hostedUploadLimit } from "@/lib/uploads";
 import { createProjectAction } from "./actions";
 import "./intake.css";
@@ -12,6 +12,7 @@ export default async function NewProjectPage({ searchParams }: PageProps<"/proje
       <main className="lumi-intake-page">
         <LumiProjectIntake action={createProjectAction} maxTotalBytes={hostedUploadLimit} serverError={error ? String(error) : undefined} />
       </main>
+      <SiteFooter />
     </div>
   );
 }
