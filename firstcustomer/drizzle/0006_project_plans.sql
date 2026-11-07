@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "product_plan" text DEFAULT 'legacy' NOT NULL;

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, Play, RotateCcw } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { DepartmentKey, OfficeTransfer } from "@/domain/office";
 import { desks, roomName, type Point } from "./office-map";
 
@@ -55,11 +55,14 @@ function reset(actor: HTMLElement) {
   delete actor.dataset.carrying;
 }
 
-export function OfficeStage({ transfer, viewControl, children }: {
+export function OfficeStage({ transfer, viewControl, children, customerView = false, focusRoom }: {
   transfer: OfficeTransfer | null;
-  viewControl: ReactNode;
+  viewControl?: ReactNode;
   children: ReactNode;
+  customerView?: boolean;
+  focusRoom?: DepartmentKey;
 }) {
+  const hintId = useId();
   const viewport = useRef<HTMLDivElement>(null);
   const active = useRef<(() => void) | null>(null);
   const seen = useRef<string | null>(null);
@@ -155,9 +158,35 @@ export function OfficeStage({ transfer, viewControl, children }: {
   }, [transfer, play]);
   useEffect(() => () => active.current?.(), []);
 
+  useEffect(() => {
+    const scroll = viewport.current;
+    if (!customerView || !scroll) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      scroll.dataset.inView = String(entry.isIntersecting && document.visibilityState === "visible");
+    });
+    const visibility = () => {
+      observer.disconnect();
+      if (document.visibilityState === "visible") observer.observe(scroll);
+      else scroll.dataset.inView = "false";
+    };
+    visibility();
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [customerView]);
+
+  useEffect(() => {
+    const scroll = viewport.current;
+    if (!customerView || !scroll || !focusRoom || scroll.scrollWidth <= scroll.clientWidth) return;
+    const [x] = desks[focusRoom].home;
+    scroll.scrollLeft = scroll.scrollWidth * x / 100 - scroll.clientWidth / 2;
+  }, [customerView, focusRoom]);
+
   return (
-    <div className="office-stage" data-motion-demo={playing === "demo"}>
-      <div className="office-stage-bar">
+    <div className="office-stage" data-motion-demo={playing === "demo"} data-customer-view={customerView}>
+      {!customerView || transfer ? <div className="office-stage-bar">
         <p className="office-transfer-summary" role="status">
           {playing === "demo" ? (
             <>交接演示 <strong>{roomName(previewRoute.from)}</strong><ArrowRight size={14} aria-hidden="true" /><strong>{roomName(previewRoute.to)}</strong></>
@@ -165,16 +194,16 @@ export function OfficeStage({ transfer, viewControl, children }: {
             <>最近交接 <strong>{roomName(transfer.from)}</strong><ArrowRight size={14} aria-hidden="true" /><strong>{roomName(transfer.to)}</strong></>
           ) : "小人会在任务交接时沿走廊送文件"}
         </p>
-        <div className="office-stage-actions">
+        {!customerView ? <div className="office-stage-actions">
           {viewControl}
           <div className="office-motion-controls">
             {transfer ? <button className="office-control" type="button" disabled={playing !== null} onClick={() => play(transfer.from, transfer.to, "handoff", true)}><RotateCcw size={14} aria-hidden="true" />重播交接</button> : null}
             <button className="office-control office-control-primary" type="button" disabled={playing !== null} onClick={() => play(previewRoute.from, previewRoute.to, "demo", true)}><Play size={14} aria-hidden="true" />演示交接</button>
           </div>
-        </div>
-      </div>
-      <p className="office-pan-hint" id="office-pan-hint">左右滑动查看整间办公室</p>
-      <div className="office-map-viewport" role="region" aria-label="首客办公室地图" aria-describedby="office-pan-hint" tabIndex={0} ref={viewport}
+        </div> : null}
+      </div> : null}
+      <p className="office-pan-hint" id={hintId}>左右滑动查看整间办公室</p>
+      <div className="office-map-viewport" role="region" aria-label={customerView ? "当前项目的办公室地图" : "首客办公室地图"} aria-describedby={hintId} tabIndex={0} ref={viewport}
         onPointerDown={() => { follow.current = false; }} onWheel={() => { follow.current = false; }}>
         {children}
       </div>

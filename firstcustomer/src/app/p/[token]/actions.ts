@@ -17,6 +17,7 @@ import {
   findProjectByToken,
 } from "@/workflow/actions";
 import { openSupportMessage } from "@/workflow/support";
+import { requestPro, startFreeDiagnosis } from "@/workflow/plans";
 
 const schema = z.object({
   gate: z.enum(["positioning", "publish", "next_round"]),
@@ -58,6 +59,20 @@ export async function customerAnswers(token: string, formData: FormData) {
       by: "customer",
     });
     if (!result.complete) return `已保存，还有 ${result.remaining} 个问题没有回答`;
+  });
+}
+
+export async function customerStartFreeAction(token: string) {
+  await withProject(token, async (projectId) => {
+    if (!(await withinLimit("free-diagnosis", 8, 3600))) throw new Error("提交太频繁，请稍后重试");
+    await startFreeDiagnosis(getDb(), projectId);
+  });
+}
+
+export async function customerRequestProAction(token: string) {
+  await withProject(token, async (projectId) => {
+    await requestPro(getDb(), projectId);
+    return "已提交 Pro 升级申请。你可以在这里查看提案和报价。";
   });
 }
 

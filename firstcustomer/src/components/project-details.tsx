@@ -50,17 +50,19 @@ export function SimulatedBanner() {
   );
 }
 
-export function StatusFlow({ status, quoteFlow }: { status: string; quoteFlow: boolean }) {
-  const flow: ProjectStatus[] = quoteFlow
-    ? [...MAIN_FLOW.slice(0, 2), "drafting_quote", "awaiting_quote", "awaiting_quote_acceptance", "awaiting_payment", ...MAIN_FLOW.slice(2)]
-    : MAIN_FLOW;
+export function StatusFlow({ status, quoteFlow, plan = "legacy" }: { status: string; quoteFlow: boolean; plan?: Project["productPlan"] }) {
+  const flow: ProjectStatus[] = plan === "free"
+    ? ["submitted", "researching", "free_ready"]
+    : quoteFlow
+      ? [...MAIN_FLOW.slice(0, 2), ...(plan === "pro" ? ["free_ready"] as const : []), "drafting_quote", "awaiting_quote", "awaiting_quote_acceptance", "awaiting_payment", ...MAIN_FLOW.slice(2)]
+      : MAIN_FLOW;
   const current = status === "reading_receipt" ? "awaiting_payment" : status;
   const index = flow.indexOf(current as ProjectStatus);
   return (
     <ol className="flex flex-wrap gap-2 text-sm">
       {flow.map((step, i) => (
         <li key={step} aria-current={step === current ? "step" : undefined}>
-          <Badge variant={step === current ? "default" : i < index ? "secondary" : "outline"}>
+          <Badge className="transition-none" variant={step === current ? "default" : i < index ? "secondary" : "outline"}>
             {STATUS_LABELS[step]}
           </Badge>
         </li>
@@ -556,7 +558,7 @@ export function ProjectHeader({ project }: { project: Project }) {
         {project.targetMarket ? ` · ${project.targetMarket}` : ""}
         {project.isOwnProduct ? " · 自有产品" : ""}
       </p>
-      <StatusFlow status={project.status} quoteFlow={usesQuoteFlow(project)} />
+      <StatusFlow status={project.status} quoteFlow={usesQuoteFlow(project)} plan={project.productPlan} />
     </header>
   );
 }

@@ -31,7 +31,7 @@ import type { ProjectStatus } from "@/domain/workflow";
 import { reportFor, type Escalation, type PendingRequest } from "./engine";
 import { transition } from "./transitions";
 
-export type Enqueue = (projectId: string) => Promise<void>;
+export type Enqueue = (projectId: string, transaction?: Db) => Promise<void>;
 
 export const hashToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");
@@ -63,6 +63,7 @@ export async function createProject(
     budgetNote?: string | null;
     contact: string;
     isOwnProduct?: boolean;
+    productPlan?: "free";
   },
 ) {
   const token = newToken();
@@ -71,7 +72,9 @@ export async function createProject(
       .insert(projects)
       .values({ ...input, requiresPayment: true, tokenHash: hashToken(token) })
       .returning();
-    await tx.insert(orders).values({ projectId: project.id, sku: "首客启动包" });
+    if (project.productPlan !== "free") {
+      await tx.insert(orders).values({ projectId: project.id, sku: "首客启动包" });
+    }
     return { project, token };
   });
 }
@@ -87,12 +90,12 @@ export async function regenerateProjectLink(db: Db, projectId: string) {
 
 export async function setOwnProduct(db: Db, projectId: string, isOwnProduct: boolean) {
   const project = await getProject(db, projectId);
+  if (project.productPlan !== "legacy") throw new Error("客户自助项目不能切换为首客自有产品");
   const changed = await db
     .update(projects)
     .set({ isOwnProduct, updatedAt: new Date() })
-    .where(project.requiresPayment
-      ? and(eq(projects.id, projectId), eq(projects.status, "submitted"))
-      : eq(projects.id, projectId))
+    .where(and(eq(projects.id, projectId), eq(projects.productPlan, "legacy"),
+      project.requiresPayment ? eq(projects.status, "submitted") : undefined))
     .returning({ id: projects.id });
   if (!changed.length) throw new Error("请在开始初诊前标记自有产品");
 }
@@ -128,8 +131,15 @@ export async function answerClarifications(
     }
   }
   if (remaining > 0) return { complete: false, remaining };
-  await transition(db, project, "researching", input.by, "问题已回答");
-  await enqueue(project.id);
+  if (project.productPlan === "free") {
+    await db.transaction(async (tx) => {
+      await transition(tx, project, "researching", input.by, "问题已回答");
+      await enqueue(project.id, tx);
+    });
+  } else {
+    await transition(db, project, "researching", input.by, "问题已回答");
+    await enqueue(project.id);
+  }
   return { complete: true, remaining: 0 };
 }
 
@@ -508,7 +518,7 @@ export async function recordFeedback(
 export async function setQuote(db: Db, projectId: string, quoteFen: number) {
   await db.transaction(async (tx) => {
     const project = await getProject(tx, projectId);
-    if (project.requiresPayment) throw new Error("请通过项目报价审批确认报价");
+    if (project.requiresPayment || project.productPlan !== "legacy") throw new Error("请通过项目报价审批确认报价");
     await tx.update(orders).set({ quoteFen, status: "quoted" }).where(eq(orders.projectId, projectId));
   });
 }
@@ -520,7 +530,7 @@ export async function recordPayment(
 ) {
   await db.transaction(async (tx) => {
     const project = await getProject(tx, projectId);
-    if (project.requiresPayment) throw new Error("请通过项目到账审批记录实收");
+    if (project.requiresPayment || project.productPlan !== "legacy") throw new Error("请通过项目到账审批记录实收");
     const [order] = await tx.select().from(orders).where(eq(orders.projectId, projectId));
     if (!order) throw new Error("项目没有订单");
     await tx.insert(payments).values({ ...input, orderId: order.id });

@@ -22,6 +22,7 @@ export async function submitProject(db: Db, formData: FormData, founder = false)
     targetMarket: optionalText(formData.get("targetMarket"), 200),
     budgetNote: optionalText(formData.get("budgetNote"), 200),
     isOwnProduct: founder && formData.get("own") === "1",
+    productPlan: founder ? undefined : "free",
   });
   let imageWarning: string | null = null;
   try {
@@ -32,7 +33,5 @@ export async function submitProject(db: Db, formData: FormData, founder = false)
     const message = error instanceof Error ? error.message : "截图上传失败";
     imageWarning = `项目已保存，但截图没有全部上传。${message}`;
   }
-  const query = new URLSearchParams({ intake: founder ? "admin" : "public" });
-  if (imageWarning) query.set("error", imageWarning);
-  return `/p/${token}?${query}`;
+  return { projectId: project.id, token, imageWarning };
 }

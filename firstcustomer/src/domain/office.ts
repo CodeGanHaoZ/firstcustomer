@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 import type { GateState } from "./approval";
 import type { ProjectStatus } from "./workflow";
 
@@ -70,7 +71,7 @@ export const TASK_TRIGGER_LABELS: Record<string, string> = {
 };
 
 export const DEPARTMENTS: { key: DepartmentKey; room: string; agent: string; duty: string }[] = [
-  { key: "frontdesk", room: "前台", agent: "兔兔 · 接待报价员", duty: "整理初诊结果，起草提案和报价，接待客户问题" },
+  { key: "frontdesk", room: "前台", agent: `${BRAND.mascotName} · 接待报价员`, duty: "整理初诊结果，起草提案和报价，接待客户问题" },
   { key: "research", room: "市场研究室", agent: "研究员 Research", duty: "研究海外需求、竞品定价和反面证据，每条结论都带来源" },
   { key: "strategy", room: "战略决策室", agent: "策略师 Strategy", duty: "比较两个目标人群，写出定位和实验计划，证据不够就打回研究室" },
   { key: "finance", room: "财务室", agent: "松栗 · 票据员", duty: "读取付款截图，等老板核对到账，汇总真实收款和费用" },
@@ -122,6 +123,10 @@ const AGENT_ROOM: Record<string, DepartmentKey> = {
   launch: "launch",
   growth: "growth",
 };
+
+export function officeRoomForAgent(agent: string): DepartmentKey | undefined {
+  return Object.hasOwn(AGENT_ROOM, agent) ? AGENT_ROOM[agent] : undefined;
+}
 
 const STATUS_ROOM: Partial<Record<ProjectStatus, DepartmentKey>> = {
   drafting_quote: "frontdesk",

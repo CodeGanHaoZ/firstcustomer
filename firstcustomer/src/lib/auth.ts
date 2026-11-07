@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 const COOKIE = "fc_admin";
+export const NEW_CUSTOMER_LINK_COOKIE = "fc_new_customer_link";
 const MAX_AGE_SECONDS = 7 * 24 * 3600;
 
 function secret() {

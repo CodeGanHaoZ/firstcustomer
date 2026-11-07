@@ -51,15 +51,19 @@ function Actor({ person, working }: { person: Person; working: boolean }) {
   );
 }
 
-export function OfficeMap({ stations, cooWorking = false }: { stations?: OfficeStation[]; cooWorking?: boolean }) {
+export function OfficeMap({ stations, cooWorking = false, customerView = false }: {
+  stations?: OfficeStation[];
+  cooWorking?: boolean;
+  customerView?: boolean;
+}) {
   return (
     <div className={stations ? "office-map" : "office-map office-map-static"} aria-hidden={stations ? undefined : true}>
       {stations?.map(({ key, state, detail, href }) => {
-        const label = <><i aria-hidden="true" /><strong>{roomName(key)}</strong><small>{AGENT_STATE_LABELS[state]}</small></>;
+        const label = <><i aria-hidden="true" /><strong>{roomName(key)}</strong>{!customerView || state !== "idle" ? <small>{AGENT_STATE_LABELS[state]}</small> : null}</>;
         const props = { className: "office-map-label", "data-state": state, style: position(desks[key].label), title: detail };
         return href ? <Link key={key} href={href} {...props}>{label}</Link> : <span key={key} {...props}>{label}</span>;
       })}
-      {stations ? <a className="office-map-label" style={position([85.5, 17.6])} href="#office-desk-title"><strong>老板与 COO</strong></a> : null}
+      {stations && !customerView ? <a className="office-map-label" style={position([85.5, 17.6])} href="#office-desk-title"><strong>老板与 COO</strong></a> : null}
       {(stations ?? DEPARTMENTS).map((entry) => <Actor key={entry.key} person={entry.key} working={"state" in entry && entry.state === "running"} />)}
       <Actor person="owner" working={false} />
       <Actor person="coo" working={cooWorking} />

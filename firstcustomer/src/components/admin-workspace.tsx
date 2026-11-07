@@ -8,7 +8,7 @@ import { BrandMark } from "./brand-mark";
 
 const groups = [
   {
-    title: "工作台",
+    title: "项目协作",
     links: [
       { label: "办公室", href: "/admin", icon: Grid2X2 },
       { label: "全部项目", href: "/admin#projects", icon: FolderClosed },
@@ -16,12 +16,12 @@ const groups = [
     ],
   },
   {
-    title: "公司经营",
+    title: "首客公司经营",
     links: [
-      { label: "经营报表", href: "/admin#metrics", icon: ChartColumn },
+      { label: "经营报表", href: "/admin/metrics", icon: ChartColumn },
       { label: "经营周报", href: "/admin/reports", icon: CalendarDays },
       { label: "公司卷宗", href: "/admin/context", icon: Archive },
-      { label: "收款设置", href: "/admin#payment-code", icon: Wallet },
+      { label: "收款设置", href: "/admin/payment", icon: Wallet },
     ],
   },
 ];
@@ -45,7 +45,10 @@ export function AdminWorkspace({ children, logout }: { children: ReactNode; logo
         }
       }}>
         <div className="admin-side-heading">
-          <Link href="/admin" onClick={close} aria-label="首客经营台"><BrandMark /></Link>
+          <Link href="/admin" onClick={close} className="admin-brand-link" aria-label="首客内部经营台">
+            <BrandMark />
+            <span>内部经营台</span>
+          </Link>
           <button type="button" className="admin-menu-toggle" aria-expanded={open} aria-controls="admin-menu"
             aria-label={open ? "收起经营台导航" : "展开经营台导航"} ref={toggle} onClick={() => setOpen(!open)}>
             {open ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}

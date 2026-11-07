@@ -2,13 +2,10 @@ import { desc } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OfficeBoard, type DeskItem } from "@/components/office-board";
-import { OperatingNumbers } from "@/components/operating-numbers";
 import type { StandupOutput } from "@/agents/schemas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getDb } from "@/db";
 import { agentTasks, orders, projects } from "@/db/schema";
@@ -16,15 +13,13 @@ import { AGENT_LABELS } from "@/domain/office";
 import { STATUS_LABELS, type ProjectStatus } from "@/domain/workflow";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
-import { hasPaymentCode } from "@/workflow/commerce";
 import { operatingMetrics } from "@/workflow/operating-metrics";
 import { loadCoo, loadDepartments, loadOfficeTransfer, officeRevision, OWNER_REMINDER_HOURS, projectAttention } from "@/workflow/office";
-import { uploadPaymentCodeAction } from "./actions";
 import { createStandupReport } from "./reports/actions";
 import "./office.css";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "OPC 经营台", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "首客内部经营台", robots: { index: false, follow: false } };
 
 const money = (fen: number) => `¥${(fen / 100).toFixed(2)}`;
 
@@ -41,13 +36,13 @@ function AttentionList({ items }: { items: DeskItem[] }) {
 
 export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   await requireAdmin();
-  const { error, project: selectedId, view } = await searchParams;
+  const { project: selectedId, view } = await searchParams;
   const db = getDb();
-  const [all, allOrders, tasks, codeReady, metrics, coo, revision] = await Promise.all([
+  const [all, allOrders, tasks, metrics, coo, revision] = await Promise.all([
     db.select().from(projects).orderBy(desc(projects.updatedAt)),
     db.select().from(orders),
     db.select({ projectId: agentTasks.projectId, provider: agentTasks.provider, status: agentTasks.status }).from(agentTasks),
-    hasPaymentCode(db), operatingMetrics(db), loadCoo(db), officeRevision(db),
+    operatingMetrics(db), loadCoo(db), officeRevision(db),
   ]);
   const selected = all.find(({ id }) => id === selectedId) ?? all[0] ?? null;
   const names = new Map(all.map(({ id, productName }) => [id, productName]));
@@ -90,23 +85,6 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         firstLeadAt={metrics.firstLeadAt ? new Date(metrics.firstLeadAt) : null}
         revision={revision} listMode={view === "list"} />
       <div className="office-operations">
-      <section id="payment-code" className="order-last">
-        <Card>
-          <CardHeader><CardTitle>首客收款码</CardTitle></CardHeader>
-          <CardContent className="flex flex-col gap-3 text-sm">
-            <p>{codeReady ? "已配置收款码。" : "尚未配置收款码。"}客户接受报价后，可在项目专属链接查看。</p>
-            {error ? <p className="text-destructive">{String(error)}</p> : null}
-            <form action={uploadPaymentCodeAction} className="flex flex-wrap items-end gap-2">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="payment-code-file">收款码图片（最大 5 MB）</Label>
-                <Input id="payment-code-file" name="paymentCode" type="file" accept="image/png,image/jpeg,image/webp" required />
-              </div>
-              <Button type="submit" variant="outline">{codeReady ? "更换收款码" : "上传收款码"}</Button>
-            </form>
-          </CardContent>
-        </Card>
-      </section>
-
       <Card id="standup">
         <CardHeader><CardTitle>COO 每日站会</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
@@ -147,8 +125,6 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         <CardHeader><CardTitle>等客户处理（{waiting.length}）</CardTitle></CardHeader>
         <CardContent><AttentionList items={waiting} /></CardContent>
       </Card> : null}
-
-      <div id="metrics"><OperatingNumbers metrics={metrics} /></div>
 
       <Card id="projects">
         <CardHeader>

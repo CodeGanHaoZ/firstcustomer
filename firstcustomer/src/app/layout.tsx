@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "首客 FirstCustomer",
+  title: `${BRAND.name} ${BRAND.englishName}`,
   description: "帮中国创业者找到第一批真实海外客户的 AI 出海服务",
 };
 

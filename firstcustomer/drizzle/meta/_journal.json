@@ -43,6 +43,13 @@
       "when": 1793985387120,
       "tag": "0005_chemical_human_fly",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794015413567,
+      "tag": "0006_project_plans",
+      "breakpoints": true
     }
   ]
 }

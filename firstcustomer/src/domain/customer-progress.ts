@@ -28,6 +28,7 @@ export function customerProgress(input: {
   awaitingPayment: boolean;
   receiptUploaded: boolean;
   deliveryStatus?: string;
+  canStartFree?: boolean;
 }): Progress {
   const phase = input.status === "reviewing" && input.reportReady ? undefined : WORK_PHASES[input.status as ProjectStatus];
   const actor = phase && input.runningAgents.includes(phase.agent) ? phase.label
@@ -49,7 +50,10 @@ export function customerProgress(input: {
   }
 
   switch (input.status) {
-    case "submitted": return { title: "已提交", detail: "项目已提交，等待首客老板确认后开始研究。", refreshSeconds: 12 };
+    case "submitted": return input.canStartFree
+      ? { title: "可以开始免费初诊", detail: "提交的资料已保存。点击下方按钮即可排队开始。", refreshSeconds: 3 }
+      : { title: "已提交", detail: "项目已提交，等待首客老板确认后开始研究。", refreshSeconds: 12 };
+    case "free_ready": return { title: "免费初诊已完成", detail: "你可以查看候选人群和待验证事项，或申请 Pro 继续做定位与发布。", action: { href: "#diagnosis", label: "查看初诊结果" } };
     case "needs_info": return { title: "待你补充资料", detail: "研究员需要你补充信息，可以先保存已填的回答。", action: { href: "#clarifications", label: "回答追问" } };
     case "awaiting_quote": return { title: "首客正在核对报价", detail: "服务范围和价格确认后会在这里显示。", refreshSeconds: 12 };
     case "awaiting_quote_acceptance": return input.quoteVisible
@@ -66,7 +70,9 @@ export function customerProgress(input: {
     case "collecting": return { title: "验证页已公开", detail: "正在收集访问与反馈，样本够了再进行复盘。", action: { href: "#launch", label: "查看验证页" }, refreshSeconds: 12 };
     case "reviewing": return { title: "复盘已生成", detail: "首客正在核对复盘与交付清单。", action: { href: "#growth", label: "查看增长复盘" }, refreshSeconds: 12 };
     case "awaiting_founder": return { title: "等首客决定下一步", detail: "前序材料已保存，首客会先核对当前问题。", refreshSeconds: 12 };
-    case "failed": return { title: "处理遇到问题", detail: "首客可以核对原因并继续，已保存的交付记录可查阅。", action: { href: "#support", label: "询问进度" }, refreshSeconds: 12 };
+    case "failed": return input.canStartFree
+      ? { title: "初诊暂未完成", detail: "项目资料已保留，可以重新启动免费初诊。" }
+      : { title: "处理遇到问题", detail: "首客可以核对原因并继续，已保存的交付记录可查阅。", action: { href: "#support", label: "询问进度" }, refreshSeconds: 12 };
     case "delivered": return input.deliveryStatus === "accepted"
       ? { title: "已验收", detail: "你已确认验收，可以随时查阅交付清单。", action: { href: "#deliverables", label: "查看交付清单" } }
       : input.deliveryStatus === "changes_requested"

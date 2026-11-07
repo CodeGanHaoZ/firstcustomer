@@ -1,11 +1,12 @@
-import { Leaf } from "lucide-react";
+import Image from "next/image";
+import { BRAND } from "@/lib/brand";
 
 export function BrandMark() {
   return (
     <span className="brand-mark">
-      <span className="brand-icon"><Leaf size={17} aria-hidden="true" /></span>
-      <strong>首客</strong>
-      <small>FirstCustomer</small>
+      <Image className="brand-icon" src="/icon.svg" width={32} height={32} alt="" unoptimized />
+      <strong>{BRAND.name}</strong>
+      <small lang="en">{BRAND.englishName}</small>
     </span>
   );
 }

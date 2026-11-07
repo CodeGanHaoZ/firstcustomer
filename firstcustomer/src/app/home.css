@@ -1,0 +1,36 @@
+.brand-welcome {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-width: 0;
+  min-height: 19rem;
+  padding: 1rem 1rem 1.25rem;
+  border: 1px solid #e9dcc2;
+  border-radius: 1.1rem;
+  background: radial-gradient(ellipse at 50% 36%, #fff8e8 10%, #f0e4cb 88%);
+}
+
+.brand-welcome-rabbit {
+  display: block;
+  width: clamp(13.75rem, 71%, 21.5rem);
+  max-width: 100%;
+  height: auto;
+}
+
+.brand-welcome-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: .55rem;
+  color: #625844;
+  font-size: .82rem;
+}
+
+.brand-welcome-caption strong {
+  color: #243b2d;
+  font-size: 1rem;
+  font-weight: 800;
+}

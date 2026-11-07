@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { ProposalOutput, ReceiptOutput } from "@/agents/schemas";
+import type { ProjectPlan } from "@/domain/workflow";
 import {
   boolean,
   customType,
@@ -31,6 +32,7 @@ export const projects = pgTable("projects", {
   contact: text("contact").notNull(),
   isOwnProduct: boolean("is_own_product").notNull().default(false),
   requiresPayment: boolean("requires_payment").notNull().default(false),
+  productPlan: text("product_plan").$type<ProjectPlan>().notNull().default("legacy"),
   paused: boolean("paused").notNull().default(false),
   status: text("status").notNull().default("submitted"),
   failedFrom: text("failed_from"),

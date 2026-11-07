@@ -67,6 +67,10 @@ a.office-map-label:hover { background: #e9efd8; border-color: #547052; }
 .office-receipt[data-visible="true"] { animation: office-received .75s ease-out both; }
 .office-map-screen[data-working="true"], .office-stage[data-motion-demo="true"] .office-map-screen { animation: office-screen-refresh 1.35s ease-in-out 4; }
 .office-actor[data-working="true"]:not([data-moving]) .office-actor-body, .office-stage[data-motion-demo="true"] .office-actor:not([data-moving]) .office-actor-body { animation: office-key-tap .95s ease-in-out 5; }
+.office-stage[data-customer-view="true"] :is(.office-map-screen[data-working="true"], .office-actor[data-working="true"]:not([data-moving]) .office-actor-body) { animation-iteration-count: infinite; }
+.office-stage[data-customer-view="true"] .office-map-viewport:not([data-in-view="true"]) :is(.office-map-screen, .office-actor:not([data-moving]) .office-actor-body) { animation-play-state: paused; }
+.office-stage[data-customer-view="true"] { --office-muted: var(--muted-foreground); --office-ink: var(--foreground); }
+.office-stage[data-customer-view="true"] .office-map-label[data-state="running"] { border-color: #4c754c; background: #eff5dc; }
 .office-board:has(.office-connection[data-offline="true"]) .office-stage[data-motion-demo="false"] :is(.office-map-screen, .office-actor:not([data-moving]) .office-actor-body) { animation: none; }
 @keyframes office-stride { 0%, 100% { background-position: var(--sprite-x) 100%; } 50% { background-position: var(--sprite-x) 0; } }
 @keyframes office-step { 0%, 100% { translate: 0 0; rotate: -2deg; } 45% { translate: 0 -4%; rotate: 2deg; } }

@@ -300,10 +300,10 @@ export async function uploadPaymentCodeAction(formData: FormData) {
   try {
     await savePaymentCode(getDb(), await readUploadedImage(formData, "paymentCode"));
   } catch (error) {
-    redirect(`/admin?error=${encodeURIComponent(error instanceof Error ? error.message : "上传失败")}#payment-code`);
+    redirect(`/admin/payment?error=${encodeURIComponent(error instanceof Error ? error.message : "上传失败")}`);
   }
-  revalidatePath("/admin");
-  redirect("/admin#payment-code");
+  revalidatePath("/admin/payment");
+  redirect("/admin/payment?saved=1");
 }
 
 const evidenceHandler = adminAction(async (formData, projectId) => {

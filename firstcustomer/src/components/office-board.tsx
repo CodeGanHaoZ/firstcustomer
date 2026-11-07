@@ -3,13 +3,14 @@ import Link from "next/link";
 import { ArrowDownLeft, ArrowDownRight, ArrowUpRight, FolderOpen, Grid2X2, List } from "lucide-react";
 import { AGENT_STATE_LABELS, DEPARTMENTS, type DepartmentKey, type DepartmentView, type OfficeTransfer } from "@/domain/office";
 import { STATUS_LABELS, type ProjectStatus } from "@/domain/workflow";
+import { BRAND } from "@/lib/brand";
 import { formatDateTime } from "@/lib/format";
 import { OfficeConnection } from "./office-connection";
 import { OfficeMap, roomName, type OfficeStation } from "./office-map";
 import { OfficeStage } from "./office-stage";
 
 const rooms: Record<DepartmentKey, { scene: string; name: string }> = {
-  frontdesk: { scene: "0 0", name: "兔兔 · 接待报价" },
+  frontdesk: { scene: "0 0", name: `${BRAND.mascotName} · 接待报价` },
   research: { scene: "50% 0", name: "小枭 · Research" },
   strategy: { scene: "100% 0", name: "赤狐 · Strategy" },
   finance: { scene: "0 100%", name: "松栗 · 票据员" },
@@ -151,12 +152,14 @@ export function OfficeBoard({
             <span>COO · 云团</span>
           </div>
           <div className="office-milestones">
-            <div><span>首客第一单</span><strong>{firstPaymentAt ? formatDateTime(firstPaymentAt) : "待确认到账"}</strong></div>
-            <div><span>客户第一单</span><strong>{firstLeadAt ? formatDateTime(firstLeadAt) : "等待有效留资"}</strong></div>
+            <div><span>首客首笔服务实收</span><strong>{firstPaymentAt ? formatDateTime(firstPaymentAt) : "待确认到账"}</strong></div>
+            <div><span>客户项目首条有效线索</span><strong>{firstLeadAt ? formatDateTime(firstLeadAt) : "等待有效留资"}</strong></div>
           </div>
           <div className="office-decision-links">
             {project ? <Link href={`${base}#deliverables`} className="office-desk-link"><FolderOpen size={16} /> 交付清单 <ArrowDownRight size={15} /></Link> : null}
             <Link href="#standup" className="office-desk-link">COO 每日站会 <ArrowDownLeft size={15} /></Link>
+            <Link id="metrics" href="/admin/metrics" className="office-desk-link">经营报表 <ArrowUpRight size={15} aria-hidden="true" /></Link>
+            <Link id="payment-code" href="/admin/payment" className="office-desk-link">收款设置 <ArrowUpRight size={15} aria-hidden="true" /></Link>
           </div>
           {listMode ? pending : null}
         </aside>

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { PositioningOption } from "@/agents/schemas";
@@ -7,6 +8,7 @@ import { hasModelListPrice } from "@/ai/call-model";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
 import { LandingEditor } from "@/components/landing-editor";
+import { ClearProjectDraft } from "@/components/project-draft";
 import {
   ClarificationSection,
   DeliverablesSection,
@@ -29,8 +31,9 @@ import { orders, payments, projects } from "@/db/schema";
 import { DECISION_LABELS, type Gate, type GateState } from "@/domain/approval";
 import { AGENT_LABELS, TASK_STATUS_LABELS, TASK_TRIGGER_LABELS } from "@/domain/office";
 import { STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
-import { requireAdmin } from "@/lib/auth";
+import { NEW_CUSTOMER_LINK_COOKIE, requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatYuan } from "@/lib/format";
+import { hashToken } from "@/workflow/actions";
 import { latestReceipt } from "@/workflow/commerce";
 import type { Escalation } from "@/workflow/engine";
 import { loadLeads, loadProjectAudit, loadProjectView } from "@/workflow/queries";
@@ -135,11 +138,13 @@ function GateForm(props: {
 export default async function AdminProjectPage({ params, searchParams }: PageProps<"/admin/projects/[id]">) {
   await requireAdmin();
   const { id } = await params;
-  const { error, notice, task } = await searchParams;
+  const { error, notice, task, created } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = getDb();
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) notFound();
+  const issuedToken = created === "1" ? (await cookies()).get(NEW_CUSTOMER_LINK_COOKIE)?.value : undefined;
+  const customerHref = issuedToken && hashToken(issuedToken) === project.tokenHash ? `/p/${issuedToken}` : null;
   const [view, audit, projectLeads, [order], support] = await Promise.all([
     loadProjectView(db, project), loadProjectAudit(db, id), loadLeads(db, id),
     db.select().from(orders).where(eq(orders.projectId, id)), projectSupport(db, id),
@@ -167,6 +172,13 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       </div>
       {view.simulated ? <SimulatedBanner /> : null}
       <ProjectHeader project={project} />
+      {customerHref ? (
+        <div className="space-y-2 rounded-lg border bg-card p-4 text-sm">
+          <ClearProjectDraft intake="admin" />
+          <p>项目已创建。请将专属链接发给客户，链接将在此处显示 10 分钟。</p>
+          <Link prefetch={false} href={customerHref} className="font-semibold text-primary underline underline-offset-4">打开客户专属链接</Link>
+        </div>
+      ) : null}
       {project.paused ? <p className="rounded-md border p-3 text-sm">项目已暂停。正在执行的步骤完成后停下。</p> : null}
       {error ? <p className="text-sm text-destructive">{String(error)}</p> : null}
       {notice ? <p className="break-all rounded-md border p-3 text-sm">{String(notice)}</p> : null}
@@ -176,10 +188,15 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           <CardTitle className="font-semibold">待我决定</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {project.status === "submitted" ? (
+          {project.status === "submitted" && project.productPlan === "legacy" ? (
             <form action={bind(startResearchAction)}>
               <Button type="submit">开始研究</Button>
             </form>
+          ) : null}
+          {project.productPlan === "free" && ["submitted", "free_ready"].includes(project.status) ? (
+            <p className="text-sm text-muted-foreground">
+              {project.status === "submitted" ? "客户可以从专属链接自助启动初诊。" : "免费初诊已完成，客户可以从专属链接查看结果并申请 Pro。"}
+            </p>
           ) : null}
           {project.status === "needs_info" ? (
             <form action={bind(skipClarificationsAction)} className="flex flex-col gap-2 text-sm">
@@ -589,7 +606,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                   <p className="whitespace-pre-wrap break-words">{acceptanceNote.reason}</p>
                 </div>
               ) : null}
-              {!project.requiresPayment ? <><form action={bind(quoteAction)} className="flex items-end gap-2">
+              {!project.requiresPayment && project.productPlan === "legacy" ? <><form action={bind(quoteAction)} className="flex items-end gap-2">
                 <input type="hidden" name="orderId" value={order.id} />
                 <Input name="yuan" type="number" step="0.01" min="0" required placeholder="报价（元）" className="w-40" />
                 <Button type="submit" variant="outline">
@@ -615,7 +632,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
             </>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            {!project.requiresPayment || project.status === "submitted" ? <form action={bind(ownProductAction)}>
+            {project.productPlan === "legacy" && (!project.requiresPayment || project.status === "submitted") ? <form action={bind(ownProductAction)}>
               <input type="hidden" name="value" value={project.isOwnProduct ? "0" : "1"} />
               <Button type="submit" variant="outline">
                 {project.isOwnProduct ? "取消自有产品标记" : "标记为自有产品"}

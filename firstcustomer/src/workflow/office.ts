@@ -35,7 +35,7 @@ export async function projectAttention(db: Db, project: typeof projects.$inferSe
   }
 
   switch (project.status) {
-    case "submitted": return owner("确认后开始研究");
+    case "submitted": return project.productPlan === "free" ? null : owner("确认后开始研究");
     case "needs_info": return waiting("等客户回答追问，也可选择继续研究");
     case "awaiting_quote": return owner("确认报价和服务条款");
     case "awaiting_quote_acceptance": return waiting("等客户接受报价");

@@ -19,6 +19,8 @@
   color: var(--sidebar-foreground);
 }
 .admin-side-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding-inline: .4rem; }
+.admin-brand-link { display: grid; gap: .25rem; }
+.admin-brand-link > span:last-child { padding-inline-start: 2.17rem; color: var(--muted-foreground); font-size: .72rem; font-weight: 650; }
 .admin-menu-toggle { display: none; }
 .admin-menu { flex: 1; display: flex; flex-direction: column; }
 .admin-new-project {

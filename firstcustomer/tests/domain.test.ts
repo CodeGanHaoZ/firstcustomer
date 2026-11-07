@@ -7,7 +7,7 @@ import { candidatesWithoutCounterSearch, unansweredCounterEvidence } from "@/dom
 import { customerProgress } from "@/domain/customer-progress";
 import { expiresAt, gradeFor, verifyQuote } from "@/domain/evidence";
 import { evaluateExperiment } from "@/domain/experiment";
-import { canTransition, sendBackAllowed } from "@/domain/workflow";
+import { canStartFreeDiagnosis, canTransition, sendBackAllowed, usesQuoteFlow } from "@/domain/workflow";
 
 const now = new Date("2026-11-05T00:00:00Z");
 const later = new Date("2026-12-01T00:00:00Z");
@@ -45,6 +45,24 @@ describe("状态机", () => {
     expect(sendBackAllowed("strategy->research", 1)).toBe(true);
     expect(sendBackAllowed("strategy->research", 2)).toBe(false);
     expect(sendBackAllowed("growth->strategy", 1)).toBe(false);
+  });
+
+  it("免费初诊完成后可请求 Pro 报价，付款阶段才能进入策略", () => {
+    expect(canTransition("researching", "free_ready")).toBe(true);
+    expect(canTransition("free_ready", "drafting_quote")).toBe(true);
+    expect(canTransition("free_ready", "strategizing")).toBe(false);
+    expect(canTransition("awaiting_quote_acceptance", "strategizing")).toBe(false);
+    expect(usesQuoteFlow({ requiresPayment: true, isOwnProduct: false, productPlan: "free" })).toBe(false);
+    expect(usesQuoteFlow({ requiresPayment: true, isOwnProduct: false, productPlan: "pro" })).toBe(true);
+  });
+
+  it("存量项目仅在尚未开始且没有有效报价时能自助初诊", () => {
+    const project = { productPlan: "legacy" as const, status: "submitted", paused: false, isOwnProduct: false, failedFrom: null };
+    const inquiry = { status: "inquiry", quoteVersion: 0, quoteFen: null, proposal: null };
+    expect(canStartFreeDiagnosis(project, inquiry)).toBe(true);
+    expect(canStartFreeDiagnosis({ ...project, isOwnProduct: true }, inquiry)).toBe(false);
+    expect(canStartFreeDiagnosis({ ...project, status: "awaiting_payment" }, inquiry)).toBe(false);
+    expect(canStartFreeDiagnosis(project, { ...inquiry, status: "paid" })).toBe(false);
   });
 });
 

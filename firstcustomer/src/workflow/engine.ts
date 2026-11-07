@@ -587,6 +587,10 @@ async function runResearch(deps: EngineDeps, project: Project) {
     await transition(db, project, "needs_info", "research", `追问客户 ${output.questions.length} 个问题`);
     return;
   }
+  if (project.productPlan === "free") {
+    await transition(db, project, "free_ready", "research", "免费初诊已完成", { pendingRequest: null });
+    return;
+  }
   const order = usesQuoteFlow(project) ? await projectOrder(db, project.id) : null;
   const next = usesQuoteFlow(project) && order?.status !== "paid" ? "drafting_quote" : "strategizing";
   await transition(db, project, next, "research", null, { pendingRequest: null });
@@ -603,6 +607,7 @@ async function runQuote(deps: EngineDeps, project: Project) {
   const input = {
     product: productInput(project),
     diagnosis: diagnosis?.output ?? null,
+    service: order.sku,
     previous_proposal: order.proposal,
     feedback: await quoteFeedback(deps.db, project.id, order.quoteVersion),
   };

@@ -61,7 +61,9 @@ export function ProjectIntake({ action, founder = false }: {
         {founder ? <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" name="own" value="1" /> 这是首客自有产品</label> : null}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:col-span-2">
           <Button type="submit">提交项目</Button>
-          <p className="text-sm text-muted-foreground">提交后会生成项目专属链接。文本草稿保存在此浏览器。</p>
+          <p className="text-sm text-muted-foreground">
+            {founder ? "提交后进入内部项目详情，可从那里取得客户专属链接。" : "提交后会打开你的客户项目工作台。"}文本草稿保存在此浏览器。
+          </p>
         </div>
       </ProjectDraftForm>
   );

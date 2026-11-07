@@ -1,6 +1,7 @@
 export const STATUS_LABELS = {
   submitted: "已提交",
   researching: "研究中",
+  free_ready: "免费初诊完成",
   drafting_quote: "起草报价中",
   awaiting_quote: "待老板确认报价",
   awaiting_quote_acceptance: "待客户接受报价",
@@ -21,6 +22,7 @@ export const STATUS_LABELS = {
 } as const;
 
 export type ProjectStatus = keyof typeof STATUS_LABELS;
+export type ProjectPlan = "legacy" | "free" | "pro";
 
 export const MAIN_FLOW: ProjectStatus[] = [
   "submitted",
@@ -35,15 +37,26 @@ export const MAIN_FLOW: ProjectStatus[] = [
   "delivered",
 ];
 
-export function usesQuoteFlow(project: { requiresPayment: boolean; isOwnProduct: boolean }) {
-  return project.requiresPayment && !project.isOwnProduct;
+export function usesQuoteFlow(project: { requiresPayment: boolean; isOwnProduct: boolean; productPlan?: ProjectPlan }) {
+  return project.requiresPayment && !project.isOwnProduct && project.productPlan !== "free";
+}
+
+export function canStartFreeDiagnosis(
+  project: { productPlan: ProjectPlan; status: string; paused: boolean; isOwnProduct: boolean; failedFrom: string | null },
+  order: { status: string; quoteVersion: number; quoteFen: number | null; proposal: unknown } | null,
+) {
+  if (project.paused || project.isOwnProduct || project.productPlan === "pro") return false;
+  if (project.productPlan === "free" && project.status === "failed") return project.failedFrom === "researching";
+  return project.status === "submitted" &&
+    (!order || (order.status === "inquiry" && order.quoteVersion === 0 && order.quoteFen === null && !order.proposal));
 }
 
 // 状态机只放行这里列出的流转，回退路径对应 PRD 5.4。
 const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   submitted: ["researching"],
   needs_info: ["researching"],
-  researching: ["drafting_quote", "strategizing", "needs_info", "failed"],
+  researching: ["free_ready", "drafting_quote", "strategizing", "needs_info", "failed"],
+  free_ready: ["drafting_quote"],
   drafting_quote: ["awaiting_quote", "failed"],
   awaiting_quote: ["awaiting_quote_acceptance", "drafting_quote"],
   awaiting_quote_acceptance: ["awaiting_payment", "drafting_quote"],

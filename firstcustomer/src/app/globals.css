@@ -132,5 +132,5 @@
 .brand-mark { display: inline-flex; align-items: center; gap: .42rem; width: max-content; color: var(--foreground); white-space: nowrap; }
 .brand-mark strong { font-weight: 800; }
 .brand-mark small { color: var(--muted-foreground); font-size: .7rem; font-weight: 640; }
-.brand-icon { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: .45rem; background: var(--primary); color: var(--primary-foreground); }
+.brand-icon { display: block; width: 1.875rem; height: 1.875rem; flex: none; }
 ::selection { background: #d9e5c5; color: #243b2d; }

@@ -1,4 +1,6 @@
-import { PgBoss } from "pg-boss";
+import { sql } from "drizzle-orm";
+import { fromDrizzle, PgBoss } from "pg-boss";
+import type { Db } from "@/db";
 
 export const ADVANCE_QUEUE = "advance-project";
 
@@ -25,12 +27,14 @@ export function getBoss(role: "web" | "worker" = "web") {
   return starting;
 }
 
-export async function enqueueAdvance(projectId: string) {
+export async function enqueueAdvance(projectId: string, transaction?: Db) {
   const boss = await getBoss();
-  await boss.send(ADVANCE_QUEUE, { projectId } satisfies AdvanceJob, {
+  const job = await boss.send(ADVANCE_QUEUE, { projectId } satisfies AdvanceJob, {
     retryLimit: 0,
     expireInSeconds: 3600,
+    ...(transaction ? { db: fromDrizzle(transaction, sql) } : {}),
   });
+  if (transaction && !job) throw new Error("任务未能进入队列，请重试");
 }
 
 export async function enqueueCompanyReport(reportId: string) {
