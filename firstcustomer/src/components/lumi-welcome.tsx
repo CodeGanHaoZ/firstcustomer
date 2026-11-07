@@ -13,7 +13,6 @@ export function LumiWelcome({ paused }: { paused: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pausedRef = useRef(paused);
   const syncRef = useRef<() => void>(() => {});
-  pausedRef.current = paused;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -53,7 +52,7 @@ export function LumiWelcome({ paused }: { paused: boolean }) {
   }, []);
 
   // 弹窗开关时只同步一次播放状态，不重建监听器。
-  useEffect(() => { syncRef.current(); }, [paused]);
+  useEffect(() => { pausedRef.current = paused; syncRef.current(); }, [paused]);
 
   return (
     <div className="brand-welcome-shell" data-open={paused ? "" : undefined}>

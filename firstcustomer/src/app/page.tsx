@@ -5,12 +5,11 @@ import { BackToTop } from "@/components/back-to-top";
 import { BrandMark } from "@/components/brand-mark";
 import { EditorialMotion } from "@/components/editorial-motion";
 import { LumiChat } from "@/components/lumi-chat";
-import { OfficeMap } from "@/components/office-map";
-import { DEPARTMENTS } from "@/domain/office";
+import { OfficeShowcase } from "@/components/office-showcase";
 import { getCustomerSession } from "@/lib/customer-auth";
-import "./admin/office.css";
 import "./home.css";
 import "./editorial.css";
+import "./office-showcase.css";
 
 const STEPS = [
   ["免费初诊", "提交后自动开始，整理候选人群和待验证项。"],
@@ -104,7 +103,7 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* ---------- 首客办公室：Bento 左图右说明（纸带底） ---------- */}
+        {/* ---------- 首客办公室：动态场景在上、六位 Agent 在下 ---------- */}
         <section className="section section--paper2" id="office" aria-labelledby="office-title">
           <div className="container">
             <div className="section-head">
@@ -113,25 +112,10 @@ export default async function Home() {
                 首客办公室 · 演示
               </h2>
               <p className="lead" data-reveal data-reveal-group="office-head">
-                点开工位名称，看看每位员工负责什么。
+                从一次接待到一轮复盘，看看六位 AI 同事怎样一起工作。
               </p>
             </div>
-            <div className="bento">
-              <div className="col-7 office-frame" role="img" aria-label="首客的八位动物员工在同一间斜俯视办公室工作" data-reveal>
-                <OfficeMap />
-              </div>
-              <div className="col-5 dept-list" data-reveal data-reveal-group="depts">
-                {DEPARTMENTS.map(({ key, room, agent, duty }) => (
-                  <details className="dept" key={key} name="dept">
-                    <summary>
-                      <span className="h4">{room}</span>
-                      <span className="meta">{agent}</span>
-                    </summary>
-                    <p className="meta">{duty}。</p>
-                  </details>
-                ))}
-              </div>
-            </div>
+            <OfficeShowcase />
           </div>
         </section>
 
