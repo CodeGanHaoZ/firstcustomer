@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, ArrowUpRight, Pause, Play, RotateCcw, SkipForward } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import type { DepartmentKey } from "@/domain/office";
@@ -148,11 +148,6 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
     <figure className="showcase-theatre" tabIndex={-1} aria-label={copy.label}>
       <div className="showcase-toolbar">
         <p><span className="showcase-demo-mark" aria-hidden="true" />{copy.demo}<span className="showcase-toolbar-separator">/</span><span>{reduced ? copy.static : paused ? copy.paused : copy.beats[beat]}</span></p>
-        <div className="showcase-controls">
-          {!reduced ? <button type="button" onClick={() => setPaused((value) => !value)} aria-label={paused ? copy.playLabel : copy.pauseLabel}>{paused ? <Play size={15} /> : <Pause size={15} />}<span>{paused ? copy.play : copy.pause}</span></button> : null}
-          <button type="button" onClick={() => chooseScene(sceneIndex)} aria-label={copy.replayLabel}><RotateCcw size={15} /><span>{copy.replay}</span></button>
-          <button type="button" onClick={nextScene} aria-label={copy.nextLabel}><SkipForward size={15} /><span>{copy.next}</span></button>
-        </div>
       </div>
       <div className="showcase-scene" ref={stage} data-canvas="loading" data-beat="0">
         <Image className="showcase-background" src="/office/floor-map.webp" width={1681} height={936} sizes="(max-width: 1200px) 94vw, 1180px" alt="" />
