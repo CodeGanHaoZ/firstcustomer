@@ -1,0 +1,332 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-08",
+  "source": {
+    "date": "2026-11-08",
+    "timezone": "Asia/Shanghai",
+    "repository": "kongleiwork-art/firstcustomer",
+    "sourceCommit": "d2c09c9258e3ebb7fb5465745a9df371e63a6e61",
+    "designCommits": [
+      "b437d46",
+      "fe432a3",
+      "d3e1684",
+      "d2c09c9"
+    ],
+    "kind": "versioned design handoff snapshot"
+  },
+  "note": "This manifest excludes itself. ZIP checksum is supplied beside the archive. Output/cache/environment files are excluded.",
+  "files": [
+    {
+      "path": "ACCEPTANCE.md",
+      "bytes": 4134,
+      "sha256": "05e59f67a8f2d1c707432354bc66741b3aa376fcb47edfab280d4d0a8827082a"
+    },
+    {
+      "path": "DESIGN-SPEC.md",
+      "bytes": 6222,
+      "sha256": "2e135788d87ce343241516b222113369956dcfb5ef6e74ce29446184b7e174e6"
+    },
+    {
+      "path": "FirstCustomer-Office-UIUX-Handoff.pdf",
+      "bytes": 873651,
+      "sha256": "f7f726ed36103c8eacffde4ad5ea1963fa4c96b26b5eba45e346dbeb7f232b96"
+    },
+    {
+      "path": "IMPLEMENTATION.md",
+      "bytes": 5277,
+      "sha256": "0fc38fb80873f3335ffecedc2e143270828674a97c39c038c27ab3356f0bd3d6"
+    },
+    {
+      "path": "INTERACTION.md",
+      "bytes": 5209,
+      "sha256": "17816d5a1cd6af9e4878a635ba85c4388185e4de704b8a74cf8b5fb5a0ba18e3"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3894,
+      "sha256": "5dff4e4e3fb019c2e4db4c39638753376348053e4ad3077478268876687a1994"
+    },
+    {
+      "path": "VALIDATION.json",
+      "bytes": 1504,
+      "sha256": "df60c32e8a3481f2b7facf76f9400a0572e859b6e84354340edbaf2942d44ae7"
+    },
+    {
+      "path": "assets/floor-map.webp",
+      "bytes": 396156,
+      "sha256": "6d204846b905f829db5f8b1b8158db0111ff010e1f1361bf8bfe0f196c9d67b5",
+      "pixels": {
+        "width": 1681,
+        "height": 936
+      }
+    },
+    {
+      "path": "assets/map-staff.webp",
+      "bytes": 98936,
+      "sha256": "7f5c95e14168e2aba7f33257b7af61c063a876b72280a8c86d8c42b9c3441e2b",
+      "pixels": {
+        "width": 896,
+        "height": 272
+      }
+    },
+    {
+      "path": "assets/staff.webp",
+      "bytes": 309960,
+      "sha256": "1769f8b443ebdb2db03f7d596156b9630b9a9b7bd1f91a9e0aae44df6d981933",
+      "pixels": {
+        "width": 1536,
+        "height": 1024
+      }
+    },
+    {
+      "path": "content.zh-en.json",
+      "bytes": 23315,
+      "sha256": "718d101ccf4795712623954d3f176bcdbb100e545aad699048235dbfccfadb17"
+    },
+    {
+      "path": "index.html",
+      "bytes": 34250,
+      "sha256": "fb396438f01c38759e666d943ec457dceae35cf97823a6c52354aef5abc0d79a"
+    },
+    {
+      "path": "screens/capture-metadata.json",
+      "bytes": 8082,
+      "sha256": "993b1d94847d6316b7e71d4b69dca12bb0790a0b67a0a892799c2d07e1e87ee4"
+    },
+    {
+      "path": "screens/desktop-office-handoff-zh.png",
+      "bytes": 131024,
+      "sha256": "53d10fa02065cc994e87360926e7d081a7b26b1e8d113ab0f838a8724dc20de3",
+      "pixels": {
+        "width": 1084,
+        "height": 604
+      }
+    },
+    {
+      "path": "screens/desktop-office-next-working-zh.png",
+      "bytes": 131186,
+      "sha256": "776189f1e59b5402c5ef7c506b2eeea8d943409ad9661245980a5f413a879e0c",
+      "pixels": {
+        "width": 1084,
+        "height": 604
+      }
+    },
+    {
+      "path": "screens/desktop-office-working-zh.png",
+      "bytes": 130988,
+      "sha256": "a0ff1951dc855d49a998cbce9e1ff79cc872ee36ae26892f2682da4524fecce4",
+      "pixels": {
+        "width": 1084,
+        "height": 604
+      }
+    },
+    {
+      "path": "screens/desktop-relay-zh.png",
+      "bytes": 65624,
+      "sha256": "a3a360fbb821c7541b04cca945f6f4d26786d50aaef3db2dbbe9cb4e24d40699",
+      "pixels": {
+        "width": 1084,
+        "height": 810
+      }
+    },
+    {
+      "path": "screens/desktop-service-flow-zh.png",
+      "bytes": 67411,
+      "sha256": "b22253e51710c460b497c77fb135042e591ec4806ae56e22df7e6fe441e54460",
+      "pixels": {
+        "width": 1084,
+        "height": 820
+      }
+    },
+    {
+      "path": "screens/desktop-team-zh.png",
+      "bytes": 119906,
+      "sha256": "cb02f19c4f96fdcb409d0a46993e388424d9d5f01776ee242c816d0e1e5b69ec",
+      "pixels": {
+        "width": 1084,
+        "height": 1054
+      }
+    },
+    {
+      "path": "screens/mobile-chapters-en.png",
+      "bytes": 24474,
+      "sha256": "1105b20b7160ccf263a4c6ce64553f26eabf7fe13dae04d35a6511cecc944943",
+      "pixels": {
+        "width": 335,
+        "height": 464
+      }
+    },
+    {
+      "path": "screens/mobile-chapters-zh.png",
+      "bytes": 24001,
+      "sha256": "8e0104a13e496401af24f521a67eb5385a012fbf3228d1aae1960b9e3b0f289d",
+      "pixels": {
+        "width": 335,
+        "height": 464
+      }
+    },
+    {
+      "path": "screens/mobile-office-zh.png",
+      "bytes": 43052,
+      "sha256": "7188bc52b1e3740e96e2cd6dc047e69de631954d583332ea1fc66bf2d7eb99e0",
+      "pixels": {
+        "width": 335,
+        "height": 652
+      }
+    },
+    {
+      "path": "screens/mobile-relay-en.png",
+      "bytes": 36236,
+      "sha256": "b023b7d45990620d21db78ad7b107e89d17f597eb4cd0f1dba1c18cdcf64428e",
+      "pixels": {
+        "width": 335,
+        "height": 862
+      }
+    },
+    {
+      "path": "screens/mobile-relay-zh.png",
+      "bytes": 32638,
+      "sha256": "28faf6d2e5306902f71d0ac1090422a4eab3964d5efb11427cb7dd4dd9f1e0d2",
+      "pixels": {
+        "width": 335,
+        "height": 791
+      }
+    },
+    {
+      "path": "screens/mobile-service-flow-zh.png",
+      "bytes": 52960,
+      "sha256": "825719c96a8962849aef825adc076acbe19816555d4c92eb3a24d50ec3f48a64",
+      "pixels": {
+        "width": 335,
+        "height": 1292
+      }
+    },
+    {
+      "path": "source/src/app/admin/office.css",
+      "bytes": 24619,
+      "sha256": "91147b9c7649c0798463d92cb7eedb9375a23a84d6dc880517dcb042b896b57f"
+    },
+    {
+      "path": "source/src/app/editorial.css",
+      "bytes": 47119,
+      "sha256": "ca992c3c96f1cd104269af9081bb28536ca460493f65f2bd05f70c69a438a7ce"
+    },
+    {
+      "path": "source/src/app/office-relay.css",
+      "bytes": 14070,
+      "sha256": "e7e948f385697e82a7b208ff521eaf7c83bb94db6eb6c794e57aa9dae0a25378"
+    },
+    {
+      "path": "source/src/app/office-showcase.css",
+      "bytes": 17638,
+      "sha256": "22a2bf188e2d4808bfe60cf8de14ad20f21642e2df3dd656ec9000abe471ab13"
+    },
+    {
+      "path": "source/src/components/office-map.tsx",
+      "bytes": 5069,
+      "sha256": "28949f709fb2464cc89bb8deee5fe75dbb43c88739af2b33abd753c3404144c6"
+    },
+    {
+      "path": "source/src/components/office-portrait.tsx",
+      "bytes": 565,
+      "sha256": "8637bc8efb011d964da5ce9f18c2dc805e2a05e57a9e334d0d373c25656282e8"
+    },
+    {
+      "path": "source/src/components/office-relay.tsx",
+      "bytes": 3991,
+      "sha256": "53702a72763cb1429d60504ee511d39354fc9d081a9cdb2b838e4601e527d50d"
+    },
+    {
+      "path": "source/src/components/office-showcase-canvas.ts",
+      "bytes": 8296,
+      "sha256": "ee30992c90e02515ca4ff07010f7b65b511c91225241cea618be88e4b5a0b5a9"
+    },
+    {
+      "path": "source/src/components/office-showcase.tsx",
+      "bytes": 14845,
+      "sha256": "b0ec3d30be7d99485eed0de63f7cb00e9772342658df21e48fcba17f66907083"
+    },
+    {
+      "path": "source/src/components/office-stage.tsx",
+      "bytes": 14125,
+      "sha256": "84383ac05cfd859fe3b1a9cd250b6f417d1e366fae226aa28df2617682379d26"
+    },
+    {
+      "path": "source/src/components/office-work-guide.tsx",
+      "bytes": 3357,
+      "sha256": "82dedc70f97e2b569fa00a0bd15f1345a0783d827589b77cb05432a0dd98db90"
+    },
+    {
+      "path": "source/src/components/service-journey.tsx",
+      "bytes": 1818,
+      "sha256": "30b2d59dbb48a94d47b1d3edc5756d7d4efd02ac2f2a9366dbfcbb3d200feaa1"
+    },
+    {
+      "path": "source/src/domain/office-guide.ts",
+      "bytes": 21617,
+      "sha256": "3d978170807235f8743e6d4a2fc6dea8efa6bf1060bc129971aaa3b5e284377c"
+    },
+    {
+      "path": "source/src/domain/office.ts",
+      "bytes": 9751,
+      "sha256": "004d4319a0d2f99b29d0357ff743e7020acaf40522eb3e060b358fc25377fd5c"
+    },
+    {
+      "path": "source/src/lib/brand.ts",
+      "bytes": 1086,
+      "sha256": "727ec2e1cbd1f10dec263acbb156bf5d8db3dedf900b4be97a83630cb1f676f6"
+    },
+    {
+      "path": "source/src/lib/home-copy.ts",
+      "bytes": 8945,
+      "sha256": "9bb90402916fa84b24c3cf7cad5e13ae66825c5235ed1351f26f6f2fac85345e"
+    },
+    {
+      "path": "source/src/lib/office-showcase.ts",
+      "bytes": 9913,
+      "sha256": "ec35bb22fb3549d2f864e32427682227288856b86d5c131b9e5a06f1e649cc4e"
+    },
+    {
+      "path": "source/src/lib/office-story.ts",
+      "bytes": 4011,
+      "sha256": "4f23c0dc259f6ae7d6d423e063a037e1c1b67f5f1449b0da291d7af269dd7216"
+    },
+    {
+      "path": "source-manifest.json",
+      "bytes": 7068,
+      "sha256": "46bd45ad1ce9b87243e70808e6a78acaf489a345353c2f42eedf427f9ed30703"
+    },
+    {
+      "path": "states.json",
+      "bytes": 12731,
+      "sha256": "72bfc56490ca719c2d6d5f31bd233b429254a0e4b5a2e3cdce3a2d5e41618010"
+    },
+    {
+      "path": "tokens.json",
+      "bytes": 6563,
+      "sha256": "369b2b9a328895732ea936ba99644455c3310cd0a57bfeb58c1b48eea8445ae5"
+    },
+    {
+      "path": "tools/README.md",
+      "bytes": 1413,
+      "sha256": "fc95ee39625cacf8185641c70970e71f2dcdb7a6ce3b277119565882fc4a706d"
+    },
+    {
+      "path": "tools/build_review.py",
+      "bytes": 24416,
+      "sha256": "5281cbede83c6bca2679deaa020acccbef90c38f0dadf5d0a0bf9e0a3f4ccaf7"
+    },
+    {
+      "path": "tools/export-content.mts",
+      "bytes": 5517,
+      "sha256": "c70d2bc06d10176d5db7f945cbb115651b57101044814d527af857ea2e29c7ca"
+    },
+    {
+      "path": "tools/package_handoff.py",
+      "bytes": 2039,
+      "sha256": "eb21fe1c0aba3fdba70ee8a57dbd526d0f98cf690f2b1d087e16633d341a3226"
+    }
+  ],
+  "fileCount": 50,
+  "totalBytes": 2900672
+}

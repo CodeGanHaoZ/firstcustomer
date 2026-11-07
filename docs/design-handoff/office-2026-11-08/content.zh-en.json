@@ -1,0 +1,591 @@
+{
+  "meta": {
+    "date": "2026-11-08",
+    "timezone": "Asia/Shanghai",
+    "repository": "kongleiwork-art/firstcustomer",
+    "sourceCommit": "d2c09c9258e3ebb7fb5465745a9df371e63a6e61",
+    "designCommits": [
+      "b437d46",
+      "fe432a3",
+      "d3e1684",
+      "d2c09c9"
+    ],
+    "kind": "versioned design handoff snapshot"
+  },
+  "characters": {
+    "frontdesk": {
+      "name": "Lumi",
+      "chineseName": "露米",
+      "animal": "奶油兔"
+    },
+    "research": {
+      "name": "Nori",
+      "chineseName": "小枭",
+      "animal": "猫头鹰"
+    },
+    "strategy": {
+      "name": "Fino",
+      "chineseName": "赤狐",
+      "animal": "狐狸"
+    },
+    "finance": {
+      "name": "Milo",
+      "chineseName": "松栗",
+      "animal": "松鼠"
+    },
+    "launch": {
+      "name": "Kito",
+      "chineseName": "蓝狸",
+      "animal": "浣熊"
+    },
+    "growth": {
+      "name": "Pogo",
+      "chineseName": "芽芽",
+      "animal": "青蛙"
+    },
+    "owner": {
+      "name": "Toby",
+      "chineseName": "托比",
+      "animal": "金毛犬"
+    },
+    "coo": {
+      "name": "Yuki",
+      "chineseName": "云团",
+      "animal": "绵羊"
+    }
+  },
+  "locales": {
+    "zh": {
+      "office": {
+        "title": "首客办公室 · 工作场景",
+        "description": "从一次接待到一轮复盘，看看六位 Agent 同事怎样一起工作。"
+      },
+      "ui": {
+        "label": "首客办公室协作情景演示",
+        "demo": "协作情景演示",
+        "static": "静态浏览",
+        "paused": "已暂停",
+        "beats": [
+          "整理任务",
+          "当面交接",
+          "接收后继续工作"
+        ],
+        "play": "播放",
+        "pause": "暂停",
+        "playLabel": "播放办公室演示",
+        "pauseLabel": "暂停办公室演示",
+        "replay": "重播",
+        "replayLabel": "重播当前协作片段",
+        "next": "下一幕",
+        "nextLabel": "查看下一幕协作",
+        "handoff": "交接中",
+        "chapters": "选择办公室协作片段",
+        "fallback": "当前显示静态场景，仍可点选角色与片段查看协作内容。",
+        "retry": "重新加载动画",
+        "note": "点击工位或下方角色，看看他们怎样配合。这里是情景演示，实际项目进度以工作台记录为准。",
+        "team": "认识你的 Agent 同事",
+        "teamDescription": "六种分工，一起把想法推进到真实验证。",
+        "output": "交付",
+        "collaboration": "协作",
+        "watch": "观看协作",
+        "selected": "正在了解",
+        "owner": "金毛老板，负责关键审批",
+        "coo": "绵羊 COO，负责站会与经营复盘",
+        "supporting": "右上角还有"
+      },
+      "members": [
+        {
+          "key": "frontdesk",
+          "name": "Lumi 露米",
+          "animal": "奶油兔",
+          "role": "接待与报价 Agent",
+          "room": "前台",
+          "portrait": [
+            0,
+            0
+          ],
+          "scene": 0,
+          "description": "把模糊的想法聊清楚，也把每一次交接安排妥当。从需求登记到提案报价，Lumi 是你在首客的第一位伙伴。",
+          "output": "需求卡、服务提案、客服答复",
+          "collaboration": "整理目标与限制，交给研究员继续核实。"
+        },
+        {
+          "key": "research",
+          "name": "Nori 小枭",
+          "animal": "灰绿猫头鹰",
+          "role": "Research · 市场研究",
+          "room": "市场研究室",
+          "portrait": [
+            1,
+            0
+          ],
+          "scene": 1,
+          "description": "带着问题找依据。研究海外需求、竞品定价和反面证据，把来源与不确定项一起交给团队。",
+          "output": "候选人群、市场证据卡",
+          "collaboration": "将证据交给策略师；缺少依据时继续补查。"
+        },
+        {
+          "key": "strategy",
+          "name": "Fino 赤狐",
+          "animal": "赤狐",
+          "role": "Strategy · 定位策略",
+          "room": "战略决策室",
+          "portrait": [
+            2,
+            0
+          ],
+          "scene": 3,
+          "description": "在多个方向中找出值得先试的一条。比较目标人群，写清定位、实验假设和判断标准，等待你确认。",
+          "output": "定位方案、验证计划",
+          "collaboration": "把确认后的方向交给发布员，证据不足就退回研究。"
+        },
+        {
+          "key": "finance",
+          "name": "Milo 松栗",
+          "animal": "松鼠",
+          "role": "Receipt · 付款凭证",
+          "room": "财务室",
+          "portrait": [
+            1,
+            1
+          ],
+          "scene": 2,
+          "description": "认真对待每一笔记录。读取客户提交的付款凭证，整理待核对信息，实际到账由老板确认。",
+          "output": "凭证识别、收款待核对项",
+          "collaboration": "和前台核对订单，确认到账后再继续付费服务。"
+        },
+        {
+          "key": "launch",
+          "name": "Kito 蓝狸",
+          "animal": "蓝灰浣熊",
+          "role": "Launch · 产品发布",
+          "room": "产品发布室",
+          "portrait": [
+            3,
+            0
+          ],
+          "scene": 4,
+          "description": "把策略变成能展示的作品。准备英文验证页与渠道素材，核对事实声明，经过审批再推进发布。",
+          "output": "英文验证页、渠道行动卡",
+          "collaboration": "承接定位方案，将发布记录交给增长员。"
+        },
+        {
+          "key": "growth",
+          "name": "Pogo 芽芽",
+          "animal": "青蛙",
+          "role": "Growth · 增长复盘",
+          "room": "增长运营室",
+          "portrait": [
+            0,
+            1
+          ],
+          "scene": 5,
+          "description": "用真实反馈回答下一步。整理访问、留资与回复，按预设标准复盘；样本不足时，也会如实告诉你。",
+          "output": "指标复盘、下一步建议",
+          "collaboration": "把实验结果带回策略室，决定继续、调整或停止。"
+        }
+      ],
+      "scenes": [
+        {
+          "chapter": "接待想法",
+          "title": "先把你的想法，交给对的伙伴。",
+          "from": "frontdesk",
+          "to": "research",
+          "document": "需求卡",
+          "lines": [
+            "目标和限制整理好了，先看看哪些用户需要它？",
+            "收到，我去查需求、竞品和反面证据。"
+          ],
+          "task": "整理产品目标与限制",
+          "output": "需求卡",
+          "next": "Nori 核对海外需求、竞品与反面证据",
+          "condition": "提交资料并启动免费分析后，先交付出海机会报告。",
+          "action": "先和 Lumi 聊聊产品，再由你决定是否继续 Pro。"
+        },
+        {
+          "chapter": "研究市场",
+          "title": "先找依据，再选择方向。",
+          "from": "research",
+          "to": "strategy",
+          "document": "证据卡",
+          "lines": [
+            "候选人群和来源都在这里，未知项也标出来了。",
+            "我来比较两个人群，写清先验证什么。"
+          ],
+          "task": "查找需求、竞品和来源",
+          "output": "候选人群与证据卡",
+          "next": "Fino 比较人群，写出定位和验证计划",
+          "condition": "Free 先交付报告；选择 Pro 并完成服务确认后，才进入策略。",
+          "action": "先看证据与未知项，再决定要验证哪一条方向。"
+        },
+        {
+          "chapter": "核对凭证",
+          "title": "每一次推进，都有记录可核对。",
+          "from": "frontdesk",
+          "to": "finance",
+          "document": "付款凭证",
+          "lines": [
+            "这里是客户提交的付款凭证，请帮忙读取。",
+            "我先整理凭证信息，实际到账还要老板确认。"
+          ],
+          "task": "整理客户提交的付款记录",
+          "output": "付款凭证",
+          "next": "Milo 读取金额、时间与待核对项",
+          "condition": "读取凭证后，仍需经营者核实实际到账，才会继续付费服务。",
+          "action": "按已确认的报价提交凭证，等待首客核对。"
+        },
+        {
+          "chapter": "确定定位",
+          "title": "把确认的方向，变成能展示的作品。",
+          "from": "strategy",
+          "to": "launch",
+          "document": "定位方案",
+          "lines": [
+            "方向与实验计划确认后，就按这个版本准备。",
+            "明白，英文页面的每条事实声明都要核对。"
+          ],
+          "task": "比较人群、明确验证标准",
+          "output": "定位方案与实验计划",
+          "next": "Kito 制作英文验证页与渠道素材",
+          "condition": "经营者把关、你确认定位后，Kito 才会开始准备页面。",
+          "action": "确认定位或提出修改；方向确定后再准备发布。"
+        },
+        {
+          "chapter": "准备发布",
+          "title": "发布前先确认，发布后看反馈。",
+          "from": "launch",
+          "to": "growth",
+          "document": "渠道行动卡",
+          "lines": [
+            "页面与渠道素材备好了，审批后再对外发布。",
+            "收到，我会记录真实的访问、留资和回复。"
+          ],
+          "task": "制作英文页面、核对事实声明",
+          "output": "英文验证页与渠道行动卡",
+          "next": "Pogo 整理真实访问、留资和回复",
+          "condition": "页面通过审批后才公开，渠道行动还需实际执行并记录。",
+          "action": "确认是否公开；发布后按渠道计划积累真实反馈。"
+        },
+        {
+          "chapter": "复盘反馈",
+          "title": "复盘的意义，是知道下一步怎么走。",
+          "from": "growth",
+          "to": "strategy",
+          "document": "复盘报告",
+          "lines": [
+            "这一轮样本还不够，实际数据都整理在这里了。",
+            "按原定标准复盘，再决定继续还是调整。"
+          ],
+          "task": "对照标准，复盘真实反馈",
+          "output": "增长复盘与下一步建议",
+          "next": "Fino 根据反馈调整下一轮验证",
+          "condition": "先由经营者和你决定继续、调整或停止，再进入下一轮。",
+          "action": "查看结果与样本限制，确认下一轮或验收本次交付。"
+        }
+      ],
+      "serviceFlow": {
+        "title": "服务流程",
+        "steps": [
+          [
+            "免费出海机会分析",
+            "提交后自动开始，整理候选人群和待验证项。"
+          ],
+          [
+            "选择 Pro",
+            "看完出海机会报告后，可申请 Pro 提案。接受报价并确认到账后，继续做定位和发布。"
+          ],
+          [
+            "确认方向",
+            "老板把关并推荐，你来确认先卖给谁、验证什么。"
+          ],
+          [
+            "英文页面",
+            "生成真实可访问的英文验证页。事实声明没有证据，程序不让送审。"
+          ],
+          [
+            "真实发布",
+            "你确认后执行一项推广实验，记录发布链接。"
+          ],
+          [
+            "数据复盘",
+            "先看真实回复，再看访问和留资。样本不够就如实写样本不足。"
+          ]
+        ]
+      },
+      "phaseLabels": [
+        "处理任务",
+        "带着成果出发",
+        "当面核对",
+        "交付并接收",
+        "带回工位",
+        "接手开工"
+      ]
+    },
+    "en": {
+      "office": {
+        "title": "Inside the HiFirst office",
+        "description": "From your first conversation to a growth review, see how six Agent teammates work together."
+      },
+      "ui": {
+        "label": "HiFirst office collaboration demo",
+        "demo": "Collaboration demo",
+        "static": "Still view",
+        "paused": "Paused",
+        "beats": [
+          "Preparing the task",
+          "Handing it over",
+          "Back to work"
+        ],
+        "play": "Play",
+        "pause": "Pause",
+        "playLabel": "Play office demo",
+        "pauseLabel": "Pause office demo",
+        "replay": "Replay",
+        "replayLabel": "Replay this scene",
+        "next": "Next scene",
+        "nextLabel": "View next collaboration scene",
+        "handoff": "Handoff",
+        "chapters": "Choose a collaboration scene",
+        "fallback": "Showing a still scene. You can still select teammates and read each conversation.",
+        "retry": "Reload animation",
+        "note": "Select a desk or teammate to explore their work. This is an illustrative demo; your workspace shows actual project progress.",
+        "team": "Meet your Agent teammates",
+        "teamDescription": "Six specialties, working toward real validation.",
+        "output": "Delivers",
+        "collaboration": "Works with",
+        "watch": "Watch a scene",
+        "selected": "Now exploring",
+        "owner": "the golden retriever owner, who reviews key approvals",
+        "coo": "the sheep COO, who prepares standups and business reviews",
+        "supporting": "At the top right:"
+      },
+      "members": [
+        {
+          "key": "frontdesk",
+          "name": "Lumi",
+          "animal": "Cream rabbit",
+          "role": "Reception & proposals",
+          "room": "Front desk",
+          "portrait": [
+            0,
+            0
+          ],
+          "scene": 0,
+          "description": "Turns a rough idea into a clear brief. From your first conversation to proposals and support, Lumi keeps the handoffs organized.",
+          "output": "Project brief, proposal, support replies",
+          "collaboration": "Passes your goals and constraints to Nori for research."
+        },
+        {
+          "key": "research",
+          "name": "Nori",
+          "animal": "Sage owl",
+          "role": "Research · Market research",
+          "room": "Research room",
+          "portrait": [
+            1,
+            0
+          ],
+          "scene": 1,
+          "description": "Looks for evidence before making a call. Studies overseas needs, competitor pricing, and counterevidence, with sources and uncertainties attached.",
+          "output": "Potential audiences, evidence cards",
+          "collaboration": "Shares findings with Fino and investigates missing evidence."
+        },
+        {
+          "key": "strategy",
+          "name": "Fino",
+          "animal": "Red fox",
+          "role": "Strategy · Positioning",
+          "room": "Strategy room",
+          "portrait": [
+            2,
+            0
+          ],
+          "scene": 3,
+          "description": "Finds a direction worth testing first. Compares audiences and defines positioning, hypotheses, and success criteria for your approval.",
+          "output": "Positioning options, validation plan",
+          "collaboration": "Briefs Kito on the approved direction or asks Nori to investigate further."
+        },
+        {
+          "key": "finance",
+          "name": "Milo",
+          "animal": "Squirrel",
+          "role": "Receipt · Payment records",
+          "room": "Finance room",
+          "portrait": [
+            1,
+            1
+          ],
+          "scene": 2,
+          "description": "Keeps payment records clear. Reads submitted receipts and organizes details for review. The owner confirms whether funds actually arrived.",
+          "output": "Receipt details, items to verify",
+          "collaboration": "Checks the order with Lumi before paid work continues."
+        },
+        {
+          "key": "launch",
+          "name": "Kito",
+          "animal": "Blue-gray raccoon",
+          "role": "Launch · Pages & channels",
+          "room": "Launch room",
+          "portrait": [
+            3,
+            0
+          ],
+          "scene": 4,
+          "description": "Turns strategy into something people can see. Prepares English pages and channel materials, checks factual claims, and waits for approval to publish.",
+          "output": "English validation page, channel action card",
+          "collaboration": "Works from Fino’s plan and passes launch records to Pogo."
+        },
+        {
+          "key": "growth",
+          "name": "Pogo",
+          "animal": "Frog",
+          "role": "Growth · Experiment review",
+          "room": "Growth room",
+          "portrait": [
+            0,
+            1
+          ],
+          "scene": 5,
+          "description": "Uses real feedback to guide the next step. Reviews visits, leads, and replies against preset criteria, and says when the sample is too small.",
+          "output": "Metrics review, next-step recommendations",
+          "collaboration": "Returns findings to Fino to continue, adjust, or stop the experiment."
+        }
+      ],
+      "scenes": [
+        {
+          "chapter": "Welcome",
+          "title": "Get your idea to the right teammate.",
+          "from": "frontdesk",
+          "to": "research",
+          "document": "Project brief",
+          "lines": [
+            "Goals and constraints are ready. Who might need this?",
+            "Got it. I’ll look into needs, competitors, and counterevidence."
+          ],
+          "task": "Clarify goals and constraints",
+          "output": "Project brief",
+          "next": "Nori checks demand, competitors and counterevidence",
+          "condition": "After you submit a brief and start the free assessment, you receive an opportunity report first.",
+          "action": "Talk to Lumi about your product, then decide whether to continue with Pro."
+        },
+        {
+          "chapter": "Research",
+          "title": "Find the evidence. Then choose a direction.",
+          "from": "research",
+          "to": "strategy",
+          "document": "Evidence card",
+          "lines": [
+            "Here are the audiences, sources, and what’s still unknown.",
+            "I’ll compare the audiences and define the first test."
+          ],
+          "task": "Investigate needs, competitors and sources",
+          "output": "Audience and evidence cards",
+          "next": "Fino compares audiences and defines the first test",
+          "condition": "Free delivers a report first. Strategy starts after you choose Pro and confirm the service.",
+          "action": "Review the evidence and unknowns before choosing a direction to test."
+        },
+        {
+          "chapter": "Receipts",
+          "title": "Every step has a record to check.",
+          "from": "frontdesk",
+          "to": "finance",
+          "document": "Payment receipt",
+          "lines": [
+            "Here’s the customer’s receipt. Could you read the details?",
+            "I’ll extract them. The owner still needs to confirm payment."
+          ],
+          "task": "Organize the customer's payment record",
+          "output": "Payment proof",
+          "next": "Milo extracts details and items to verify",
+          "condition": "The operator must still confirm actual receipt of funds before paid work continues.",
+          "action": "Submit proof against the accepted quote, then wait for HiFirst to verify it."
+        },
+        {
+          "chapter": "Positioning",
+          "title": "Turn an approved direction into a real page.",
+          "from": "strategy",
+          "to": "launch",
+          "document": "Positioning plan",
+          "lines": [
+            "Once the direction and test are approved, use this version.",
+            "Understood. I’ll check every factual claim on the English page."
+          ],
+          "task": "Compare audiences and define success criteria",
+          "output": "Positioning and validation plan",
+          "next": "Kito builds the English page and channel assets",
+          "condition": "Kito starts after operator review and your positioning approval.",
+          "action": "Approve the direction or request changes before page preparation."
+        },
+        {
+          "chapter": "Launch",
+          "title": "Approve before publishing. Learn from what follows.",
+          "from": "launch",
+          "to": "growth",
+          "document": "Channel action card",
+          "lines": [
+            "The page and materials are ready. Approval comes before publishing.",
+            "I’ll track real visits, leads, and replies."
+          ],
+          "task": "Build the English page and check factual claims",
+          "output": "English page and channel action card",
+          "next": "Pogo organizes real visits, leads and replies",
+          "condition": "Publishing requires approval. Channel actions must then be carried out and recorded.",
+          "action": "Approve publication, then gather real feedback through the channel plan."
+        },
+        {
+          "chapter": "Review",
+          "title": "A review should tell us what to do next.",
+          "from": "growth",
+          "to": "strategy",
+          "document": "Review report",
+          "lines": [
+            "The sample is still too small. Here are the actual results.",
+            "Let’s use our original criteria to decide what happens next."
+          ],
+          "task": "Review real feedback against preset criteria",
+          "output": "Growth review and next-step recommendations",
+          "next": "Fino adjusts the next validation round",
+          "condition": "The operator and you decide whether to continue, adjust or stop before another round.",
+          "action": "Review results and sample limits, then approve another round or accept the delivery."
+        }
+      ],
+      "serviceFlow": {
+        "title": "How it works",
+        "steps": [
+          [
+            "Free opportunity analysis",
+            "Starts after submission, with potential audiences and questions to validate."
+          ],
+          [
+            "Choose Pro",
+            "Request a proposal after your opportunity analysis. Positioning and launch work continue once you accept the quote and payment is confirmed."
+          ],
+          [
+            "Confirm a direction",
+            "The owner reviews and recommends. You confirm who to reach first and what to test."
+          ],
+          [
+            "Build an English page",
+            "Get a real, accessible validation page. Factual claims need supporting evidence before approval."
+          ],
+          [
+            "Run an experiment",
+            "Approve a promotion experiment, carry it out, and record the published link."
+          ],
+          [
+            "Review real feedback",
+            "Look at replies, visits, and leads. If the sample is too small, we say so."
+          ]
+        ]
+      },
+      "phaseLabels": [
+        "Working",
+        "Taking the handoff",
+        "Checking together",
+        "Passing the work",
+        "Returning to the desk",
+        "Starting the next task"
+      ]
+    }
+  }
+}
