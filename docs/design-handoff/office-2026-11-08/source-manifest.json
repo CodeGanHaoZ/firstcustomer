@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "date": "2026-11-08",
+    "timezone": "Asia/Shanghai",
+    "repository": "kongleiwork-art/firstcustomer",
+    "sourceCommit": "d2c09c9258e3ebb7fb5465745a9df371e63a6e61",
+    "designCommits": [
+      "b437d46",
+      "fe432a3",
+      "d3e1684",
+      "d2c09c9"
+    ],
+    "kind": "versioned design handoff snapshot"
+  },
+  "note": "Source excerpts for design review. Clone the actual repository to run the app; this is not a standalone application.",
+  "files": [
+    {
+      "path": "firstcustomer/src/components/office-showcase.tsx",
+      "snapshot": "source/src/components/office-showcase.tsx",
+      "sha256": "b0ec3d30be7d99485eed0de63f7cb00e9772342658df21e48fcba17f66907083",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/components/office-showcase.tsx"
+    },
+    {
+      "path": "firstcustomer/src/components/office-showcase-canvas.ts",
+      "snapshot": "source/src/components/office-showcase-canvas.ts",
+      "sha256": "ee30992c90e02515ca4ff07010f7b65b511c91225241cea618be88e4b5a0b5a9",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/components/office-showcase-canvas.ts"
+    },
+    {
+      "path": "firstcustomer/src/components/office-relay.tsx",
+      "snapshot": "source/src/components/office-relay.tsx",
+      "sha256": "53702a72763cb1429d60504ee511d39354fc9d081a9cdb2b838e4601e527d50d",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/components/office-relay.tsx"
+    },
+    {
+      "path": "firstcustomer/src/components/office-portrait.tsx",
+      "snapshot": "source/src/components/office-portrait.tsx",
+      "sha256": "8637bc8efb011d964da5ce9f18c2dc805e2a05e57a9e334d0d373c25656282e8",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/components/office-portrait.tsx"
+    },
+    {
+      "path": "firstcustomer/src/components/service-journey.tsx",
+      "snapshot": "source/src/components/service-journey.tsx",
+      "sha256": "30b2d59dbb48a94d47b1d3edc5756d7d4efd02ac2f2a9366dbfcbb3d200feaa1",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/components/service-journey.tsx"
+    },
+    {
+      "path": "firstcustomer/src/components/office-map.tsx",
+      "snapshot": "source/src/components/office-map.tsx",
+      "sha256": "28949f709fb2464cc89bb8deee5fe75dbb43c88739af2b33abd753c3404144c6",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/components/office-map.tsx"
+    },
+    {
+      "path": "firstcustomer/src/components/office-stage.tsx",
+      "snapshot": "source/src/components/office-stage.tsx",
+      "sha256": "84383ac05cfd859fe3b1a9cd250b6f417d1e366fae226aa28df2617682379d26",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/components/office-stage.tsx"
+    },
+    {
+      "path": "firstcustomer/src/components/office-work-guide.tsx",
+      "snapshot": "source/src/components/office-work-guide.tsx",
+      "sha256": "82dedc70f97e2b569fa00a0bd15f1345a0783d827589b77cb05432a0dd98db90",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/components/office-work-guide.tsx"
+    },
+    {
+      "path": "firstcustomer/src/lib/brand.ts",
+      "snapshot": "source/src/lib/brand.ts",
+      "sha256": "727ec2e1cbd1f10dec263acbb156bf5d8db3dedf900b4be97a83630cb1f676f6",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/lib/brand.ts"
+    },
+    {
+      "path": "firstcustomer/src/lib/office-showcase.ts",
+      "snapshot": "source/src/lib/office-showcase.ts",
+      "sha256": "ec35bb22fb3549d2f864e32427682227288856b86d5c131b9e5a06f1e649cc4e",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/lib/office-showcase.ts"
+    },
+    {
+      "path": "firstcustomer/src/lib/office-story.ts",
+      "snapshot": "source/src/lib/office-story.ts",
+      "sha256": "4f23c0dc259f6ae7d6d423e063a037e1c1b67f5f1449b0da291d7af269dd7216",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/lib/office-story.ts"
+    },
+    {
+      "path": "firstcustomer/src/lib/home-copy.ts",
+      "snapshot": "source/src/lib/home-copy.ts",
+      "sha256": "9bb90402916fa84b24c3cf7cad5e13ae66825c5235ed1351f26f6f2fac85345e",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/lib/home-copy.ts"
+    },
+    {
+      "path": "firstcustomer/src/domain/office-guide.ts",
+      "snapshot": "source/src/domain/office-guide.ts",
+      "sha256": "3d978170807235f8743e6d4a2fc6dea8efa6bf1060bc129971aaa3b5e284377c",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/domain/office-guide.ts"
+    },
+    {
+      "path": "firstcustomer/src/domain/office.ts",
+      "snapshot": "source/src/domain/office.ts",
+      "sha256": "004d4319a0d2f99b29d0357ff743e7020acaf40522eb3e060b358fc25377fd5c",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/domain/office.ts"
+    },
+    {
+      "path": "firstcustomer/src/app/editorial.css",
+      "snapshot": "source/src/app/editorial.css",
+      "sha256": "ca992c3c96f1cd104269af9081bb28536ca460493f65f2bd05f70c69a438a7ce",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/app/editorial.css"
+    },
+    {
+      "path": "firstcustomer/src/app/office-showcase.css",
+      "snapshot": "source/src/app/office-showcase.css",
+      "sha256": "22a2bf188e2d4808bfe60cf8de14ad20f21642e2df3dd656ec9000abe471ab13",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/app/office-showcase.css"
+    },
+    {
+      "path": "firstcustomer/src/app/office-relay.css",
+      "snapshot": "source/src/app/office-relay.css",
+      "sha256": "e7e948f385697e82a7b208ff521eaf7c83bb94db6eb6c794e57aa9dae0a25378",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/app/office-relay.css"
+    },
+    {
+      "path": "firstcustomer/src/app/admin/office.css",
+      "snapshot": "source/src/app/admin/office.css",
+      "sha256": "91147b9c7649c0798463d92cb7eedb9375a23a84d6dc880517dcb042b896b57f",
+      "url": "https://github.com/kongleiwork-art/firstcustomer/blob/d2c09c9258e3ebb7fb5465745a9df371e63a6e61/firstcustomer/src/app/admin/office.css"
+    }
+  ]
+}

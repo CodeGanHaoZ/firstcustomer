@@ -5,15 +5,18 @@ import { BrandMark } from "@/components/brand-mark";
 import { EditorialMotion } from "@/components/editorial-motion";
 import { LumiChat } from "@/components/lumi-chat";
 import { OfficeShowcase } from "@/components/office-showcase";
+import { ServiceJourney } from "@/components/service-journey";
 import { LanguageSwitch } from "@/components/language-switch";
-import { SiteFooter } from "@/components/site-chrome";
+import { SiteFooter, customerTier } from "@/components/site-chrome";
 import { HOME_COPY } from "@/lib/home-copy";
 import { getLocale } from "@/lib/locale-server";
 import { localeTag } from "@/lib/locale";
 import { getCustomerSession } from "@/lib/customer-auth";
+import { signOutAction } from "@/app/account/actions";
 import "./home.css";
 import "./editorial.css";
 import "./office-showcase.css";
+import "./office-relay.css";
 
 const WORDMARK = "首客 HIFIRST";
 
@@ -26,6 +29,7 @@ export async function generateMetadata() {
 export default async function Home() {
   const [session, locale] = await Promise.all([getCustomerSession(), getLocale()]);
   const copy = HOME_COPY[locale];
+  const tier = session ? await customerTier(session.user.id) : "free";
   return (
     <div className="home-page" lang={localeTag(locale)} id="top">
       <header className="nav">
@@ -34,6 +38,7 @@ export default async function Home() {
             <BrandMark />
           </Link>
           <nav className="nav__menu" aria-label={copy.nav.label}>
+            <a href="#top" className="nav__link">{copy.nav.homeLink}</a>
             <a href="#office" className="nav__link">{copy.nav.office}</a>
             <a href="#plans" className="nav__link">{copy.nav.plans}</a>
             <a href="#service-flow" className="nav__link">{copy.nav.flow}</a>
@@ -43,9 +48,21 @@ export default async function Home() {
           </nav>
           <div className="nav__actions">
             <LanguageSwitch locale={locale} />
-            {!session ? (
+            {session ? (
+              <div className="nav__user-menu">
+                <span className="nav__user" title={session.user.email}>
+                  <span className="nav__user-email">{session.user.email}</span>
+                  <span className={tier === "pro" ? "nav__plan nav__plan--pro" : "nav__plan nav__plan--free"}>{tier === "pro" ? "Pro" : "Free"}</span>
+                </span>
+                <div className="nav__user-dropdown" role="menu">
+                  <form action={signOutAction}>
+                    <button type="submit" className="nav__user-signout" role="menuitem">{copy.nav.signout}</button>
+                  </form>
+                </div>
+              </div>
+            ) : (
               <Link href="/login" className="btn btn--ghost btn--sm">{copy.nav.auth}</Link>
-            ) : null}
+            )}
           </div>
           <button type="button" className="nav__toggle" data-nav-toggle aria-expanded="false" aria-label={copy.nav.menu}>
             <ArrowDown size={18} aria-hidden="true" />
@@ -147,22 +164,7 @@ export default async function Home() {
                 {copy.flow.title}
               </h2>
             </div>
-            <ol className="index-list" data-reveal>
-              {copy.flow.steps.map(([title, body], index) => (
-                <li key={title}>
-                  <div className="index-list__row">
-                    <span className="index-list__no">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="index-list__body">
-                      <span className="index-list__title">{title}</span>
-                      <span className="index-list__meta">{body}</span>
-                    </span>
-                    <span className="index-list__tail" aria-hidden="true">
-                      <span className="index-list__arrow">→</span>
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <ServiceJourney steps={copy.flow.steps} locale={locale} />
             <div className="section-end" data-reveal>
               <BackToTop variant="text" locale={locale} />
             </div>

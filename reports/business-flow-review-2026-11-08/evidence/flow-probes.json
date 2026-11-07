@@ -1,0 +1,167 @@
+{
+  "generatedAt": "2026-11-07T23:20:31.469Z",
+  "scope": "isolated_business_counterexamples",
+  "liveModelUsed": false,
+  "configuredDatabaseUsed": false,
+  "externalPublishingPerformed": false,
+  "probes": [
+    {
+      "id": "BP01",
+      "finding": "Insufficient review is frozen after new data arrives",
+      "reproduced": true,
+      "actual": {
+        "projectStatus": "reviewing",
+        "savedVerdict": "insufficient",
+        "savedMetrics": {
+          "leads": 0,
+          "visits": 0,
+          "replies": 0,
+          "ctaClicks": 0
+        },
+        "liveMetrics": {
+          "visits": 25,
+          "ctaClicks": 0,
+          "leads": 2,
+          "replies": 0
+        },
+        "verdictUsingLiveMetrics": "passed",
+        "restart": {
+          "rejected": true,
+          "error": "不允许从 reviewing 流转到 reviewing"
+        }
+      }
+    },
+    {
+      "id": "BP02",
+      "finding": "Acceptance rejection has no rework path",
+      "reproduced": true,
+      "actual": {
+        "projectStatus": "delivered",
+        "deliveryStatus": "changes_requested",
+        "canReopen": false,
+        "edit": {
+          "rejected": true,
+          "error": "项目当前无法修改验证页"
+        },
+        "redeliver": {
+          "rejected": true,
+          "error": "不允许从 delivered 流转到 delivered"
+        }
+      }
+    },
+    {
+      "id": "BP03",
+      "finding": "Account entitlement overwrites accepted historical order status",
+      "reproduced": true,
+      "fixture": {
+        "projectStatus": "awaiting_payment",
+        "orderStatus": "accepted",
+        "quoteVersion": 2,
+        "quoteFen": 29900
+      },
+      "actual": {
+        "activated": true,
+        "projectStatus": "strategizing",
+        "requiresPayment": false,
+        "orderStatus": "account_active",
+        "quoteFen": 29900
+      }
+    },
+    {
+      "id": "BP04",
+      "finding": "Queue failure after approval leaves an active state without a job",
+      "reproduced": true,
+      "actual": {
+        "failure": {
+          "rejected": true,
+          "error": "Injected queue failure"
+        },
+        "projectStatus": "preparing_page",
+        "queuedJobs": 0,
+        "retry": {
+          "rejected": true,
+          "error": "项目不在失败状态"
+        }
+      },
+      "boundary": "Account Pro can recover by re-entering a module; automatic atomic recovery is missing. Queue is injected, not real pg-boss."
+    },
+    {
+      "id": "BP05",
+      "finding": "New publication invalidates old public URL and switches the metrics sample",
+      "reproduced": true,
+      "actual": {
+        "urlChanged": true,
+        "previousPublicUrlResolvable": false,
+        "previousVersionMetrics": {
+          "visits": 25,
+          "ctaClicks": 0,
+          "leads": 2,
+          "replies": 0
+        },
+        "currentVersionMetrics": {
+          "visits": 0,
+          "ctaClicks": 0,
+          "leads": 0,
+          "replies": 0
+        },
+        "historyRetained": true
+      }
+    },
+    {
+      "id": "BP06",
+      "finding": "Completed self-service review remains active without a customer close operation",
+      "reproduced": true,
+      "actual": {
+        "projectStatus": "reviewing",
+        "verdict": "passed",
+        "nextHypothesis": null,
+        "deliveryStatus": "not_started",
+        "readiness": true
+      },
+      "boundary": "Review generation succeeds; this is a completion-state and retention-flow gap, not failure to generate a report."
+    },
+    {
+      "id": "BP07",
+      "finding": "Opposite meaning passes structural claim checks",
+      "reproduced": true,
+      "fixture": {
+        "source": "I complain about meeting notes but I would never pay for another notes app.",
+        "excerpt": "I would never pay for another notes app",
+        "claim": "Customers are willing to pay for our notes app"
+      },
+      "actual": {
+        "quoteStatus": "verified",
+        "violations": []
+      },
+      "boundary": "Structural check only; this probe does not prove an end-to-end public release or evaluate human review."
+    },
+    {
+      "id": "BP08",
+      "finding": "Numeric checks conflate a competitor price with our revenue percentage",
+      "reproduced": true,
+      "fixture": {
+        "source": "A competitor charges $19 per seat per month.",
+        "statement": "Our product increased revenue by 19%."
+      },
+      "actual": {
+        "unsupported": []
+      },
+      "boundary": "Numeric check only, not an observed customer-facing incident."
+    },
+    {
+      "id": "BP09",
+      "finding": "Pausing work also blocks ordinary support and its manual reply",
+      "reproduced": true,
+      "actual": {
+        "projectPaused": true,
+        "supportStatus": "queued",
+        "reply": null,
+        "manualReply": {
+          "rejected": true,
+          "error": "该问题已处理或不存在"
+        }
+      },
+      "boundary": "Escalated complaints are a separate path; this probe covers an ordinary progress question."
+    }
+  ]
+}

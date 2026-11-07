@@ -1037,9 +1037,12 @@ main .container,
 }
 
 @media (max-width: 820px) {
-  .footer__grid { grid-template-columns: repeat(2, 1fr); }
+  .footer__grid { grid-template-columns: repeat(2, 1fr); row-gap: var(--sp-6); }
+  /* 品牌列独占整行，两列链接并排其下，避免第三列被挤到品牌列下方造成错乱 */
+  .footer__grid .footer__col:first-child { grid-column: 1 / -1; }
   .footer__bottom { flex-direction: column; }
   .footer__divider { display: none; }
+  .footer__powered .meta { white-space: nowrap; }
 }
 
 /* ==========================================================================

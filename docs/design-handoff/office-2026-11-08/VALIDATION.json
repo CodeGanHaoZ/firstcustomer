@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-08",
+  "timezone": "Asia/Shanghai",
+  "sourceCommit": "d2c09c9258e3ebb7fb5465745a9df371e63a6e61",
+  "scope": "Curated design handoff; no runtime logic changes",
+  "checks": {
+    "sourceSnapshots": "18 files compared byte-for-byte against pinned Git commit",
+    "screenshots": "12 browser captures; original capture provenance retained; desktop relay recaptured for d2c09c9",
+    "pdf": "6 pages rendered and visually reviewed, CJK font embedded, text extraction checked",
+    "offlineReview": "Chinese/English and six-scene controls tested; English positioning shows Fino -> Kito / Positioning plan",
+    "offlineDependencies": "No external scripts; local images loaded successfully",
+    "reviewMobile": "390px preset, document clientWidth=scrollWidth=375px",
+    "links": "HTML/Markdown relative links and anchors checked",
+    "archive": "ZIP integrity, curated file list and SHA-256 checked"
+  },
+  "applicationEvidence": {
+    "implementationCommit": "fe432a3",
+    "testsPassed": 187,
+    "typecheck": "passed at implementation",
+    "lint": "passed at implementation",
+    "productionBuild": "passed at implementation"
+  },
+  "limitations": [
+    "320px English existing hero CTA causes page overflow; office relay component itself does not overflow.",
+    "System reduced-motion preference and screen-reader walkthrough should be checked on target devices."
+  ],
+  "acceptance": "Delivery checks do not represent team signoff. Fill the receiver record in ACCEPTANCE.md."
+}

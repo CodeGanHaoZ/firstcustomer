@@ -44,9 +44,8 @@ export default async function AccountPage() {
       <SiteHeader current="account" />
       <main className="site-main">
         <PageHead
-          eyebrow={session ? <span className="normal-case tracking-normal">{session.user.email}</span> : <T>无需登录</T>}
+          eyebrow={session ? <span className="normal-case tracking-normal">{session.user.email}</span> : undefined}
           title={<T>{session ? "我的项目" : "试用工作台"}</T>}
-          lead={session ? undefined : <T>无需登录，直接创建项目，查看办公室进度与出海机会报告。</T>}
           actions={visible.length ? <Link href="/projects/new" className="btn btn--primary btn--lg"><Plus size={16} aria-hidden="true" /><T>新建出海项目</T></Link> : undefined}
         />
         {session ? <section className="notice flex-wrap items-center justify-between">
@@ -54,11 +53,14 @@ export default async function AccountPage() {
           <Link href="/account/upgrade" className="btn btn--primary btn--sm"><T>了解 Pro</T></Link>
         </section> : null}
         {!session ? (
-          <div className="notice rise" style={{ "--i": 1 } as CSSProperties}>
-            <Info size={16} aria-hidden="true" />
+          <details className="notice notice--fold rise" style={{ "--i": 1 } as CSSProperties}>
+            <summary>
+              <Info size={16} aria-hidden="true" />
+              <span className="flex-1"><T>试用项目保存在本浏览器，30 天有效</T></span>
+            </summary>
             <p className="m-0"><T>当前浏览器会保留最近 12 个试用项目的入口，保存 30 天。清除浏览器数据后，请通过项目专属链接找回。</T>{" "}
               <Link href="/register" className="link-u"><T>注册或登录后，这些试用项目会保存到你的账号，方便换设备继续。</T></Link></p>
-          </div>
+          </details>
         ) : trial.length ? (
           <form action={saveTrialProjectsAndReturnAction} className="notice notice--wait rise flex-wrap items-center justify-between" style={{ "--i": 1 } as CSSProperties}>
             <p className="m-0"><T>本浏览器还有试用项目，可以保存到当前账号。</T></p>

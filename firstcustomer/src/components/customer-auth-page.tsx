@@ -39,7 +39,6 @@ export async function CustomerAuthPage({ register = false, returnTo }: { registe
               <Image src="/brand/lumi-welcome-poster.webp" alt="" width={232} height={232} unoptimized />
             </video>
             <p className="auth-card__quote"><T>回来看看你的出海项目</T></p>
-            <p className="meta"><T>Lumi 在首客办公室等你。</T></p>
           </aside>
           <section aria-labelledby="customer-auth-title" className="auth-card__form">
             <header>

@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-11-07T23:20:29.622Z",
+  "scope": "Configured environment, read-only aggregate checks; no model tasks",
+  "localWeb": {
+    "reachable": false
+  },
+  "databaseConfigured": true,
+  "databaseReachable": false,
+  "databaseError": {
+    "name": "Error",
+    "code": "ECONNREFUSED",
+    "category": "connectivity"
+  }
+}

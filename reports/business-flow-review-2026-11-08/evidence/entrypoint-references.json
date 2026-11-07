@@ -1,0 +1,112 @@
+{
+  "generatedAt": "2026-11-07T23:21:59.691456+00:00",
+  "references": {
+    "customerStartFreeAction": [
+      {
+        "path": "firstcustomer/src/app/p/[token]/actions.ts",
+        "line": 70,
+        "code": "export async function customerStartFreeAction(token: string) {"
+      }
+    ],
+    "customerRequestProAction": [
+      {
+        "path": "firstcustomer/src/app/p/[token]/actions.ts",
+        "line": 77,
+        "code": "export async function customerRequestProAction(token: string) {"
+      }
+    ],
+    "loadLeads": [
+      {
+        "path": "firstcustomer/src/app/admin/projects/[id]/page.tsx",
+        "line": 44,
+        "code": "import { loadLeads, loadProjectAudit, loadProjectView } from \"@/workflow/queries\";"
+      },
+      {
+        "path": "firstcustomer/src/app/admin/projects/[id]/page.tsx",
+        "line": 154,
+        "code": "loadProjectView(db, project), loadProjectAudit(db, id), loadLeads(db, id),"
+      },
+      {
+        "path": "firstcustomer/src/workflow/queries.ts",
+        "line": 204,
+        "code": "export async function loadLeads(db: Db, projectId: string) {"
+      }
+    ],
+    "markCampaignExecuted": [
+      {
+        "path": "firstcustomer/src/app/admin/actions.ts",
+        "line": 25,
+        "code": "markCampaignExecuted,"
+      },
+      {
+        "path": "firstcustomer/src/app/admin/actions.ts",
+        "line": 188,
+        "code": "await markCampaignExecuted(getDb(), text(formData, \"campaignId\"), text(formData, \"url\"));"
+      },
+      {
+        "path": "firstcustomer/src/workflow/actions.ts",
+        "line": 524,
+        "code": "export async function markCampaignExecuted(db: Db, campaignId: string, url: string) {"
+      }
+    ],
+    "recordFeedback": [
+      {
+        "path": "firstcustomer/src/app/admin/actions.ts",
+        "line": 26,
+        "code": "recordFeedback,"
+      },
+      {
+        "path": "firstcustomer/src/app/admin/actions.ts",
+        "line": 197,
+        "code": "await recordFeedback(getDb(), {"
+      },
+      {
+        "path": "firstcustomer/src/workflow/actions.ts",
+        "line": 537,
+        "code": "export async function recordFeedback("
+      }
+    ],
+    "activateAccountPro": [
+      {
+        "path": "firstcustomer/src/app/account/actions.ts",
+        "line": 11,
+        "code": "import { activateAccountPro, customerMembership } from \"@/workflow/membership\";"
+      },
+      {
+        "path": "firstcustomer/src/app/account/actions.ts",
+        "line": 30,
+        "code": "const activated = await activateAccountPro(getDb(), projectId, session.user.id);"
+      },
+      {
+        "path": "firstcustomer/src/app/projects/new/actions.ts",
+        "line": 11,
+        "code": "import { activateAccountPro, customerMembership } from \"@/workflow/membership\";"
+      },
+      {
+        "path": "firstcustomer/src/app/projects/new/actions.ts",
+        "line": 27,
+        "code": "if (session && (await customerMembership(db, session.user.id)).plan === \"pro\") await activateAccountPro(db, projectId, session.user.id);"
+      },
+      {
+        "path": "firstcustomer/src/workflow/engine.ts",
+        "line": 1,
+        "code": "import { activateAccountPro, customerMembership } from \"./membership\";"
+      },
+      {
+        "path": "firstcustomer/src/workflow/engine.ts",
+        "line": 686,
+        "code": "if (project.customerId && (await customerMembership(deps.db, project.customerId)).plan === \"pro\") await activateAccountPro(deps.db, project.id, project.customerId, deps.enqueue);"
+      },
+      {
+        "path": "firstcustomer/src/workflow/engine.ts",
+        "line": 721,
+        "code": "if (project.customerId && (await customerMembership(db, project.customerId)).plan === \"pro\") await activateAccountPro(db, project.id, project.customerId, deps.enqueue);"
+      },
+      {
+        "path": "firstcustomer/src/workflow/membership.ts",
+        "line": 21,
+        "code": "export async function activateAccountPro("
+      }
+    ]
+  }
+}

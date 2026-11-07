@@ -1,0 +1,352 @@
+{
+  "meta": {
+    "date": "2026-11-08",
+    "timezone": "Asia/Shanghai",
+    "repository": "kongleiwork-art/firstcustomer",
+    "sourceCommit": "d2c09c9258e3ebb7fb5465745a9df371e63a6e61",
+    "designCommits": [
+      "b437d46",
+      "fe432a3",
+      "d3e1684",
+      "d2c09c9"
+    ],
+    "kind": "versioned design handoff snapshot"
+  },
+  "warning": "Synthetic presentation examples only; no customer project data. This file never advances workflows.",
+  "examples": [
+    {
+      "id": "research-queued",
+      "input": {
+        "status": "researching",
+        "paused": false,
+        "runningAgents": [],
+        "plan": "free"
+      },
+      "zh": {
+        "room": "research",
+        "state": "queued",
+        "title": "Nori 小枭 的任务已排队",
+        "task": "核对海外需求、竞品定价和反面证据，整理值得验证的人群。",
+        "output": "候选人群、来源证据和出海机会报告",
+        "nextActor": "customer",
+        "next": "先查看免费的出海机会报告",
+        "condition": "研究完成后，是否申请 Pro 由你决定",
+        "yourAction": "正在等待后台启动，不用重复提交。"
+      },
+      "en": {
+        "room": "research",
+        "state": "queued",
+        "title": "Nori’s task is queued",
+        "task": "Check overseas demand, competitor pricing and counterevidence to identify audiences worth testing.",
+        "output": "Candidate audiences, source evidence and an opportunity report",
+        "nextActor": "customer",
+        "next": "Review your free opportunity report",
+        "condition": "After research, you decide whether to request Pro",
+        "yourAction": "Waiting for the worker to start. You do not need to resubmit."
+      }
+    },
+    {
+      "id": "research-working",
+      "input": {
+        "status": "researching",
+        "paused": false,
+        "runningAgents": [
+          "research"
+        ],
+        "plan": "free"
+      },
+      "zh": {
+        "room": "research",
+        "state": "working",
+        "title": "Nori 小枭 正在工作",
+        "task": "核对海外需求、竞品定价和反面证据，整理值得验证的人群。",
+        "output": "候选人群、来源证据和出海机会报告",
+        "nextActor": "customer",
+        "next": "先查看免费的出海机会报告",
+        "condition": "研究完成后，是否申请 Pro 由你决定",
+        "yourAction": "暂时不用操作，任务完成后这里会自动更新。"
+      },
+      "en": {
+        "room": "research",
+        "state": "working",
+        "title": "Nori is working",
+        "task": "Check overseas demand, competitor pricing and counterevidence to identify audiences worth testing.",
+        "output": "Candidate audiences, source evidence and an opportunity report",
+        "nextActor": "customer",
+        "next": "Review your free opportunity report",
+        "condition": "After research, you decide whether to request Pro",
+        "yourAction": "No action is needed right now. This view updates when the task finishes."
+      }
+    },
+    {
+      "id": "quote-operator-review",
+      "input": {
+        "status": "awaiting_quote",
+        "paused": false,
+        "runningAgents": [],
+        "plan": "pro"
+      },
+      "zh": {
+        "room": "frontdesk",
+        "state": "waiting",
+        "title": "等待经营者核定 Pro 提案",
+        "task": "Lumi 已起草服务提案，这一步在等人工核价与确认条款。",
+        "output": "待经营者核定的服务提案",
+        "nextActor": "customer",
+        "next": "由项目发起人决定是否接受报价",
+        "condition": "",
+        "yourAction": "当前无需付款，等报价核定后再决定是否接受。"
+      },
+      "en": {
+        "room": "frontdesk",
+        "state": "waiting",
+        "title": "Waiting for operator review of the Pro proposal",
+        "task": "Lumi has drafted the proposal. A person now needs to approve its price and terms.",
+        "output": "A service proposal for the operator to review",
+        "nextActor": "customer",
+        "next": "The project owner decides whether to accept the quote",
+        "condition": "",
+        "yourAction": "No payment is needed yet. Decide after the quote is approved."
+      }
+    },
+    {
+      "id": "positioning-customer-approval",
+      "input": {
+        "status": "awaiting_positioning",
+        "paused": false,
+        "runningAgents": [],
+        "openGate": "positioning"
+      },
+      "zh": {
+        "room": "strategy",
+        "state": "action",
+        "title": "等待你确认定位",
+        "task": "这一步需要人工确认，Agent 会等确认后再继续。",
+        "output": "定位方案与验证计划",
+        "nextActor": "launch",
+        "next": "Kito 按确认的定位准备英文验证页",
+        "condition": "双方确认当前版本后",
+        "yourAction": "查看当前版本，确认采用或提出修改。",
+        "link": {
+          "href": "#approval",
+          "label": "查看待确认事项"
+        }
+      },
+      "en": {
+        "room": "strategy",
+        "state": "action",
+        "title": "Waiting for your approval: positioning",
+        "task": "This stage needs a human decision. The agent continues after approval.",
+        "output": "Positioning options and a validation plan",
+        "nextActor": "launch",
+        "next": "Kito prepares an English page from the approved positioning",
+        "condition": "After both parties approve this version",
+        "yourAction": "Review the current version, approve it or request changes.",
+        "link": {
+          "href": "#approval",
+          "label": "Review the pending decision"
+        }
+      }
+    },
+    {
+      "id": "feedback-waiting",
+      "input": {
+        "status": "collecting",
+        "paused": false,
+        "runningAgents": []
+      },
+      "zh": {
+        "room": "growth",
+        "state": "waiting",
+        "title": "Pogo 在等待真实反馈",
+        "task": "页面已经公开，接下来执行已批准的渠道行动并积累样本。",
+        "output": "真实访问、留资和回复记录",
+        "nextActor": "growth",
+        "next": "Pogo 按预设标准复盘本轮实验",
+        "condition": "样本达到要求并启动复盘后",
+        "yourAction": "可以查看英文页与反馈记录；当前不是 Agent 故障。"
+      },
+      "en": {
+        "room": "growth",
+        "state": "waiting",
+        "title": "Pogo is waiting for real feedback",
+        "task": "The page is public. Carry out approved channel actions and gather a sample.",
+        "output": "Real visit, lead and reply records",
+        "nextActor": "growth",
+        "next": "Pogo reviews the experiment against preset criteria",
+        "condition": "After the sample is sufficient and the review is started",
+        "yourAction": "You can review the page and feedback records. Waiting for data is not an agent failure."
+      }
+    },
+    {
+      "id": "paused",
+      "input": {
+        "status": "researching",
+        "paused": true,
+        "runningAgents": []
+      },
+      "zh": {
+        "room": "research",
+        "state": "paused",
+        "title": "项目已暂停",
+        "task": "核对海外需求、竞品定价和反面证据，整理值得验证的人群。",
+        "output": "候选人群、来源证据和出海机会报告",
+        "nextActor": null,
+        "next": "恢复项目后才会开始下一步",
+        "condition": "",
+        "yourAction": "联系首客恢复项目，已保存的内容会保留。"
+      },
+      "en": {
+        "room": "research",
+        "state": "paused",
+        "title": "Project paused",
+        "task": "Check overseas demand, competitor pricing and counterevidence to identify audiences worth testing.",
+        "output": "Candidate audiences, source evidence and an opportunity report",
+        "nextActor": null,
+        "next": "The next stage starts after the project resumes",
+        "condition": "",
+        "yourAction": "Contact HiFirst to resume. Saved material is preserved."
+      }
+    },
+    {
+      "id": "pause-finishing",
+      "input": {
+        "status": "researching",
+        "paused": true,
+        "runningAgents": [
+          "research"
+        ]
+      },
+      "zh": {
+        "room": "research",
+        "state": "working",
+        "title": "Nori 小枭 正在收尾，之后暂停",
+        "task": "核对海外需求、竞品定价和反面证据，整理值得验证的人群。",
+        "output": "候选人群、来源证据和出海机会报告",
+        "nextActor": null,
+        "next": "恢复项目后才会开始下一步",
+        "condition": "",
+        "yourAction": "联系首客恢复项目，已保存的内容会保留。"
+      },
+      "en": {
+        "room": "research",
+        "state": "working",
+        "title": "Nori is finishing before pausing",
+        "task": "Check overseas demand, competitor pricing and counterevidence to identify audiences worth testing.",
+        "output": "Candidate audiences, source evidence and an opportunity report",
+        "nextActor": null,
+        "next": "The next stage starts after the project resumes",
+        "condition": "",
+        "yourAction": "Contact HiFirst to resume. Saved material is preserved."
+      }
+    },
+    {
+      "id": "failed",
+      "input": {
+        "status": "failed",
+        "paused": false,
+        "runningAgents": [],
+        "failedFrom": "preparing_page"
+      },
+      "zh": {
+        "room": "launch",
+        "state": "failed",
+        "title": "这一步遇到问题，需要先处理",
+        "task": "已保存的材料保留，核查失败原因后才能重试。",
+        "output": "本阶段的项目记录",
+        "nextActor": "owner",
+        "next": "经营者核查原因后恢复处理",
+        "condition": "",
+        "yourAction": "联系首客核查进度，不需要重复新建项目。",
+        "link": {
+          "href": "#support",
+          "label": "查看处理入口"
+        }
+      },
+      "en": {
+        "room": "launch",
+        "state": "failed",
+        "title": "This stage needs attention before it can continue",
+        "task": "Saved material is preserved. Check the cause before retrying.",
+        "output": "Records for this stage",
+        "nextActor": "owner",
+        "next": "The operator investigates and resumes processing",
+        "condition": "",
+        "yourAction": "Ask HiFirst to investigate. You do not need a new project.",
+        "link": {
+          "href": "#support",
+          "label": "View support options"
+        }
+      }
+    },
+    {
+      "id": "delivered",
+      "input": {
+        "status": "delivered",
+        "paused": false,
+        "runningAgents": [],
+        "deliveryStatus": "accepted"
+      },
+      "zh": {
+        "room": "growth",
+        "state": "complete",
+        "title": "本次服务已完成验收",
+        "task": "交付清单与历次确认记录都可以继续查阅。",
+        "output": "本次服务交付清单",
+        "nextActor": null,
+        "next": "",
+        "condition": "",
+        "yourAction": "可以随时回看已交付的内容。",
+        "link": {
+          "href": "#deliverables",
+          "label": "查看交付清单"
+        }
+      },
+      "en": {
+        "room": "growth",
+        "state": "complete",
+        "title": "This delivery has been accepted",
+        "task": "The deliverables and approval history remain available.",
+        "output": "The service deliverables",
+        "nextActor": null,
+        "next": "",
+        "condition": "",
+        "yourAction": "You can return to the delivered material at any time.",
+        "link": {
+          "href": "#deliverables",
+          "label": "View deliverables"
+        }
+      }
+    },
+    {
+      "id": "closed",
+      "input": {
+        "status": "cancelled",
+        "paused": false,
+        "runningAgents": []
+      },
+      "zh": {
+        "room": null,
+        "state": "closed",
+        "title": "项目已取消",
+        "task": "历史材料仍可查看，当前不会启动新的任务。",
+        "output": "本阶段的项目记录",
+        "nextActor": null,
+        "next": "",
+        "condition": "",
+        "yourAction": "如需继续，请联系首客。"
+      },
+      "en": {
+        "room": null,
+        "state": "closed",
+        "title": "Project cancelled",
+        "task": "Historical material remains available. No new tasks will start.",
+        "output": "Records for this stage",
+        "nextActor": null,
+        "next": "",
+        "condition": "",
+        "yourAction": "Contact HiFirst if you would like to continue."
+      }
+    }
+  ]
+}

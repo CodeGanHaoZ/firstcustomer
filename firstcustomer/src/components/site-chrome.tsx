@@ -9,17 +9,30 @@ import { signOutAction } from "@/app/account/actions";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { HOME_COPY } from "@/lib/home-copy";
 import { getLocale } from "@/lib/locale-server";
+import { getDb } from "@/db";
+import { customerMembership } from "@/workflow/membership";
 
 type NavKey = "account" | "new" | "project" | "auth";
+
+/** 顶栏与工作台使用同一份有效账号权益，不把历史项目订单当作订阅。 */
+export async function customerTier(userId: string): Promise<"pro" | "free"> {
+  try {
+    return (await customerMembership(getDb(), userId)).plan;
+  } catch {
+    return "free";
+  }
+}
 
 /** 客户侧通用顶栏：与首页同一条吸顶纸感导航。 */
 export async function SiteHeader({ current, extra }: { current?: NavKey; extra?: ReactNode }) {
   const session = await getCustomerSession();
+  const tier = session ? await customerTier(session.user.id) : "free";
   return (
     <header className="nav nav--static site-nav">
       <div className="nav__inner container">
         <LocalizedLink href="/#top" className="nav__brand" aria-label="首客首页"><BrandMark /></LocalizedLink>
         <LocalizedTag as="nav" className="nav__menu" aria-label="主导航">
+          <Link href="/" className="nav__link"><T>首页</T></Link>
           <Link href="/#office" className="nav__link"><T>办公室</T></Link>
           <Link href="/account" className="nav__link" aria-current={current === "account" ? "page" : undefined}>
             <T>{session ? "我的项目" : "试用工作台"}</T>
@@ -30,9 +43,17 @@ export async function SiteHeader({ current, extra }: { current?: NavKey; extra?:
           {extra}
           <LanguageSwitch />
           {current === "auth" ? null : session ? (
-            <form action={signOutAction} className="site-nav__form">
-              <button type="submit" className="btn btn--ghost btn--sm"><T>退出登录</T></button>
-            </form>
+            <div className="nav__user-menu">
+              <span className="nav__user" title={session.user.email}>
+                <span className="nav__user-email">{session.user.email}</span>
+                <span className={tier === "pro" ? "nav__plan nav__plan--pro" : "nav__plan nav__plan--free"}>{tier === "pro" ? "Pro" : "Free"}</span>
+              </span>
+              <div className="nav__user-dropdown" role="menu">
+                <form action={signOutAction}>
+                  <button type="submit" className="nav__user-signout" role="menuitem"><T>退出登录</T></button>
+                </form>
+              </div>
+            </div>
           ) : <Link href="/login" className="btn btn--ghost btn--sm"><T>登录 / 注册</T></Link>}
         </div>
       </div>

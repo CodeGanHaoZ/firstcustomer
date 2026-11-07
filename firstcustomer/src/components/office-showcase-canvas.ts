@@ -67,12 +67,7 @@ export function drawOfficeActors(ctx: CanvasRenderingContext2D, atlas: HTMLImage
     ctx.save();
     ctx.translate(x, y);
     ctx.globalAlpha = selected ? 1 : .7;
-    if (working) {
-      ctx.fillStyle = "rgba(245,255,205,.6)";
-      ctx.strokeStyle = "#456447"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.ellipse(0, -12, 66, 20, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.scale(1.2, 1.2);
-    }
+    if (working) ctx.scale(1.12, 1.12);
     if (pose.cut < .06) {
       ctx.fillStyle = "rgba(75,44,23,.20)";
       ctx.beginPath(); ctx.ellipse(0, 0, 27, 6, 0, 0, Math.PI * 2); ctx.fill();

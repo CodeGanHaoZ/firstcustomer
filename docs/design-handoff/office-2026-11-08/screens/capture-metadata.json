@@ -1,0 +1,328 @@
+{
+  "sourceCommit": "d2c09c9258e3ebb7fb5465745a9df371e63a6e61",
+  "date": "2026-11-08",
+  "capture": "CUA screenshots from isolated local build; no customer records",
+  "screens": [
+    {
+      "file": "screens/desktop-office-working-zh.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": {
+        "height": 603.578125,
+        "width": 1084,
+        "x": 170.5,
+        "y": 1862.4140625
+      },
+      "clientWidth": 1425,
+      "locale": "zh-CN",
+      "pageWidth": 1425,
+      "phase": "0",
+      "pixels": {
+        "width": 1084,
+        "height": 604
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/desktop-relay-zh.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": {
+        "height": 809.5,
+        "width": 1084,
+        "x": 170.5,
+        "y": 2497.9921875
+      },
+      "clientWidth": 1425,
+      "locale": "zh-CN",
+      "pageWidth": 1425,
+      "phase": "0",
+      "pixels": {
+        "width": 1084,
+        "height": 810
+      },
+      "capturedAtCommit": "d2c09c9258e3ebb7fb5465745a9df371e63a6e61",
+      "computedLayout": {
+        "columns": "324px 176px 324px",
+        "gap": "24px",
+        "justify": "space-between"
+      }
+    },
+    {
+      "file": "screens/desktop-service-flow-zh.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": {
+        "height": 820.34375,
+        "width": 1084,
+        "x": 170.5,
+        "y": 5377.8046875
+      },
+      "clientWidth": 1425,
+      "locale": "zh-CN",
+      "pageWidth": 1425,
+      "phase": "0",
+      "pixels": {
+        "width": 1084,
+        "height": 820
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/desktop-team-zh.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": {
+        "height": 1054.421875,
+        "width": 1084,
+        "x": 170.5,
+        "y": 3451.4921875
+      },
+      "clientWidth": 1425,
+      "locale": "zh-CN",
+      "pageWidth": 1425,
+      "phase": "0",
+      "pixels": {
+        "width": 1084,
+        "height": 1054
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/desktop-office-handoff-zh.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": {
+        "height": 603.578125,
+        "width": 1084,
+        "x": 170.5,
+        "y": 1862.4140625
+      },
+      "clientWidth": 1425,
+      "locale": "zh-CN",
+      "pageWidth": 1425,
+      "phase": "2",
+      "pixels": {
+        "width": 1084,
+        "height": 604
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/desktop-office-next-working-zh.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": {
+        "height": 603.578125,
+        "width": 1084,
+        "x": 170.5,
+        "y": 1862.4140625
+      },
+      "clientWidth": 1425,
+      "locale": "zh-CN",
+      "pageWidth": 1425,
+      "phase": "5",
+      "pixels": {
+        "width": 1084,
+        "height": 604
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/mobile-chapters-en.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": {
+        "height": 463.828125,
+        "width": 335,
+        "x": 20,
+        "y": 3548.125
+      },
+      "component": {
+        "height": 367.828125,
+        "width": 335,
+        "x": 20,
+        "y": 3596.125
+      },
+      "clientWidth": 375,
+      "locale": "en",
+      "pageWidth": 375,
+      "phase": "0",
+      "note": "Includes surrounding context to preserve complete component boundaries.",
+      "pixels": {
+        "width": 335,
+        "height": 464
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/mobile-chapters-zh.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": {
+        "height": 463.828125,
+        "width": 335,
+        "x": 20,
+        "y": 3278.6328125
+      },
+      "component": {
+        "height": 367.828125,
+        "width": 335,
+        "x": 20,
+        "y": 3326.6328125
+      },
+      "clientWidth": 375,
+      "locale": "zh-CN",
+      "pageWidth": 375,
+      "phase": "0",
+      "note": "Includes surrounding context to preserve complete component boundaries.",
+      "pixels": {
+        "width": 335,
+        "height": 464
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/mobile-office-zh.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": {
+        "height": 652.1015625,
+        "width": 335,
+        "x": 20,
+        "y": 1940.3671875
+      },
+      "component": {
+        "height": 556.1015625,
+        "width": 335,
+        "x": 20,
+        "y": 1988.3671875
+      },
+      "clientWidth": 375,
+      "locale": "zh-CN",
+      "pageWidth": 375,
+      "phase": "0",
+      "note": "Includes surrounding context to preserve complete component boundaries.",
+      "pixels": {
+        "width": 335,
+        "height": 652
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/mobile-relay-en.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": {
+        "height": 861.5625,
+        "width": 335,
+        "x": 20,
+        "y": 2687.6171875
+      },
+      "component": {
+        "height": 765.5625,
+        "width": 335,
+        "x": 20,
+        "y": 2735.6171875
+      },
+      "clientWidth": 375,
+      "locale": "en",
+      "pageWidth": 375,
+      "phase": "0",
+      "note": "Includes surrounding context to preserve complete component boundaries.",
+      "pixels": {
+        "width": 335,
+        "height": 862
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/mobile-relay-zh.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": {
+        "height": 790.8203125,
+        "width": 335,
+        "x": 20,
+        "y": 2515.6640625
+      },
+      "component": {
+        "height": 694.8203125,
+        "width": 335,
+        "x": 20,
+        "y": 2563.6640625
+      },
+      "clientWidth": 375,
+      "locale": "zh-CN",
+      "pageWidth": 375,
+      "phase": "0",
+      "note": "Includes surrounding context to preserve complete component boundaries.",
+      "pixels": {
+        "width": 335,
+        "height": 791
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    },
+    {
+      "file": "screens/mobile-service-flow-zh.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": {
+        "height": 1291.671875,
+        "width": 335,
+        "x": 20,
+        "y": 6655.4453125
+      },
+      "component": {
+        "height": 1195.671875,
+        "width": 335,
+        "x": 20,
+        "y": 6703.4453125
+      },
+      "clientWidth": 375,
+      "locale": "zh-CN",
+      "pageWidth": 375,
+      "phase": "0",
+      "note": "Includes surrounding context to preserve complete component boundaries.",
+      "pixels": {
+        "width": 335,
+        "height": 1292
+      },
+      "capturedAtCommit": "b1cde19e3e5a700bf8cdd7d50b0b3da8ecf2e9b7"
+    }
+  ],
+  "knownNarrowViewportCheck": {
+    "chapters": "84.6016px 84.6016px 84.6016px",
+    "page": 358,
+    "relay": 265,
+    "relayOverflow": [],
+    "team": "120.5px 120.5px",
+    "viewport": 305
+  },
+  "note": "Mobile screenshots include surrounding context. Use component geometry and CSS, not screenshot padding, for measurement.",
+  "equivalenceNote": "d2c09c9 changes desktop relay column sizing only. The desktop relay was recaptured; other components retain matching implementation and their original capture provenance."
+}

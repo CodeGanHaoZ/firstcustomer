@@ -1,0 +1,6 @@
+# Design artifacts are binary; source excerpts are generated review snapshots.
+*.pdf binary
+*.zip binary
+*.png binary
+*.webp binary
+office-2026-11-08/source/** linguist-generated=true

@@ -1,0 +1,12 @@
+SYNCHRONOUS TERMINATION NOTICE: When explicitly exiting the process via process.exit or via a parent process, asynchronous tasks in your exitHooks will not run. Either remove these tasks, use gracefulExit() instead of process.exit(), or ensure your parent process sends a SIGINT to the process running this code.
+/Users/kong/Documents/junction黑客松/firstcustomer/node_modules/src/migrator.ts:29
+		throw new Error(`Can't find meta/_journal.json file`);
+		      ^
+
+Error: Can't find meta/_journal.json file
+    at readMigrationFiles (/Users/kong/Documents/junction黑客松/firstcustomer/node_modules/src/migrator.ts:29:9)
+    at migrate (/Users/kong/Documents/junction黑客松/firstcustomer/node_modules/src/postgres-js/migrator.ts:9:21)
+    at <anonymous> (/Users/kong/Documents/junction黑客松/reports/business-flow-review-2026-11-08/evidence/flow-probes.ts:53:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v26.0.0
