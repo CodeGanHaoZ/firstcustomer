@@ -11,12 +11,12 @@ import { INTAKE_STEPS, PUBLIC_INTAKE_DRAFT_KEY } from "@/lib/project-intake";
 import {
   applyIntakeUpdates, INTAKE_HISTORY_LIMIT, INTAKE_MESSAGE_LIMIT, intakeReady, intakeResponseSchema,
   LUMI_INTAKE_COPY, LUMI_INTAKE_DRAFT_KEY, parseConversationDraft, readIntakeStream,
-  type IntakeMessage,
+  type IntakeConversationDraft, IntakeMessage,
 } from "@/lib/lumi-intake";
 
 const subscribe = () => () => {};
 const rabbit = "/brand/front-desk-rabbit.webp";
-type Props = { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string };
+type Props = { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string; initialUrl?: string; initialBrand?: string };
 
 function ConfirmProject({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus(); const copy = LUMI_INTAKE_COPY[useLocale()];
@@ -32,13 +32,25 @@ export function LumiProjectIntake(props: Props) {
   return ready ? <IntakeConversation {...props} /> : <div className="lumi-guide-loading" role="status">{copy.loading}</div>;
 }
 
-function IntakeConversation({ action, maxTotalBytes, serverError }: Props) {
+function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "", initialBrand = "" }: Props) {
   const locale = useLocale(); const copy = LUMI_INTAKE_COPY[locale];
   const [draft, setDraft] = useState(() => {
-    try { return parseConversationDraft(localStorage.getItem(LUMI_INTAKE_DRAFT_KEY), localStorage.getItem(PUBLIC_INTAKE_DRAFT_KEY)); }
-    catch { return parseConversationDraft(null); }
+    let base: IntakeConversationDraft;
+    try { base = parseConversationDraft(localStorage.getItem(LUMI_INTAKE_DRAFT_KEY), localStorage.getItem(PUBLIC_INTAKE_DRAFT_KEY)); }
+    catch { base = parseConversationDraft(null); }
+    // 首页「免费分析出海机会」带参数进入：空草稿时预填项目链接/名称，并把开场白放进输入框，用户点发送即入对话。
+    const fresh = base.messages.length === 0 && !Object.values(base.answers).some(Boolean);
+    if (fresh && (initialUrl || initialBrand)) {
+      if (initialBrand) base.answers.productName = initialBrand;
+      if (initialUrl) base.answers.productUrl = initialUrl;
+      const urlPart = initialUrl ? `，网址 ${initialUrl}` : "";
+      base.input = locale === "en"
+        ? `My product is "${initialBrand || "unnamed"}"${urlPart ? `, website ${initialUrl}` : ""}. Please analyze its go-to-market opportunities.`
+        : `我的产品是「${initialBrand || "待补充"}」${urlPart}，想免费分析出海机会。`;
+    }
+    return base;
   });
-  const [restored] = useState(() => draft.messages.length > 0 || Object.values(draft.answers).some(Boolean));
+  const [restored] = useState(() => draft.messages.length > 0 || (Object.values(draft.answers).some(Boolean) && draft.input === ""));
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [partial, setPartial] = useState("");
