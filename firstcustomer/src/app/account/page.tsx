@@ -40,7 +40,7 @@ export default async function AccountPage() {
       <SiteHeader current="account" />
       <main className="site-main">
         <PageHead
-          eyebrow={session ? <span className="normal-case tracking-normal">{session.user.email}</span> : <T>无需登录</T>}
+          eyebrow={session ? <span className="normal-case tracking-normal">{session.user.email}</span> : undefined}
           title={<T>{session ? "我的项目" : "试用工作台"}</T>}
           actions={visible.length ? <Link href="/projects/new" className="btn btn--primary btn--lg"><Plus size={16} aria-hidden="true" /><T>新建出海项目</T></Link> : undefined}
         />
