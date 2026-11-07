@@ -269,6 +269,8 @@ export default async function Home() {
         </div>
         <div className="container footer__bottom">
           <span>© 2026 首客 HiFirst</span>
+          <span aria-hidden="true">·</span>
+          <span>© JUNCTION·涌现</span>
         </div>
       </footer>
 
