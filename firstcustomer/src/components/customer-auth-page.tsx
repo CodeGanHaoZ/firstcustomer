@@ -39,9 +39,6 @@ export async function CustomerAuthPage({ register = false }: { register?: boolea
             <header>
               <p className="eyebrow">{register ? "Sign up" : "Sign in"}</p>
               <h1 id="customer-auth-title" className="page-head__title text-[clamp(1.9rem,3vw,2.5rem)]"><T>{register ? "创建首客账号" : "登录首客"}</T></h1>
-              <p className="page-head__lead text-[0.9375rem]">
-                <T>{register ? "注册后，当前浏览器的试用项目会保存到账号。" : "登录后，可保存本浏览器的试用项目，并在不同设备继续。"}</T>
-              </p>
             </header>
             <CustomerAuthForm register={register} />
             <Link href="/account" className="btn btn--ghost w-full"><T>暂不登录，进入试用工作台</T><ArrowRight size={14} className="arw" aria-hidden="true" /></Link>
