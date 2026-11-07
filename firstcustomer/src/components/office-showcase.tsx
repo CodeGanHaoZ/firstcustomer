@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, ArrowUpRight, Focus, CircleCheck, UserRound, Pause, Play } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Focus, Pause, Play } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import type { DepartmentKey } from "@/domain/office";
@@ -10,6 +10,7 @@ import { OFFICE_PHASES, officeStory } from "@/lib/office-story";
 import { OFFICE_COPY } from "@/lib/home-copy";
 import type { Locale } from "@/lib/locale";
 import { desks } from "./office-map";
+import { OfficeRelay } from "./office-relay";
 import { drawOfficeActors } from "./office-showcase-canvas";
 
 const motionQuery = "(prefers-reduced-motion: reduce)";
@@ -135,6 +136,7 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
       frame = requestAnimationFrame(tick);
     };
     const resume = () => {
+      surface.dataset.motion = String(visible && !document.hidden && moving);
       cancelAnimationFrame(frame);
       frame = 0;
       previous = 0;
@@ -201,7 +203,7 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
           ref={(element) => { hotspots.current[member.key] = element; }}
           style={{ left: `${desks[member.key].home[0]}%`, top: `${desks[member.key].home[1] - 7}%` }}
           aria-label={locale === "en" ? `Watch ${member.name} collaborate in the ${member.room}` : `观看${member.name}的${member.room}协作`} onClick={() => chooseScene(member.scene)}>
-          <span className="showcase-desk-title" data-active={member.key === currentActor}>{member.name}<small>{member.key === scene.from ? phase === 0 ? t("正在工作", "Working") : phase < 4 ? t("正在交接", "Handing off") : t("本步已完成", "Step complete") : member.key === scene.to ? phase === 5 ? t("接手开工", "Working next") : phase >= 2 ? t("正在接收", "Receiving") : t("下一位接手", "Up next") : member.room}</small></span>
+          <span className="showcase-desk-title" data-active={member.key === currentActor}><span className="showcase-title-name">{member.name}<i className="office-activity-bars" aria-hidden="true"><i /><i /><i /></i></span><small>{member.key === scene.from ? phase === 0 ? t("正在工作", "Working") : phase < 4 ? t("正在交接", "Handing off") : t("本步已完成", "Step complete") : member.key === scene.to ? phase === 5 ? t("接手开工", "Working next") : phase >= 2 ? t("正在接收", "Receiving") : t("下一位接手", "Up next") : member.room}</small></span>
         </button>)}
         {[scene.from, scene.to].map((key, index) => <div key={`${sceneIndex}-${index}`} ref={(element) => { bubbles.current[index] = element; }}
           className={`showcase-speech showcase-speech--${index}`} aria-hidden="true"
@@ -211,13 +213,7 @@ export function OfficeShowcase({ locale = "zh" }: { locale?: Locale }) {
         <span className="showcase-handoff" aria-hidden="true">{scene.document}<ArrowRight size={13} />{copy.handoff}</span>
       </div>
       </div>
-      <div className="showcase-user-step"><UserRound size={18} aria-hidden="true" /><p><strong>{t("流程中，你来决定", "Your part in the process")}</strong>{story.action}</p><CircleCheck size={18} aria-hidden="true" /></div>
-      <div className="showcase-story">
-        <div className="showcase-story-heading"><span>{String(sceneIndex + 1).padStart(2, "0")} / 06</span><h3>{scene.title}</h3></div>
-        <div className="showcase-dialogue" aria-live="off">{[scene.from, scene.to].map((key, index) => <p key={`${sceneIndex}-${key}`} data-speaking={index === (beat < 2 ? 0 : 1)}><strong>{demoMember(key, locale).name}</strong><span>{scene.lines[index]}</span></p>)}</div>
-        <div className="showcase-time" aria-hidden="true"><span ref={progress} /></div>
-      </div>
-      <nav className="showcase-chapters" aria-label={copy.chapters}>{scenes.map((item, index) => <button key={index} type="button" onClick={() => chooseScene(index)} aria-current={sceneIndex === index ? "step" : undefined}><span>{index + 1}</span>{item.chapter}</button>)}</nav>
+      <OfficeRelay scene={scene} scenes={scenes} sceneIndex={sceneIndex} phase={phase} locale={locale} progress={progress} onChoose={chooseScene} />
       <p className="showcase-fallback-note">{copy.fallback}<button type="button" onClick={() => chooseScene(sceneIndex)}>{copy.retry}</button></p>
     </figure>
     <div className="showcase-team-heading"><h3>{copy.team}</h3><p>{copy.teamDescription}</p></div>

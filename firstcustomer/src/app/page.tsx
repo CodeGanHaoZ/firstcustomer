@@ -5,6 +5,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { EditorialMotion } from "@/components/editorial-motion";
 import { LumiChat } from "@/components/lumi-chat";
 import { OfficeShowcase } from "@/components/office-showcase";
+import { ServiceJourney } from "@/components/service-journey";
 import { LanguageSwitch } from "@/components/language-switch";
 import { SiteFooter } from "@/components/site-chrome";
 import { HOME_COPY } from "@/lib/home-copy";
@@ -14,6 +15,7 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import "./home.css";
 import "./editorial.css";
 import "./office-showcase.css";
+import "./office-relay.css";
 
 const WORDMARK = "首客 HIFIRST";
 
@@ -148,22 +150,7 @@ export default async function Home() {
                 {copy.flow.title}
               </h2>
             </div>
-            <ol className="index-list" data-reveal>
-              {copy.flow.steps.map(([title, body], index) => (
-                <li key={title}>
-                  <div className="index-list__row">
-                    <span className="index-list__no">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="index-list__body">
-                      <span className="index-list__title">{title}</span>
-                      <span className="index-list__meta">{body}</span>
-                    </span>
-                    <span className="index-list__tail" aria-hidden="true">
-                      <span className="index-list__arrow">→</span>
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <ServiceJourney steps={copy.flow.steps} locale={locale} />
             <div className="section-end" data-reveal>
               <BackToTop variant="text" locale={locale} />
             </div>

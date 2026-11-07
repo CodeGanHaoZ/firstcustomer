@@ -185,15 +185,15 @@ a.office-map-label:hover { background: #e9efd8; border-color: #547052; }
 .office-room-inspector { margin-top: .9rem; padding: 1rem 0; border-block: 1px solid var(--office-rule); font-size: .85rem; line-height: 1.8; }
 .office-room-inspector p { color: var(--office-muted); margin: .25rem 0; }
 .office-room-inspector button { margin-top: .6rem; }
-.office-map-label { flex-wrap: wrap; justify-content: center; max-width: 28%; min-height: 38px; cursor: pointer; font-family: inherit; }
+.office-map-label { flex-wrap: wrap; justify-content: center; max-width: 19%; min-height: 38px; cursor: pointer; font-family: inherit; }
 .office-map-label small { width: 100%; text-align: center; }
 .office-map-label[data-state="running"], .office-stage[data-customer-view="true"] .office-map-label[data-state="running"] { background: #2e5138; color: #fffbed; border-color: #f5efcd; }
-.office-map-label[data-state="running"] small { color: #fffbed; font-size: .8rem; font-weight: 800; }
+.office-map-label[data-state="running"] small { color: #fffbed; font-size: .72rem; font-weight: 800; }
 .office-map-label[data-state="running"] i { background: #d7f6a9; }
 .office-map-label[data-state="awaiting_approval"] { background: #f9e5b3; border-color: #977136; }
 .office-map-label:is(:hover,:focus-visible) { outline: 2px solid #fff9da; outline-offset: 2px; }
-.office-actor[data-working="true"] { height: 17%; }
-.office-actor[data-working="true"] .office-actor-shadow { opacity: 1; background: #eff8b9a8; width: 112%; height: 20%; left: -6%; bottom: -2%; filter: none; border: 2px solid #456447; }
+.office-actor[data-working="true"] { height: 15.7%; }
+
 .office-map:has(.office-actor[data-working="true"]) .office-actor[data-working="false"]:not([data-moving]) { opacity: .72; }
 .office-work-tool { display: none; position: absolute; z-index: 2; left: 90%; top: 39%; width: 30px; height: 30px; padding: 5px; border-radius: 6px; background: #fff8df; color: #31543d; box-shadow: 0 3px 8px #593a2340; }
 .office-work-tool svg { width: 100%; height: 100%; }
@@ -231,3 +231,12 @@ a.office-map-label:hover { background: #e9efd8; border-color: #547052; }
 .office-stage[data-selected-room="growth"] [data-office-room="growth"] { outline: 2px solid #fff9db; outline-offset: 3px; }
 .office-board:has(.office-connection[data-offline="true"]) .office-stage :is(.office-actor-head,.office-actor-paws,.office-work-tool,.office-guide-status svg) { animation-play-state: paused !important; }
 .office-actor[data-working="true"]:not([data-moving]) .office-actor-body { clip-path: inset(58% 0 var(--cut, 24%) 0); }
+/* Work is signalled above the character; furniture and floor stay untouched. */
+.office-map-label[data-state="running"] > i { display: inline-flex; align-items: flex-end; gap: 2px; width: 13px; height: 12px; border-radius: 0; background: transparent; }
+.office-map-label[data-state="running"] > i > span { display: block; width: 3px; height: 9px; border-radius: 1px; background: #e6edc9; transform-origin: bottom; animation: office-working-bars 900ms ease-in-out infinite alternate; }
+.office-map-label[data-state="running"] > i > span:nth-child(2) { height: 12px; animation-delay: -300ms; }
+.office-map-label[data-state="running"] > i > span:nth-child(3) { height: 7px; animation-delay: -600ms; }
+.office-stage[data-motion-paused="true"] .office-map-label > i > span,
+.office-board:has(.office-connection[data-offline="true"]) .office-map-label > i > span { animation-play-state: paused; }
+@keyframes office-working-bars { from { transform: scaleY(.4); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .office-map-label > i > span { animation: none !important; } }
