@@ -9,12 +9,32 @@ import { signOutAction } from "@/app/account/actions";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { HOME_COPY } from "@/lib/home-copy";
 import { getLocale } from "@/lib/locale-server";
+import { getDb } from "@/db";
+import { orders, projects } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
 type NavKey = "account" | "new" | "project" | "auth";
+
+/** 用户订阅档位：任一项目存在已支付订单即视为 Pro，否则 Free。 */
+async function customerTier(userId: string): Promise<"pro" | "free"> {
+  try {
+    const db = getDb();
+    const rows = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .innerJoin(orders, eq(orders.projectId, projects.id))
+      .where(and(eq(projects.customerId, userId), eq(orders.status, "paid")))
+      .limit(1);
+    return rows.length ? "pro" : "free";
+  } catch {
+    return "free";
+  }
+}
 
 /** 客户侧通用顶栏：与首页同一条吸顶纸感导航。 */
 export async function SiteHeader({ current, extra }: { current?: NavKey; extra?: ReactNode }) {
   const session = await getCustomerSession();
+  const tier = session ? await customerTier(session.user.id) : "free";
   return (
     <header className="nav nav--static site-nav">
       <div className="nav__inner container">
@@ -30,9 +50,15 @@ export async function SiteHeader({ current, extra }: { current?: NavKey; extra?:
           {extra}
           <LanguageSwitch />
           {current === "auth" ? null : session ? (
-            <form action={signOutAction} className="site-nav__form">
-              <button type="submit" className="btn btn--ghost btn--sm"><T>退出登录</T></button>
-            </form>
+            <>
+              <span className="nav__user" title={session.user.email}>
+                <span className="nav__user-email">{session.user.email}</span>
+                <span className={tier === "pro" ? "nav__plan nav__plan--pro" : "nav__plan nav__plan--free"}>{tier === "pro" ? "Pro" : "Free"}</span>
+              </span>
+              <form action={signOutAction} className="site-nav__form">
+                <button type="submit" className="btn btn--ghost btn--sm"><T>退出登录</T></button>
+              </form>
+            </>
           ) : <Link href="/login" className="btn btn--ghost btn--sm"><T>登录 / 注册</T></Link>}
         </div>
       </div>

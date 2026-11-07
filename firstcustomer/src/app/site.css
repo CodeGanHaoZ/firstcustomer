@@ -27,6 +27,43 @@
 .site-nav .nav__inner { gap: var(--sp-4); }
 .site-nav .nav__menu { display: flex; }
 .site-nav__form { margin: 0; display: contents; }
+/* 登录用户身份：邮箱 + Free/Pro 订阅徽标 */
+.nav__user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-2);
+  max-width: 260px;
+  min-width: 0;
+}
+.nav__user-email {
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav__plan {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+.nav__plan--pro { background: var(--forest); color: #fff; }
+.nav__plan--free { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
+@media (max-width: 900px) {
+  .nav__user { max-width: 190px; }
+}
+@media (max-width: 720px) {
+  .nav__user { padding: 5px 8px; gap: 6px; }
+  .nav__user-email { max-width: 120px; font-size: 12px; }
+}
 @media (max-width: 900px) {
   /* editorial 在窄屏隐藏导航按钮；客户页需要保留登录 / 退出入口 */
   .site-nav .nav__actions .btn { display: inline-flex; }
