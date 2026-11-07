@@ -11,7 +11,8 @@ import type { CSSProperties } from "react";
 import { Decide } from "@/components/decide";
 import { SceneFooter, SiteHeader } from "@/components/site-chrome";
 import { PaymentCodeImage, ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
-import { OfficeMap, type OfficeStation } from "@/components/office-map";
+import { OfficeMap } from "@/components/office-map";
+import { customerOfficeStations, officeGuidance, type OfficeGuideInput } from "@/domain/office-guide";
 import { OfficeStage } from "@/components/office-stage";
 import { ClearProjectDraft } from "@/components/project-draft";
 import { RequirementCard } from "@/components/requirement-card";
@@ -34,7 +35,6 @@ import { Button } from "@/components/ui/button";
 import { getDb } from "@/db";
 import type { Gate } from "@/domain/approval";
 import { customerProgress } from "@/domain/customer-progress";
-import { DEPARTMENTS, officeRoomForAgent } from "@/domain/office";
 import { canStartFreeDiagnosis, usesQuoteFlow } from "@/domain/workflow";
 import { formatDateTime, formatYuan } from "@/lib/format";
 import { findCustomerProject, isAccountProjectToken } from "@/lib/customer-project";
@@ -106,12 +106,10 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
     quoteVisible: !!visibleProposal, awaitingPayment, receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree,
   });
   const supportPending = !project.paused && support.some((item) => item.status === "queued");
-  const workingRooms = new Set(project.status === "cancelled" ? [] : runningAgents.map(officeRoomForAgent));
-  const stations: OfficeStation[] = DEPARTMENTS.map(({ key }) => ({
-    key,
-    state: workingRooms.has(key) ? "running" : "idle",
-    detail: workingRooms.has(key) ? "正在处理你的项目" : "当前项目在该工位暂无运行中的任务",
-  }));
+  const officeInput: OfficeGuideInput = { status: project.status, paused: project.paused, runningAgents, plan: project.productPlan,
+    quoteRequired: usesQuoteFlow(project), quotePaid: commercialOrder?.status === "paid", openGate, reportReady: !!view.report,
+    receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree, failedFrom: project.failedFrom };
+  const stations = customerOfficeStations(officeInput);
   const activeRoom = stations.find(({ state }) => state === "running")?.key;
   const finished = project.status === "free_ready" || project.status === "cancelled" || (project.status === "delivered" && order?.deliveryStatus === "accepted");
   const refresh = supportPending || activeRoom || project.status === "submitted" ? 3 : progress.refreshSeconds ?? (finished ? null : 12);
@@ -155,7 +153,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
               <h3 id="customer-office-title" className="eyebrow m-0"><T>项目办公室</T></h3>
               {refresh ? <p className="pill pill--live m-0"><T>自动更新当前项目进度</T></p> : null}
             </div>
-            <OfficeStage transfer={transfer} customerView focusRoom={activeRoom}>
+            <OfficeStage transfer={transfer} customerView focusRoom={officeGuidance(officeInput).room ?? activeRoom} guidance={officeInput} stations={stations}>
               <OfficeMap stations={stations} customerView />
             </OfficeStage>
           </section>

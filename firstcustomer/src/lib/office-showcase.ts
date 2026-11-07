@@ -44,7 +44,9 @@ export const OFFICE_SCENES: readonly DemoScene[] = [
     lines: ["这一轮样本还不够，实际数据都整理在这里了。", "按原定标准复盘，再决定继续还是调整。"] },
 ];
 
-export const DEMO_DURATION = 12_000;
+export const DEMO_DURATION = 20_000;
+// A readable work beat, a deliberate exchange, then enough time to see the next desk work.
+export const OFFICE_TIMING = { depart: 4000, meet: 8000, pass: 8700, received: 9500, return: 10_500, home: 13_000 } as const;
 
 const englishMembers: Record<DepartmentKey, Pick<OfficeMember, "animal" | "role" | "room" | "description" | "output" | "collaboration">> = {
   frontdesk: { animal: "Cream rabbit", role: "Reception & proposals", room: "Front desk", description: "Turns a rough idea into a clear brief. From your first conversation to proposals and support, Lumi keeps the handoffs organized.", output: "Project brief, proposal, support replies", collaboration: "Passes your goals and constraints to Nori for research." },

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowDownLeft, ArrowDownRight, ArrowUpRight, FolderOpen, Grid2X2, List } from "lucide-react";
 import { AGENT_LABELS, AGENT_STATE_LABELS, DEPARTMENTS, type DepartmentKey, type DepartmentView, type OfficeTransfer } from "@/domain/office";
 import { STATUS_LABELS, type ProjectStatus } from "@/domain/workflow";
+import { usesQuoteFlow, type ProjectPlan } from "@/domain/workflow";
+import { officeGuidance, type OfficeGuideInput } from "@/domain/office-guide";
 import { OFFICE_CHARACTERS, characterDisplayName } from "@/lib/brand";
 import { formatDateTime } from "@/lib/format";
 import { OfficeConnection } from "./office-connection";
@@ -19,7 +21,7 @@ const rooms: Record<DepartmentKey, { scene: string; name: string }> = {
   growth: { scene: "100% 100%", name: AGENT_LABELS.growth },
 };
 
-type ProjectBrief = { id: string; productName: string; status: string; paused: boolean };
+type ProjectBrief = { id: string; productName: string; status: string; paused: boolean; productPlan?: ProjectPlan; requiresPayment?: boolean; isOwnProduct?: boolean; failedFrom?: string | null };
 export type DeskItem = { id: string; title: string; action: string; href: string };
 
 const activeRoom: Partial<Record<ProjectStatus, DepartmentKey>> = {
@@ -29,7 +31,7 @@ const activeRoom: Partial<Record<ProjectStatus, DepartmentKey>> = {
 
 export function OfficeBoard({
   project, allProjects, departments, transfer, cooWorking, todo, waitingCount, overdueCount, stalled,
-  firstPaymentAt, firstLeadAt, revision, listMode,
+  firstPaymentAt, firstLeadAt, revision, listMode, quotePaid = false,
 }: {
   project: ProjectBrief | null;
   allProjects: ProjectBrief[];
@@ -44,6 +46,7 @@ export function OfficeBoard({
   firstLeadAt: Date | null;
   revision: string;
   listMode: boolean;
+  quotePaid?: boolean;
 }) {
   const base = project ? `/admin/projects/${project.id}` : "/admin#projects";
   const modeUrl = project ? `/admin?project=${project.id}` : "/admin";
@@ -57,6 +60,13 @@ export function OfficeBoard({
   });
   const handoff = departments.flatMap(({ key, handoff }) => handoff ? [{ key, ...handoff }] : [])
     .sort((left, right) => right.at.getTime() - left.at.getTime())[0];
+  const roomAgent: Record<DepartmentKey, string> = { frontdesk: "quote", research: "research", strategy: "strategy", finance: "receipt", launch: "launch", growth: "growth" };
+  const officeInput: OfficeGuideInput | undefined = project ? { status: project.status, paused: project.paused, plan: project.productPlan,
+    runningAgents: departments.filter((item) => item.state === "running").map((item) => roomAgent[item.key]),
+    quoteRequired: usesQuoteFlow({ requiresPayment: project.requiresPayment ?? false, isOwnProduct: project.isOwnProduct ?? false, productPlan: project.productPlan }), quotePaid,
+    audience: "operator", operatorTurn: todo.some((item) => item.id === project.id),
+    reportReady: project.status === "reviewing" && departments.some((item) => item.key === "growth" && item.state === "awaiting_approval"),
+    receiptUploaded: project.status === "awaiting_payment" && todo.some((item) => item.id === project.id), failedFrom: project.failedFrom } : undefined;
   const viewControl = listMode
     ? <Link href={modeUrl} className="office-control"><Grid2X2 size={15} aria-hidden="true" /><T>地图</T></Link>
     : <Link href={listUrl} className="office-control"><List size={15} aria-hidden="true" /><T>列表</T></Link>;
@@ -139,7 +149,7 @@ export function OfficeBoard({
           })}
         </div> : (
           <>
-            <OfficeStage key={project?.id} transfer={transfer} viewControl={viewControl}>
+            <OfficeStage key={project?.id} transfer={transfer} viewControl={viewControl} guidance={officeInput} stations={stations} guideHrefPrefix={base} focusRoom={officeInput ? officeGuidance(officeInput).room ?? undefined : undefined}>
               <OfficeMap stations={stations} cooWorking={cooWorking} />
             </OfficeStage>
             {pending}

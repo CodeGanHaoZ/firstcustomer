@@ -5,6 +5,11 @@ import { T, I18n } from "@/components/ui-text";
 import { ArrowRight, Pause, Play, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { DepartmentKey, OfficeTransfer } from "@/domain/office";
+import { officeGuidance, type OfficeGuideInput } from "@/domain/office-guide";
+import { useLocale } from "./locale-provider";
+import { getOfficeMembers } from "@/lib/office-showcase";
+import { OfficeWorkGuide } from "./office-work-guide";
+import type { OfficeStation } from "./office-map";
 import { desks, roomName, type Point } from "./office-map";
 
 const aisle = 52.1;
@@ -65,13 +70,21 @@ function reset(actor: HTMLElement) {
   delete actor.dataset.carrying;
 }
 
-export function OfficeStage({ transfer, viewControl, children, customerView = false, focusRoom }: {
+export function OfficeStage({ transfer, viewControl, children, customerView = false, focusRoom, guidance, stations, guideHrefPrefix }: {
   transfer: OfficeTransfer | null;
   viewControl?: ReactNode;
   children: ReactNode;
   customerView?: boolean;
   focusRoom?: DepartmentKey;
+  guidance?: OfficeGuideInput;
+  stations?: OfficeStation[];
+  guideHrefPrefix?: string;
 }) {
+  const locale = useLocale();
+  const guide = guidance ? officeGuidance(guidance, locale) : null;
+  const [selectedRoom, setSelectedRoom] = useState<DepartmentKey | null>(null);
+  const inspected = selectedRoom && selectedRoom !== guide?.room ? getOfficeMembers(locale).find((member) => member.key === selectedRoom) : null;
+  const inspectedStation = inspected ? stations?.find((item) => item.key === inspected.key) : null;
   const hintId = useId();
   const motionHintId = useId();
   const viewport = useRef<HTMLDivElement>(null);
@@ -83,6 +96,15 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
   const [inView, setInView] = useState(false);
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, reducedMotionSnapshot, reducedMotionServerSnapshot);
   const motionEnabled = inView && !paused && !reducedMotion;
+  const focusDesk = (room: DepartmentKey) => {
+    setSelectedRoom(room);
+    follow.current = false;
+    const scroll = viewport.current;
+    if (scroll) {
+      scroll.scrollLeft = scroll.scrollWidth * desks[room].home[0] / 100 - scroll.clientWidth / 2;
+      scroll.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "instant" : "smooth" });
+    }
+  };
 
   const play = useCallback((from: DepartmentKey, to: DepartmentKey, mode: "demo" | "handoff", reveal = false) => {
     const reduce = window.matchMedia(reducedMotionQuery);
@@ -209,7 +231,13 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
   }, [customerView, focusRoom]);
 
   return (
-    <div className="office-stage" data-motion-demo={playing === "demo"} data-customer-view={customerView} data-motion-paused={!motionEnabled}>
+    <div className="office-stage" data-motion-demo={playing === "demo"} data-customer-view={customerView} data-motion-paused={!motionEnabled}
+      data-selected-room={selectedRoom ?? guide?.room ?? focusRoom} onClick={(event) => {
+        const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button[data-office-room]") : null;
+        const room = button?.dataset.officeRoom as DepartmentKey | undefined;
+        if (room && Object.hasOwn(desks, room)) focusDesk(room);
+      }}>
+      {guide ? <OfficeWorkGuide guide={guide} locale={locale} onFocus={focusDesk} hrefPrefix={guideHrefPrefix} /> : null}
       <div className="office-stage-bar">
         <p className="office-transfer-summary" role="status">
           {playing === "demo" ? (
@@ -237,6 +265,12 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
         onPointerDown={() => { follow.current = false; }} onWheel={() => { follow.current = false; }}>
         {children}
       </div></I18n>
+      {inspected ? <aside className="office-room-inspector">
+        <strong>{inspected.name} · {inspected.role}</strong><p>{inspected.description}</p>
+        <p>{locale === "en" ? "Delivers: " : "负责产出："}{inspected.output}</p>
+        <p>{inspectedStation?.state === "running" ? (locale === "en" ? "This desk has a task running now." : "这个工位当前有任务正在运行。") : (locale === "en" ? "This desk is not running a task right now. Its role is shown here for reference." : "这个工位当前没有运行中的任务，这里展示它的职责。")}</p>
+        {guide?.room ? <button className="office-control" type="button" onClick={() => focusDesk(guide.room!)}>{locale === "en" ? "Back to the current desk" : "回到当前工位"}</button> : null}
+      </aside> : null}
     </div>
   );
 }

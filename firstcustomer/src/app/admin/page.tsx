@@ -89,7 +89,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
 
   return (
     <main className="office-shell office-container">
-      <OfficeBoard project={selected} allProjects={all} departments={departments} todo={todo}
+      <OfficeBoard project={selected} allProjects={all} departments={departments} todo={todo} quotePaid={allOrders.some((order) => order.projectId === selected?.id && order.status === "paid")}
         transfer={transfer} cooWorking={coo.standup?.status === "running"}
         waitingCount={waiting.length} overdueCount={overdue.length} stalled={stalled}
         firstPaymentAt={metrics.firstPaymentAt ? new Date(metrics.firstPaymentAt) : null}
