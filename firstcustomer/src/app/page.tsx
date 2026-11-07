@@ -62,13 +62,10 @@ export default async function Home() {
             <h1 className="display" data-reveal data-reveal-group="hero">
               {copy.hero.title}
             </h1>
-            <p className="lead" data-reveal data-reveal-group="hero">
-              {copy.hero.description}
-            </p>
             <div className="hero__actions" data-reveal data-reveal-group="hero">
-              <a href="#cta" className="btn btn--primary btn--lg">
+              <Link href="/projects/new" className="btn btn--primary btn--lg">
                 {copy.hero.cta} <ArrowRight size={16} className="arw" aria-hidden="true" />
-              </a>
+              </Link>
               <a href="#office" className="btn btn--ghost btn--lg">
                 {copy.hero.office} <ArrowDown size={15} aria-hidden="true" />
               </a>
