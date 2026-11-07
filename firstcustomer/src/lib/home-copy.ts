@@ -1,7 +1,6 @@
 export const HOME_COPY = {
   zh: {
     nav: { home: "首客首页", label: "官网导航", office: "办公室", plans: "版本", flow: "服务流程", start: "出海分析", account: "我的项目", trial: "试用工作台", auth: "登录 / 注册", menu: "打开菜单" },
-    trialNote: "无需登录，提交后即可查看办公室进度和出海机会报告。",
     hero: { eyebrow: "HIFIRST · MiMo AI 出海办公室", title: "你的产品，第一批海外客户在哪里？", description: "告诉首客你在做什么。MiMo AI 出海团队帮你研究市场、找到细分用户、准备英文发布和增长实验，用真实反馈决定下一步。", cta: "免费分析出海机会", office: "看看办公室" },
     statsLabel: "首客数字", stats: [{ value: 6, unit: "位", label: "MiMo AI 员工同班" }, { value: 6, unit: "步", label: "完整服务流程" }, { value: 2, unit: "档", label: "Free 与 Pro" }, { value: 1, unit: "次", label: "免费出海机会分析" }],
     office: { title: "首客办公室 · 演示", description: "从一次接待到一轮复盘，看看六位 MiMo AI 同事怎样一起工作。" },
@@ -20,7 +19,6 @@ export const HOME_COPY = {
   },
   en: {
     nav: { home: "HiFirst home", label: "Main navigation", office: "Our office", plans: "Plans", flow: "How it works", start: "Overseas analysis", account: "My projects", trial: "Trial workspace", auth: "Log in / Sign up", menu: "Open menu" },
-    trialNote: "No login needed. Submit your project to follow office progress and view your opportunity report.",
     hero: { eyebrow: "HIFIRST · YOUR MiMo AI GO-TO-MARKET TEAM", title: "Who will be your first overseas customers?", description: "Tell us what you’re building. Our MiMo AI team helps you research markets, find a focused audience, and prepare English pages and growth experiments. Real feedback guides the next step.", cta: "Analyze your market opportunity for free", office: "Meet the team" },
     statsLabel: "HiFirst at a glance", stats: [{ value: 6, unit: "", label: "MiMo AI teammates" }, { value: 6, unit: "", label: "Steps from idea to feedback" }, { value: 2, unit: "", label: "Plans: Free & Pro" }, { value: 1, unit: "", label: "Free market opportunity analysis" }],
     office: { title: "Inside the HiFirst office", description: "From your first conversation to a growth review, see how six MiMo AI teammates work together." },

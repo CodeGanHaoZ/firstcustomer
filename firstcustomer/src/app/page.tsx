@@ -73,7 +73,6 @@ export default async function Home() {
                 {copy.hero.office} <ArrowDown size={15} aria-hidden="true" />
               </a>
             </div>
-            <p className="meta" data-reveal>{copy.trialNote}</p>
           </div>
 
           <div className="hero__visual" data-reveal data-reveal-group="hero">
