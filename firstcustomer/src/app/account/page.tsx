@@ -43,7 +43,7 @@ export default async function AccountPage() {
           eyebrow={session ? <span className="normal-case tracking-normal">{session.user.email}</span> : <T>无需登录</T>}
           title={<T>{session ? "我的项目" : "试用工作台"}</T>}
           lead={session ? undefined : <T>无需登录，直接创建项目，查看办公室进度与出海机会报告。</T>}
-          actions={visible.length ? <Link href="/#cta" className="btn btn--primary btn--lg"><Plus size={16} aria-hidden="true" /><T>新建出海项目</T></Link> : undefined}
+          actions={visible.length ? <Link href="/projects/new" className="btn btn--primary btn--lg"><Plus size={16} aria-hidden="true" /><T>新建出海项目</T></Link> : undefined}
         />
         {!session ? (
           <div className="notice rise" style={{ "--i": 1 } as CSSProperties}>
@@ -82,7 +82,7 @@ export default async function AccountPage() {
           <div className="empty rise" style={{ "--i": 2 } as CSSProperties}>
             <Image src="/brand/front-desk-rabbit.webp" alt="" width={132} height={132} unoptimized />
             <p><T>还没有项目。新建一个出海项目，就可以免费分析出海机会。</T></p>
-            <Link href="/#cta" className="btn btn--primary"><T>新建出海项目</T><ArrowRight size={14} className="arw" aria-hidden="true" /></Link>
+            <Link href="/projects/new" className="btn btn--primary"><T>新建出海项目</T><ArrowRight size={14} className="arw" aria-hidden="true" /></Link>
           </div>
         )}
       </main>
