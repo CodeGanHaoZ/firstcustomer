@@ -706,19 +706,17 @@ main .container,
   background: var(--apricot);
   color: var(--ink);
   text-decoration: none;
-  transition: background-color var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
-/* 顶部强调线：hover 从左往右展开，配合卡片上浮，交互一目了然 */
+/* 遮罩层：hover 时一层色纱自下而上扫满整卡，移出即退回 */
 .split-pair__item::before {
   content: "";
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  background: var(--forest);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 460ms var(--ease);
+  inset: 0;
+  background: linear-gradient(180deg, rgba(36, 59, 45, 0.18), rgba(36, 59, 45, 0.05));
+  transform: translateY(101%);
+  transition: transform 520ms var(--ease);
   z-index: 2;
+  pointer-events: none;
 }
 /* 卡角一枚极淡的同心圆，替代渐变作为纸面纹理。只画一个环：
    再叠一个 inset box-shadow 会在两张卡上各出现两条弧线，像渲染出错 */
@@ -733,19 +731,17 @@ main .container,
   border: 1px solid var(--line-strong);
   opacity: 0.42;
   pointer-events: none;
-  transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
 }
-.split-pair__item:hover { transform: translateY(-4px); }
-.split-pair__item:hover::before { transform: scaleX(1); }
-.split-pair__item:hover::after { transform: scale(1.08) rotate(6deg); opacity: 0.7; }
-.split-pair__item > * { position: relative; z-index: 1; }
+.split-pair__item:hover::before { transform: translateY(0); }
+.split-pair__item > * { position: relative; z-index: 3; }
 /* Pro 卡反转：深墨绿底 + 纸色字，和 Free 的暖杏形成一浅一深 */
 .split-pair__item:nth-child(2) {
   background: var(--pine);
   color: var(--paper);
 }
-.split-pair__item:nth-child(2):hover { background: #2d4a39; }
-.split-pair__item:nth-child(2)::before { background: var(--sage); }
+.split-pair__item:nth-child(2)::before {
+  background: linear-gradient(180deg, rgba(251, 250, 248, 0.16), rgba(251, 250, 248, 0.04));
+}
 .split-pair__item:nth-child(2)::after { border-color: rgba(251, 250, 248, 0.3); }
 .split-pair__item .eyebrow { margin-bottom: 2px; }
 .split-pair__item:nth-child(2) .eyebrow { color: var(--sage-soft); }
@@ -763,22 +759,8 @@ main .container,
   align-items: center;
   gap: 6px;
 }
-/* CTA 下划线：hover 随整卡展开 */
-.split-pair__go::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: calc(var(--sp-5) - 4px);
-  height: 2px;
-  width: 100%;
-  background: currentColor;
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform var(--dur) var(--ease);
-}
-.split-pair__item:hover .split-pair__go::after { transform: scaleX(1); }
+/* CTA 箭头：hover 随遮罩轻移示意可点 */
 .split-pair__item:nth-child(2) .split-pair__go { color: var(--sage-soft); }
-.split-pair__item:nth-child(2) .split-pair__go:hover { color: var(--paper); }
 .split-pair__go .arw { transition: transform var(--dur) var(--ease); }
 .split-pair__item:hover .split-pair__go .arw { transform: translateX(6px); }
 
