@@ -955,6 +955,12 @@ main .container,
   .stat b small,
   .stat b::after,
   .stat b > span { transition-delay: 0s !important; }
+  /* 呼吸脉冲是持续动画，reduce 下必须关闭并停在中位 */
+  .stat.is-done b::after {
+    animation: none !important;
+    transform: translateX(-50%) scaleX(1);
+    opacity: 0.9;
+  }
 }
 
 /* ==========================================================================
@@ -1160,6 +1166,11 @@ main .container,
 .stat.is-live b > span { background-position: -30% 0; }
 /* 计数结束：一次性的弹簧 pop，把视线钉在最终数字上 */
 .stat.is-done b > span { animation: stat-pop 640ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+/* 悬停：数字再扫过一道绿光（沿入场同方向），持续抓眼 */
+.stat:hover b > span {
+  transition: background-position 760ms var(--ease);
+  background-position: 290% 0;
+}
 @keyframes stat-pop {
   0% { transform: scale(1); }
   38% { transform: scale(1.16); }
@@ -1177,10 +1188,30 @@ main .container,
   background: var(--forest);
   opacity: 0.9;
   transform: translateX(-50%) scaleX(0);
-  transition: transform 720ms var(--ease) 320ms;
+  transition: transform 720ms var(--ease) 320ms, width 420ms var(--ease);
   pointer-events: none;
 }
 .stat.is-live b::after { transform: translateX(-50%) scaleX(1); }
+/* 计数完成后进入待机：绿实线持续做「墨点呼吸」脉冲，
+   四格相位错开 0.35s，整条数字条呈现循环推进的波浪 */
+@keyframes stat-breathe {
+  0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 0.55; }
+  50% { transform: translateX(-50%) scaleX(1.5); opacity: 1; }
+}
+.stat.is-done b::after { animation: stat-breathe 3.6s ease-in-out infinite; }
+.stat.is-done:nth-child(2) b::after { animation-delay: 0.35s; }
+.stat.is-done:nth-child(3) b::after { animation-delay: 0.7s; }
+.stat.is-done:nth-child(4) b::after { animation-delay: 1.05s; }
+/* 悬停：呼吸暂停，实线延展到接近全宽；数字微抬、单位上移一步 */
+.stat { transition: background var(--dur) var(--ease); }
+.stat:hover { background: rgba(36, 59, 45, 0.035); }
+.stat:hover b::after {
+  animation: none;
+  width: 92%;
+  transform: translateX(-50%) scaleX(1);
+  opacity: 1;
+}
+.stat:hover b small { transform: translateY(calc(var(--unit-shift) - 5px)); }
 /* 单位：衬线绿字，上标式挂在数字右上角——杂志排版的签名结构 */
 .stat b small {
   display: inline-block;
