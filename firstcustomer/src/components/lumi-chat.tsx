@@ -1,12 +1,13 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
-import { ArrowRight, ArrowUp, LoaderCircle, MessageCircle, X } from "lucide-react";
+import { ArrowRight, ArrowUp, LoaderCircle, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BRAND } from "@/lib/brand";
 import { LUMI_HISTORY_LIMIT, LUMI_MESSAGE_LIMIT, LUMI_STARTERS, type LumiMessage } from "@/lib/lumi-chat";
+import { LumiWelcome } from "@/components/lumi-welcome";
 
 const rabbit = "/brand/front-desk-rabbit.webp";
 
@@ -59,15 +60,7 @@ export function LumiChat() {
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger className="brand-welcome">
-        <Image className="brand-welcome-rabbit" src={rabbit} alt="" width={896} height={896} unoptimized loading="eager" fetchPriority="high" />
-        <span className="brand-welcome-caption">
-          <strong lang="en">{BRAND.mascotName}</strong><span>首客办公室 · 前台</span>
-        </span>
-        <span className="brand-welcome-cta">
-          <MessageCircle size={16} aria-hidden="true" /> 聊聊你的产品 <ArrowRight size={15} aria-hidden="true" />
-        </span>
-      </Dialog.Trigger>
+      <LumiWelcome paused={open} />
 
       <Dialog.Portal keepMounted>
         <Dialog.Backdrop className="lumi-chat-backdrop" />

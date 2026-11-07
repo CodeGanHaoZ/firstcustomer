@@ -1,3 +1,5 @@
+.brand-welcome-shell { position: relative; min-width: 0; }
+
 .brand-welcome {
   position: relative;
   isolation: isolate;
@@ -22,7 +24,25 @@
   width: clamp(13.75rem, 71%, 21.5rem);
   max-width: 100%;
   height: auto;
+  aspect-ratio: 1;
+  border-radius: .75rem;
 }
+
+.brand-welcome-motion {
+  position: absolute;
+  inset-block-start: .75rem;
+  inset-inline-end: .75rem;
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 1px solid #d9ceb7;
+  border-radius: .55rem;
+  background: #fff9ed;
+  color: #34563d;
+  cursor: pointer;
+}
+.brand-welcome-motion:hover { background: #ebe5d4; }
 
 .brand-welcome-caption {
   display: flex;
@@ -224,6 +244,7 @@
 .lumi-chat-next:hover { text-decoration: underline; text-underline-offset: .2em; }
 
 .brand-welcome:focus-visible,
+.brand-welcome-motion:focus-visible,
 .lumi-chat :is(button, a):focus-visible {
   outline: 2px solid #456447;
   outline-offset: 3px;
@@ -239,6 +260,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .brand-welcome-motion { display: none; }
   .brand-welcome, .lumi-chat-backdrop, .lumi-chat { transition: none; }
   .lumi-chat-status svg { animation: none; }
 }
