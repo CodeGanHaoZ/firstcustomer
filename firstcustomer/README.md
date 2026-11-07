@@ -67,6 +67,8 @@ npm run dev
 
 ## 部署
 
+GitHub 仓库 `kongleiwork-art/firstcustomer` 的 `main` 分支已关联 Vercel 项目 `hifirst`，Root Directory 为 `firstcustomer`。每次推送或合并到 `main`，Vercel 会自动构建，成功后更新正式站点 https://hifirst.vercel.app；构建失败时保留当前线上版本。日常发布直接推送 `main` 即可，不需要再手动执行 `vercel --prod`。
+
 Vercel 从本目录部署 Next.js，Neon 提供 PostgreSQL。先对线上数据库运行 `npm run db:migrate`，再部署。生产环境设置 `DATABASE_URL`、`ADMIN_PASSWORD`、`SESSION_SECRET`、`BETTER_AUTH_SECRET`、`MIMO_API_KEY` 和 `CRON_SECRET`。Neon 同时提供 `DATABASE_URL_UNPOOLED` 时，任务队列会使用它。在 Vercel 设置 `NODE_OPTIONS=--experimental-require-module`，让研究任务中的网页解析依赖能正常加载。Vercel Queues 触发数据库中已提交的任务，每日站会由 `vercel.json` 中的定时任务触发。线上每次上传的文件合计不得超过 4 MB。
 
 也可以使用 Docker Compose 部署：
