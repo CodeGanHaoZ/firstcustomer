@@ -335,6 +335,35 @@ a.tile:hover .tile__arrow { transform: translate(3px, 0); color: var(--forest); 
 .notice--fail { background: var(--fail-bg); border-color: transparent; color: var(--fail); }
 .notice--ok { background: var(--ok-bg); border-color: transparent; color: #335a36; }
 .notice svg { flex: none; margin-top: 3px; }
+/* 可收起的提示条：默认折叠，一行摘要 + 展开正文 */
+.notice--fold { display: block; padding: 0; }
+.notice--fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-size: var(--fs-meta);
+  color: var(--ink-2);
+}
+.notice--fold > summary::-webkit-details-marker { display: none; }
+.notice--fold > summary svg { margin-top: 0; }
+.notice--fold > summary::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform var(--dur) var(--ease);
+}
+.notice--fold[open] > summary::after { transform: rotate(225deg); }
+.notice--fold > summary:hover { color: var(--ink); }
+.notice--fold > p { margin: 0; padding: 0 16px 12px 42px; font-size: var(--fs-meta); }
 
 /* 数据小格：数字用衬线，进视图时滚入 */
 .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 1px; border-radius: 14px; overflow: hidden; background: var(--line); border: 1px solid var(--line); }
