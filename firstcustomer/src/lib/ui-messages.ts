@@ -1159,8 +1159,6 @@ export const UI_MESSAGES: Readonly<Record<string, string>> = {
   "策略师正在比较候选人群并制定定位。": "The strategist is comparing candidate audiences and developing positioning.",
   "发布员正在准备英文验证页和渠道素材。": "The launch specialist is preparing an English validation page and channel assets.",
   "增长员正在核对访问、留资与回复，整理复盘。": "The growth specialist is reviewing visits, leads, and replies to prepare the review.",
-  "注册后，当前浏览器的试用项目会保存到账号。": "After sign-up, trial projects in this browser will be saved to your account.",
-  "登录后，可保存本浏览器的试用项目，并在不同设备继续。": "Log in to save trial projects from this browser and continue on other devices.",
   "暂不登录，进入试用工作台": "Continue to trial workspace",
   "试用工作台": "Trial workspace",
   "无需登录，直接创建项目，查看办公室进度与出海机会报告。": "Create a project without signing in and view office progress and your opportunity report.",
