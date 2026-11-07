@@ -1088,7 +1088,7 @@ main .container,
   border-block: 1px solid var(--line);
 }
 .stat {
-  padding: clamp(28px, 3.4vw, 48px) var(--gutter);
+  padding: clamp(32px, 4vw, 56px) var(--gutter);
   text-align: center;
   border-left: 1px solid var(--line);
 }
@@ -1098,9 +1098,9 @@ main .container,
   display: inline-block;
   font-family: var(--font-serif);
   font-weight: 400;
-  font-size: clamp(2.6rem, 5vw, 4.25rem);
-  line-height: 1.04;
-  letter-spacing: -0.02em;
+  font-size: clamp(3.5rem, 7.5vw, 6.25rem);
+  line-height: 0.9;
+  letter-spacing: -0.03em;
   color: var(--ink);
 }
 /* 计数数字是 <b> 内的 <span>，必须把它从下方 .stat>span 标签样式里豁免。
@@ -1129,40 +1129,39 @@ main .container,
   38% { transform: scale(1.16); }
   100% { transform: scale(1); }
 }
-/* 数字底下一条墨绿笔刷，随计数一起从中间往两边扫开 */
+/* 数字底下一条方头墨绿实线，随计数一起从中间往两边扫开。
+   方头 + 实色，替代上一版灰渐变胶囊（太"模板感"） */
 .stat b::after {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: -0.1em;
-  width: 88%;
-  height: 0.13em;
-  border-radius: 999px;
-  background: linear-gradient(90deg,
-    transparent,
-    var(--forest) 18%,
-    var(--forest) 82%,
-    transparent);
-  opacity: 0.5;
+  bottom: -0.14em;
+  width: 58%;
+  height: 3px;
+  background: var(--forest);
+  opacity: 0.9;
   transform: translateX(-50%) scaleX(0);
   transition: transform 720ms var(--ease) 320ms;
   pointer-events: none;
 }
 .stat.is-live b::after { transform: translateX(-50%) scaleX(1); }
+/* 单位：衬线绿字，上标式挂在数字右上角——杂志排版的签名结构 */
 .stat b small {
   display: inline-block;
-  font-size: 0.42em;
-  letter-spacing: 0;
-  margin-left: 4px;
-  color: var(--sage-deep);
+  font-size: 0.26em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin-left: 0.18em;
+  color: var(--forest);
+  --unit-shift: -1.6em;
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(calc(var(--unit-shift) + 10px));
   transition: opacity 520ms var(--ease) 480ms, transform 520ms var(--ease) 480ms;
 }
-.stat.is-live b small { opacity: 1; transform: none; }
+.stat.is-live b small { opacity: 1; transform: translateY(var(--unit-shift)); }
 .stat > span {
   display: block;
-  margin-top: var(--sp-3);
+  margin-top: clamp(24px, 2.6vw, 34px); /* 给数字下的绿实线留出空位，避免压到标签 */
   font-size: var(--fs-meta);
   font-weight: 600;
   letter-spacing: var(--ls-caps);
