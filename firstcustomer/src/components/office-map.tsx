@@ -42,7 +42,7 @@ function Actor({ person, working }: { person: Person; working: boolean }) {
     <>
       <span className="office-map-screen" style={position(desk.screen)} data-working={working} aria-hidden="true" />
       <span className="office-actor" data-person={person} data-working={working} aria-hidden="true"
-        style={{ "--home-x": `${desk.home[0]}%`, "--home-y": `${desk.home[1]}%`, "--sprite-x": `${desk.sprite * 100 / 7}%` } as CSSProperties}>
+        style={{ "--home-x": `${desk.home[0]}%`, "--home-y": `${desk.home[1]}%`, "--sprite-x": `${desk.sprite * 100 / 7}%`, "--idle-delay": `${-desk.sprite * .61}s` } as CSSProperties}>
         <span className="office-actor-shadow" />
         <span className="office-actor-facing">
           <span className="office-actor-body" />

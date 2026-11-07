@@ -2,14 +2,22 @@
 
 import { T, I18n } from "@/components/ui-text";
 
-import { ArrowRight, Play, RotateCcw } from "lucide-react";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, Pause, Play, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { DepartmentKey, OfficeTransfer } from "@/domain/office";
 import { desks, roomName, type Point } from "./office-map";
 
 const aisle = 52.1;
 const recentTransferMs = 20_000;
 const previewRoute = { from: "strategy", to: "launch" } as const;
+const reducedMotionQuery = "(prefers-reduced-motion: reduce)";
+const reducedMotionSnapshot = () => window.matchMedia(reducedMotionQuery).matches;
+const reducedMotionServerSnapshot = () => false;
+function subscribeReducedMotion(listener: () => void) {
+  const query = window.matchMedia(reducedMotionQuery);
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
+}
 
 function route(points: Point[]) {
   let length = 0;
@@ -65,15 +73,20 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
   focusRoom?: DepartmentKey;
 }) {
   const hintId = useId();
+  const motionHintId = useId();
   const viewport = useRef<HTMLDivElement>(null);
   const active = useRef<(() => void) | null>(null);
   const seen = useRef<string | null>(null);
   const follow = useRef(false);
   const [playing, setPlaying] = useState<"demo" | "handoff" | null>(null);
+  const [paused, setPaused] = useState(false);
+  const [inView, setInView] = useState(false);
+  const reducedMotion = useSyncExternalStore(subscribeReducedMotion, reducedMotionSnapshot, reducedMotionServerSnapshot);
+  const motionEnabled = inView && !paused && !reducedMotion;
 
   const play = useCallback((from: DepartmentKey, to: DepartmentKey, mode: "demo" | "handoff", reveal = false) => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (reduce.matches || from === to) return;
+    const reduce = window.matchMedia(reducedMotionQuery);
+    if (!motionEnabled || reduce.matches || from === to) return;
     const scroll = viewport.current;
     const map = scroll?.querySelector<HTMLElement>(".office-map");
     const check = map?.querySelector<HTMLElement>(".office-receipt");
@@ -116,7 +129,7 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
     const tick = (now: number) => {
       start ??= now;
       const t = now - start;
-      if (t >= doneAt || reduce.matches) {
+      if (t >= doneAt || reduce.matches || document.visibilityState !== "visible" || scroll.dataset.inView !== "true") {
         stop();
         setPlaying(null);
         return;
@@ -146,10 +159,10 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
       frame = window.requestAnimationFrame(tick);
     };
     frame = window.requestAnimationFrame(tick);
-  }, []);
+  }, [motionEnabled]);
 
   useEffect(() => {
-    if (!transfer) return;
+    if (!transfer || !motionEnabled) return;
     const frame = window.requestAnimationFrame(() => {
       if (seen.current === transfer.id) return;
       seen.current = transfer.id;
@@ -157,27 +170,36 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
       if (online && Date.now() - Date.parse(transfer.at) < recentTransferMs) play(transfer.from, transfer.to, "handoff");
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [transfer, play]);
+  }, [transfer, play, motionEnabled]);
   useEffect(() => () => active.current?.(), []);
 
   useEffect(() => {
     const scroll = viewport.current;
-    if (!customerView || !scroll) return;
+    if (!scroll) return;
+    let intersecting = false;
+    const update = () => {
+      const visible = intersecting && document.visibilityState === "visible";
+      scroll.dataset.inView = String(visible);
+      setInView(visible);
+      if (!visible) {
+        active.current?.();
+        setPlaying(null);
+      }
+    };
     const observer = new IntersectionObserver(([entry]) => {
-      scroll.dataset.inView = String(entry.isIntersecting && document.visibilityState === "visible");
+      intersecting = entry.isIntersecting;
+      update();
     });
     const visibility = () => {
-      observer.disconnect();
-      if (document.visibilityState === "visible") observer.observe(scroll);
-      else scroll.dataset.inView = "false";
+      update();
     };
-    visibility();
+    observer.observe(scroll);
     document.addEventListener("visibilitychange", visibility);
     return () => {
       observer.disconnect();
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [customerView]);
+  }, []);
 
   useEffect(() => {
     const scroll = viewport.current;
@@ -187,23 +209,29 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
   }, [customerView, focusRoom]);
 
   return (
-    <div className="office-stage" data-motion-demo={playing === "demo"} data-customer-view={customerView}>
-      {!customerView || transfer ? <div className="office-stage-bar">
+    <div className="office-stage" data-motion-demo={playing === "demo"} data-customer-view={customerView} data-motion-paused={!motionEnabled}>
+      <div className="office-stage-bar">
         <p className="office-transfer-summary" role="status">
           {playing === "demo" ? (
             <><T>交接演示 </T><strong><T>{roomName(previewRoute.from)}</T></strong><ArrowRight size={14} aria-hidden="true" /><strong><T>{roomName(previewRoute.to)}</T></strong></>
           ) : transfer ? (
             <><T>最近交接 </T><strong><T>{roomName(transfer.from)}</T></strong><ArrowRight size={14} aria-hidden="true" /><strong><T>{roomName(transfer.to)}</T></strong></>
-          ) : <T>小人会在任务交接时沿走廊送文件</T>}
+          ) : <T>工位动作随任务状态更新。</T>}
         </p>
-        {!customerView ? <div className="office-stage-actions">
+        <div className="office-stage-actions">
           {viewControl}
-          <div className="office-motion-controls">
-            {transfer ? <button className="office-control" type="button" disabled={playing !== null} onClick={() => play(transfer.from, transfer.to, "handoff", true)}><RotateCcw size={14} aria-hidden="true" /><T>重播交接</T></button> : null}
-            <button className="office-control office-control-primary" type="button" disabled={playing !== null} onClick={() => play(previewRoute.from, previewRoute.to, "demo", true)}><Play size={14} aria-hidden="true" /><T>演示交接</T></button>
+          <div className="office-motion-controls" aria-describedby={motionHintId}>
+            {reducedMotion ? <span className="office-motion-preference"><T>系统已减少动态</T></span> : <button className="office-control" type="button" aria-pressed={paused} onClick={() => {
+              active.current?.();
+              setPlaying(null);
+              setPaused((value) => !value);
+            }}>{paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}<T>{paused ? "恢复动效" : "暂停动效"}</T></button>}
+            {transfer ? <button className="office-control" type="button" disabled={!motionEnabled || playing !== null} onClick={() => play(transfer.from, transfer.to, "handoff", true)}><RotateCcw size={14} aria-hidden="true" /><T>重播上次交接</T></button> : null}
+            <button className="office-control office-control-primary" type="button" disabled={!motionEnabled || playing !== null} onClick={() => play(previewRoute.from, previewRoute.to, "demo", true)}><Play size={14} aria-hidden="true" /><T>演示交接</T></button>
           </div>
-        </div> : null}
-      </div> : null}
+        </div>
+      </div>
+      <p className="office-motion-note" id={motionHintId}><T>{reducedMotion ? "已按系统设置减少动态，工位与交接信息仍可查看。" : paused ? "动效已暂停，恢复后继续显示工位状态。" : "待机时轻轻活动，工作时敲键盘。演示交接仅预览动作，不会推进项目。"}</T></p>
       <p className="office-pan-hint" id={hintId}><T>左右滑动查看整间办公室</T></p>
       <I18n><div className="office-map-viewport" role="region" aria-label={customerView ? "当前项目的办公室地图" : "首客办公室地图"} aria-describedby={hintId} tabIndex={0} ref={viewport}
         onPointerDown={() => { follow.current = false; }} onWheel={() => { follow.current = false; }}>

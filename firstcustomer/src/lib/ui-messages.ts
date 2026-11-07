@@ -1212,4 +1212,12 @@ export const UI_MESSAGES: Readonly<Record<string, string>> = {
   "提交提出修改": "Request changes",
   "提交退回重写": "Send back for a rewrite",
   "有疑问随时问，客服会在这里回复": "Ask anytime. Support will reply here.",
+  "工位动作随任务状态更新。": "Desk activity follows actual task status.",
+  "系统已减少动态": "Reduced motion enabled",
+  "暂停动效": "Pause animation",
+  "恢复动效": "Resume animation",
+  "重播上次交接": "Replay last handoff",
+  "已按系统设置减少动态，工位与交接信息仍可查看。": "Motion is reduced according to your system preference. Desk status and handoff details remain available.",
+  "动效已暂停，恢复后继续显示工位状态。": "Animation is paused. Resume to see desk activity.",
+  "待机时轻轻活动，工作时敲键盘。演示交接仅预览动作，不会推进项目。": "Teammates move gently when idle and type while working. The handoff demo previews movement and does not advance your project.",
 };

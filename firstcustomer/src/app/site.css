@@ -36,6 +36,10 @@
   .site-nav .nav__actions { gap: 6px; }
   .site-nav .brand-mark small { display: none; }
 }
+@media (max-width: 400px) {
+  .site-nav .nav__inner { height: auto; min-height: 64px; padding-block: 10px; gap: 8px; }
+  .site-nav .nav__actions { min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+}
 
 /* ---------- 页头：眉标 + 衬线大标题 + 引导语 + 操作 ---------- */
 .page-head {
