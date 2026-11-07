@@ -74,7 +74,7 @@
   --sp-7: 48px;
   --sp-8: 64px;
   --sp-9: 96px;
-  --section-y: clamp(44px, 5.5vw, 80px);  /* 分区间距 · 已按反馈收紧 */
+  --section-y: clamp(32px, 4vw, 56px);    /* 分区间距 · 再收紧 */
 
   /* ---------- 版心 ---------- */
   --container: 1180px;
@@ -265,7 +265,7 @@ main .container,
 .section--paper2 { background: var(--paper-2); }
 
 /* 分区头：居中标题 + 顶部眉标，全站统一，不要每区换花样 */
-.section-head { text-align: center; margin-bottom: clamp(40px, 5vw, 72px); }
+.section-head { text-align: center; margin-bottom: clamp(24px, 3vw, 40px); }
 .section-head--left { text-align: left; }
 /* 中文标题限宽必须用 em 不用 ch：1em ≈ 1 个汉字宽，ch 只有 0.5em，
    用 ch 会让中文标题在词中间断行（"线索" 被拆成 "线 / 索"）。 */
