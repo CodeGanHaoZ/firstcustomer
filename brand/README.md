@@ -1,6 +1,15 @@
 # 首客 HiFirst · 前台 lumi（露米）
 
-`front-desk-rabbit.png` 是 1254 × 1254 的透明底主形象。官网使用压缩后的 `firstcustomer/public/brand/front-desk-rabbit.webp`；页眉与浏览器图标共用 `firstcustomer/src/app/icon.svg`。
+`front-desk-rabbit.png` 是 1254 × 1254 的透明底主形象。网站使用以下衍生素材：
+
+| 素材 | 用途 |
+| --- | --- |
+| [front-desk-rabbit.webp](../firstcustomer/public/brand/front-desk-rabbit.webp) | 对话窗口中的静态兔子头像 |
+| [lumi-welcome.mp4](../firstcustomer/public/brand/lumi-welcome.mp4) | 首页挥手动画，640 × 640、8 秒、静音，约 274 KB |
+| [lumi-welcome-poster.webp](../firstcustomer/public/brand/lumi-welcome-poster.webp) | 动画首帧封面，加载中或减少动态效果时显示 |
+| [icon.svg](../firstcustomer/src/app/icon.svg) | 页眉标识与浏览器图标 |
+
+首页动画取自用户提供的《首客HiFirst-宣传片-生视频版-23秒竖屏.mp4》开头 4 秒，裁出完整兔子，接上倒放片段形成平滑循环。点击兔子仍打开 Lumi 的 AI 引导对话；右上角按钮可暂停或继续播放。
 
 ## 生成提示词
 

@@ -1,17 +1,17 @@
 # 首客 HiFirst
 
-按 [PRD V4.2](../首客_FirstCustomer_产品需求规格说明书_V4.2.md) 搭建的比赛版本。首客从免费初诊、报价和到账开始，再做海外定位、英文验证页、获客实验与复盘。老板通过办公室处理待办，客户通过专属链接完成确认。
+本目录是首客的 Next.js 应用。项目介绍、线上体验与首页截图见 [仓库 README](../README.md)，需求背景见 [PRD V4.2](../首客_FirstCustomer_产品需求规格说明书_V4.2.md)。本文记录本地开发、配置和部署步骤，以下命令均在本目录执行。
 
 ## 本机运行
 
-不需要 Docker，也不需要 MiMo Key。没有 Key 时用模拟模型，所有内容都会标注为示例。
+需要 Node.js 22.12 或以上版本及 npm。使用嵌入式 PostgreSQL 时不需要 Docker；没有 MiMo Key 时可用模拟模型体验项目工作流，输出会标注为示例。
 
 ```bash
-npm install
+npm ci
 cp .env.example .env.local
 ```
 
-在 `.env.local` 里填 `ADMIN_PASSWORD`、`SESSION_SECRET`，并打开 `LLM_PROVIDER=stub`、`ALLOW_STUB=1`。然后开三个终端：
+在 `.env.local` 里填 `ADMIN_PASSWORD` 和至少 32 字符的 `SESSION_SECRET`，后者可用 `openssl rand -base64 32` 生成。启用 `LLM_PROVIDER=stub`、`ALLOW_STUB=1`，然后按顺序开三个终端：
 
 ```bash
 npm run db:dev
@@ -26,12 +26,37 @@ npm run dev
 ```
 
 - 官网：`http://localhost:3100`
+- 客户注册：`http://localhost:3100/register`
+- 客户登录：`http://localhost:3100/login`
+- 我的项目：`http://localhost:3100/account`
+- 提交项目：`http://localhost:3100/projects/new`
 - 经营台：`http://localhost:3100/admin`
 - 办公室任务板：`http://localhost:3100/admin/tasks`
 - 经营周报：`http://localhost:3100/admin/reports`
 - 公司卷宗：`http://localhost:3100/admin/context`
 
-拿到 Key 后，在 `.env.local` 填 `MIMO_API_KEY`，去掉两行模拟模型配置，重启 worker。
+模拟模式下 Lumi 的自由对话不可用，项目工作流仍可使用示例模型。开发数据库持久化在 `.local-pg/`，仅监听本机端口 `54329`。
+
+## 模型配置
+
+默认通过服务器直连 MiMo，当前默认模型为 `mimo-v2.6-pro` 和 `mimo-v2.6-flash`。在 `.env.local` 填写 `MIMO_API_KEY`，移除 `LLM_PROVIDER=stub` 和 `ALLOW_STUB=1`，重启网站与 Worker 即可启用真实调用。
+
+| 变量 | 用途 |
+| --- | --- |
+| `MIMO_API_KEY` | MiMo API 密钥，网站前台与后台任务共用 |
+| `MIMO_MODEL_PRO` / `MIMO_MODEL_FLASH` | 可选，覆盖默认模型 |
+| `MIMO_BASE_URL` | 可选，覆盖 MiMo 接口地址 |
+| `MIMO_WEB_SEARCH` | 默认 `0`，设为 `1` 时启用 MiMo 联网搜索并产生对应调用费用 |
+| `MODEL_COST_SPONSORED` | 赛事赞助模型费用时设为 `1`，经营台保留标价并注明赞助 |
+| `FALLBACK_PROVIDER` / `FALLBACK_BASE_URL` / `FALLBACK_API_KEY` / `FALLBACK_MODEL` | 可选，主模型故障时使用兼容 OpenAI 接口的备用模型 |
+
+Lumi 的自由对话走 `/api/lumi`；项目研究与交付走后台任务。API Key 仅供服务器读取，不需要发给客户，也不应使用 `NEXT_PUBLIC_` 前缀。`.env.local`、`.env` 和 `.vercel/` 均不提交到 Git。
+
+## 客户账号
+
+客户通过 Better Auth 使用邮箱与密码注册、登录，密码至少 10 个字符。注册后进入「我的项目」，登录后提交的项目绑定当前账号；访客项目仍使用原有专属链接。
+
+`BETTER_AUTH_SECRET` 可单独配置，未设置时沿用 `SESSION_SECRET`。固定使用自定义域名时，可通过 `BETTER_AUTH_URL` 指定完整的 HTTPS 地址。客户账号与经营台权限独立，经营者继续使用 `ADMIN_PASSWORD` 登录。目前未接入邮件验证、找回密码和第三方登录。
 
 ## 常用命令
 
@@ -39,6 +64,9 @@ npm run dev
 |---|---|
 | `npm test` | 单元测试和流程测试（测试自带数据库） |
 | `npm run typecheck` | 类型检查 |
+| `npm run lint` | ESLint 检查 |
+| `npm run build` | 生成 Next.js 生产构建 |
+| `npm run db:migrate` | 对 `DATABASE_URL` 指向的数据库执行已生成的迁移 |
 | `npm run db:generate` | 改完 `src/db/schema.ts` 后生成迁移 |
 | `npm run seed:evidence -- seeds/evidence.json` | 导入赛前种子证据，格式见 `seeds/evidence.example.json` |
 
@@ -47,11 +75,16 @@ npm run dev
 | 目录 | 内容 |
 |---|---|
 | `src/domain` | 不依赖外部服务的规则：状态机、两道审批、证据闸门、实验判定 |
-| `src/agents` | 四个 Agent 的提示词和输出格式、工具、免费来源、网页读取 |
+| `src/agents` | 各 Agent 的提示词、输出格式、工具、免费来源与网页读取 |
 | `src/ai` | `callModel`（MiMo、备用模型、成本）、`runAgent` 工具循环、模拟模型 |
 | `src/workflow` | `engine.ts` 跑 Agent 和打回路由，`actions.ts` 处理人的决定 |
 | `src/worker` | 后台进程，从 pg-boss 取任务 |
-| `src/app` | 页面：`/` 官网、`/projects/new` 新建、`/p/[token]` 客户项目页、`/admin` 经营台、`/launch/[slug]` 验证页 |
+| `src/jobs` | 任务入队、云端唤醒与本机/云端共用的执行器 |
+| `src/lib` | 身份验证、项目访问、上传校验与品牌配置 |
+| `src/components` | Lumi 动态接待、AI 对话、办公室与客户/经营台组件 |
+| `src/app` | 官网、注册登录、客户项目、经营台、英文验证页与 API |
+| `drizzle` | PostgreSQL 表结构迁移，包含客户账号与项目归属 |
+| `public/brand` | 兔子静态形象、8 秒静音循环视频及首帧封面 |
 
 ## 操作与数据规则
 
@@ -67,11 +100,34 @@ npm run dev
 
 ## 部署
 
-GitHub 仓库 `kongleiwork-art/firstcustomer` 的 `main` 分支已关联 Vercel 项目 `hifirst`，Root Directory 为 `firstcustomer`。每次推送或合并到 `main`，Vercel 会自动构建，成功后更新正式站点 https://hifirst.vercel.app；构建失败时保留当前线上版本。日常发布直接推送 `main` 即可，不需要再手动执行 `vercel --prod`。
+### Vercel + Neon
 
-Vercel 从本目录部署 Next.js，Neon 提供 PostgreSQL。先对线上数据库运行 `npm run db:migrate`，再部署。生产环境设置 `DATABASE_URL`、`ADMIN_PASSWORD`、`SESSION_SECRET`、`BETTER_AUTH_SECRET`、`MIMO_API_KEY` 和 `CRON_SECRET`。Neon 同时提供 `DATABASE_URL_UNPOOLED` 时，任务队列会使用它。在 Vercel 设置 `NODE_OPTIONS=--experimental-require-module`，让研究任务中的网页解析依赖能正常加载。Vercel Queues 触发数据库中已提交的任务，每日站会由 `vercel.json` 中的定时任务触发。线上每次上传的文件合计不得超过 4 MB。
+GitHub 仓库 `kongleiwork-art/firstcustomer` 的 `main` 分支已关联 Vercel 项目 `hifirst`，Root Directory 为 `firstcustomer`。每次推送或合并到 `main`，Vercel 会自动构建，成功后更新[正式站点](https://hifirst.vercel.app/)；构建失败时保留当前线上版本。日常代码发布直接推送 `main` 即可。
 
-也可以使用 Docker Compose 部署：
+Vercel 部署 Next.js，Neon 提供 PostgreSQL。首次部署及表结构变更时，使用指向目标数据库的 `DATABASE_URL` 独立执行 `npm run db:migrate`，再发布代码；构建过程不会自动执行迁移。
+
+在 Vercel 项目的生产环境配置：
+
+| 变量 | 说明 |
+| --- | --- |
+| `DATABASE_URL` | Neon PostgreSQL 连接地址 |
+| `DATABASE_URL_UNPOOLED` | 可选，Neon 直连地址；配置后 pg-boss 优先使用它 |
+| `ADMIN_PASSWORD` | 经营台密码 |
+| `SESSION_SECRET` | 至少 32 字符的会话密钥 |
+| `BETTER_AUTH_SECRET` | 客户认证密钥；未设置时沿用 `SESSION_SECRET` |
+| `MIMO_API_KEY` | MiMo API 密钥 |
+| `CRON_SECRET` | 每日站会接口的鉴权密钥 |
+| `NODE_OPTIONS` | `--experimental-require-module`，供研究任务中的网页解析依赖加载 |
+| `BETTER_AUTH_URL` | 可选，自定义域名使用的完整 HTTPS 地址 |
+| `PRIVACY_CONTACT` | 可选，英文验证页隐私说明中的联系信息 |
+
+生产环境移除本机的模拟模型配置。环境变量修改后需重新部署。
+
+云端任务先保存到 PostgreSQL，再由 Vercel Queues 的 `hifirst-work` 主题唤起 `/api/jobs/work` 执行。`vercel.json` 将函数部署到 `sin1`，并在每天 UTC 01:00（北京时间 09:00）调用 `/api/jobs/daily`，唤醒等待任务并生成站会。该部署不需要额外运行本机的常驻 Worker。
+
+线上每次上传的文件合计不得超过 4 MB。Lumi 的动画会静音循环，可手动暂停；离开视口、页面隐藏或打开聊天时暂停，系统开启减少动态效果时保留静态封面。
+
+### Docker Compose
 
 一台能运行 Docker 的香港或新加坡 VPS，域名解析到这台机器：
 
