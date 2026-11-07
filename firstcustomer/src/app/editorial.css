@@ -585,7 +585,13 @@ main .container,
 /* 黑圆盘滑过按钮时反色：白底深字，与 difference 反白语义一致，300ms 过渡丝滑 */
 .disc-band__actions .btn {
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease),
-    border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
+    border-color var(--dur) var(--ease), transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+/* 悬停放大：按钮像被「推」出来一层，配合淡影强调可点 */
+.disc-band__actions .btn:hover {
+  transform: scale(1.07);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 .disc-band__actions .btn.is-disc-over {
   --btn-bg: var(--paper);
