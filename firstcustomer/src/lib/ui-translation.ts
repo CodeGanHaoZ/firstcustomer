@@ -35,7 +35,7 @@ function translateTemplate(text: string): string | undefined {
   if ((match = text.match(/^需求第 (\d+) 版 · 范围第 (\d+) 版$/))) return `Brief version ${match[1]} · Scope version ${match[2]}`;
   if ((match = text.match(/^产品截图 (\d+)$/))) return `Product screenshot ${match[1]}`;
   if ((match = text.match(/^最近交接 · (.+) → (.+)$/))) return `Latest handoff · ${message(match[1]) ?? match[1]} → ${message(match[2]) ?? match[2]}`;
-  if ((match = text.match(/^(lumi|nori|fino|milo|kito|pogo|yuki|toby) · (.+)$/))) {
+  if ((match = text.match(/^(lumi|nori|fino|milo|kito|pogo|yuki|toby) · (.+)$/i))) {
     const detail = message(match[2]) ?? translateTemplate(match[2]);
     if (detail) return `${match[1]} · ${detail}`;
   }

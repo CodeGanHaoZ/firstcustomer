@@ -51,7 +51,7 @@ export async function CustomerAuthPage({ register = false }: { register?: boolea
               <Image src="/brand/lumi-welcome-poster.webp" alt="" width={264} height={264} unoptimized />
             </video>
             <p className="max-w-[17em] text-xl font-bold"><T>回来看看你的出海项目</T></p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground"><T>lumi 在首客办公室等你。</T></p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground"><T>Lumi 在首客办公室等你。</T></p>
           </aside>
           <section aria-labelledby="customer-auth-title" className="grid content-center gap-6 px-5 py-7 sm:px-9 sm:py-10 lg:px-12">
             <header>
