@@ -1295,7 +1295,7 @@ main .container,
 .backtop-float {
   position: fixed;
   z-index: 90;
-  inset-inline-end: max(20px, calc((100vw - var(--container)) / 2));
+  inset-inline-end: 14px;
   inset-block-end: 40px;
   display: grid;
   place-items: center;
