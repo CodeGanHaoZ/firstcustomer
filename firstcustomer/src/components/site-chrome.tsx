@@ -16,7 +16,7 @@ import { and, eq } from "drizzle-orm";
 type NavKey = "account" | "new" | "project" | "auth";
 
 /** 用户订阅档位：任一项目存在已支付订单即视为 Pro，否则 Free。 */
-async function customerTier(userId: string): Promise<"pro" | "free"> {
+export async function customerTier(userId: string): Promise<"pro" | "free"> {
   try {
     const db = getDb();
     const rows = await db
@@ -40,6 +40,7 @@ export async function SiteHeader({ current, extra }: { current?: NavKey; extra?:
       <div className="nav__inner container">
         <LocalizedLink href="/#top" className="nav__brand" aria-label="首客首页"><BrandMark /></LocalizedLink>
         <LocalizedTag as="nav" className="nav__menu" aria-label="主导航">
+          <Link href="/" className="nav__link"><T>首页</T></Link>
           <Link href="/#office" className="nav__link"><T>办公室</T></Link>
           <Link href="/account" className="nav__link" aria-current={current === "account" ? "page" : undefined}>
             <T>{session ? "我的项目" : "试用工作台"}</T>

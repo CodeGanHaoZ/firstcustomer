@@ -946,6 +946,7 @@ export const UI_MESSAGES: Readonly<Record<string, string>> = {
   "发布历史": "Publishing history",
   "我的项目 · 首客 HiFirst": "My projects · HiFirst",
   "退出登录": "Sign out",
+  "首页": "Home",
   "新建出海项目": "New overseas project",
   "还没有项目。新建一个出海项目，就可以开始免费初诊。": "No projects yet. Create an overseas project to start a free assessment.",
   "首客收款设置": "HiFirst payment settings",
