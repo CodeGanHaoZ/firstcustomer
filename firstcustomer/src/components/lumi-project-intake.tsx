@@ -8,6 +8,8 @@ import { useLocale } from "@/components/locale-provider";
 import { translateUi } from "@/lib/ui-translation";
 import { BRAND } from "@/lib/brand";
 import { INTAKE_STEPS, PUBLIC_INTAKE_DRAFT_KEY } from "@/lib/project-intake";
+import { attachmentHelp, INTAKE_ATTACHMENT_POLICY, isAllowedAttachment, isImageAttachment, isTextAttachment, type IntakeAttachmentTier } from "@/lib/intake-attachments";
+import { IntakeAgentRail } from "@/components/intake-agent-rail";
 import {
   applyIntakeUpdates, INTAKE_HISTORY_LIMIT, INTAKE_MESSAGE_LIMIT, intakeReady, intakeResponseSchema,
   LUMI_INTAKE_COPY, LUMI_INTAKE_DRAFT_KEY, parseConversationDraft, readIntakeStream,
@@ -16,7 +18,7 @@ import {
 
 const subscribe = () => () => {};
 const rabbit = "/brand/front-desk-rabbit.webp";
-type Props = { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string; initialUrl?: string; initialBrand?: string };
+type Props = { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string; initialUrl?: string; initialBrand?: string; attachmentTier?: IntakeAttachmentTier };
 
 function ConfirmProject({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus(); const copy = LUMI_INTAKE_COPY[useLocale()];
@@ -32,7 +34,7 @@ export function LumiProjectIntake(props: Props) {
   return ready ? <IntakeConversation {...props} /> : <div className="lumi-guide-loading" role="status">{copy.loading}</div>;
 }
 
-function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "", initialBrand = "" }: Props) {
+function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "", initialBrand = "", attachmentTier = "free" }: Props) {
   const locale = useLocale(); const copy = LUMI_INTAKE_COPY[locale];
   const [draft, setDraft] = useState(() => {
     let base: IntakeConversationDraft;
@@ -66,6 +68,7 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
   const textarea = useRef<HTMLTextAreaElement>(null);
   const ready = intakeReady(draft.answers);
   const t = (text: string) => translateUi(locale, text);
+  const uploadPolicy = INTAKE_ATTACHMENT_POLICY[attachmentTier];
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -94,7 +97,19 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
     try {
       const body = new FormData();
       body.set("conversation", JSON.stringify({ messages: history.slice(-INTAKE_HISTORY_LIMIT), answers: draft.answers }));
-      for (const file of files) body.append("screenshots", file);
+      for (const file of files.filter((file) => isImageAttachment(file))) body.append("screenshots", file);
+      const textAttachments = files.filter((file) => isTextAttachment(file));
+      if (textAttachments.length) {
+        const attachmentText = await Promise.all(textAttachments.map(async (file) => {
+          const text = (await file.text()).slice(0, 16_000);
+          const note = /\.docx?$/i.test(file.name) ? "（Word 文件已附上，后续 Pro 资料解析会继续处理）" : "";
+          return `\n\n[附件：${file.name}]${note}\n${text}`;
+        }));
+        const last = history.at(-1);
+        if (last?.role === "user") {
+          body.set("conversation", JSON.stringify({ messages: [...history.slice(0, -1), { ...last, content: `${last.content}${attachmentText.join("")}` }].slice(-INTAKE_HISTORY_LIMIT), answers: draft.answers }));
+        }
+      }
       const response = await fetch("/api/lumi/intake", { method: "POST", headers: { "X-HiFirst-Language": locale }, body, signal: controller.signal });
       if (response.status === 429) { setError("rateLimit"); return; }
       if (!response.ok || !response.body) throw new Error("Intake unavailable");
@@ -172,26 +187,41 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
               onChange={(event) => setDraft((previous) => ({ ...previous, input: event.target.value }))}
               onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(draft.input); } }} />
             <div className="lumi-guide-compose-tools">
-              <button type="button" onClick={() => fileInput.current?.click()} disabled={busy || creating} aria-label={copy.attach} title={copy.fileHelp}><Paperclip size={19} aria-hidden /></button>
+              <button type="button" onClick={() => fileInput.current?.click()} disabled={busy || creating} aria-label={copy.attach} title={attachmentHelp(attachmentTier, locale)}><Paperclip size={19} aria-hidden /></button>
               <span>{draft.input.length ? `${draft.input.length} / ${INTAKE_MESSAGE_LIMIT}` : BRAND.agentName}</span>
               {busy ? <button type="button" className="lumi-guide-send" onClick={() => request.current?.abort()} aria-label={copy.stop}><Square size={15} fill="currentColor" aria-hidden /></button>
                 : <button type="submit" className="lumi-guide-send" aria-label={copy.send} disabled={!draft.input.trim() || creating || Boolean(fileError)}><ArrowUp size={20} aria-hidden /></button>}
             </div>
           </form>
-          <input ref={fileInput} className="sr-only" type="file" name="screenshots" form="lumi-project-submit" multiple accept="image/png,image/jpeg,image/webp" aria-label={copy.attach} disabled={busy} tabIndex={-1}
+          <input ref={fileInput} className="sr-only" type="file" name="screenshots" form="lumi-project-submit" multiple accept={uploadPolicy.accept} aria-label={copy.attach} disabled={busy} tabIndex={-1}
             onChange={(event) => {
               const selected = Array.from(event.target.files ?? []);
-              const invalid = selected.length > 3 || selected.some((file) => file.size === 0 || file.size > 5 * 1024 * 1024 || !["image/png", "image/jpeg", "image/webp"].includes(file.type));
-              const tooLarge = maxTotalBytes && selected.reduce((sum, file) => sum + file.size, 0) > maxTotalBytes;
-              setFiles(selected); setFileError(invalid ? copy.imageError : tooLarge ? copy.imageTotal : "");
-              setDraft((previous) => ({ ...previous, hadImages: selected.length > 0 }));
+              const images = selected.filter(isImageAttachment);
+              const invalidType = selected.some((file) => !isAllowedAttachment(file, attachmentTier));
+              const tooManyImages = images.length > uploadPolicy.maxImages;
+              const invalidSize = selected.some((file) => file.size === 0 || (isImageAttachment(file) ? file.size > uploadPolicy.maxImageBytes : file.size > uploadPolicy.maxDocumentBytes));
+              const totalLimit = maxTotalBytes ?? uploadPolicy.maxTotalBytes;
+              const tooLarge = totalLimit > 0 && selected.reduce((sum, file) => sum + file.size, 0) > totalLimit;
+              const errorMessage = invalidType || invalidSize
+                ? (attachmentTier === "pro" ? "Pro 资料支持图片、Markdown、HTML 和 Word 文件，请检查类型与大小。" : copy.imageError)
+                : tooManyImages ? (attachmentTier === "pro" ? "Pro 最多上传 50 张图片。" : copy.imageError)
+                : tooLarge ? (attachmentTier === "pro" ? "Pro 本次资料总大小不能超过 20 MB。" : copy.imageTotal) : "";
+              // The project creation action stores image attachments in project_images. Keep document files in the chat payload only.
+              if (event.currentTarget.form) {
+                const transfer = new DataTransfer();
+                images.forEach((file) => transfer.items.add(file));
+                event.currentTarget.files = transfer.files;
+              }
+              setFiles(selected); setFileError(errorMessage);
+              setDraft((previous) => ({ ...previous, hadImages: images.length > 0 }));
             }} />
-          <p className="lumi-guide-footnote" role="status">{storageFailed ? copy.storageError : copy.footer}</p>
+          <p className="lumi-guide-footnote" role="status">{storageFailed ? copy.storageError : `${copy.footer} ${attachmentHelp(attachmentTier, locale)}`}</p>
         </div>
       </section>
 
-      <aside className="lumi-guide-brief">
-        <details open={briefOpen} onToggle={(event) => setBriefOpen(event.currentTarget.open)}>
+      <aside className="lumi-guide-sidebar">
+        <div className="lumi-guide-brief">
+          <details open={briefOpen} onToggle={(event) => setBriefOpen(event.currentTarget.open)}>
           <summary><span><ClipboardList size={18} aria-hidden />{copy.draft}</span>{ready ? <span className="lumi-guide-summary-status">{locale === "en" ? "Ready to confirm" : "可确认"}</span> : null}<ChevronDown size={17} aria-hidden /></summary>
           <div className="lumi-guide-brief-content">
             <p>{copy.summaryHint}</p>
@@ -210,7 +240,9 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
               <ConfirmProject disabled={!ready || busy || creating || Boolean(fileError)} />
             </form>
           </div>
-        </details>
+          </details>
+        </div>
+        <IntakeAgentRail messageCount={draft.messages.filter((message) => message.role === "user").length} busy={busy} ready={ready} attachmentTier={attachmentTier} />
       </aside>
     </div>
   </div>;
