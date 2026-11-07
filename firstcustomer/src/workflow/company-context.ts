@@ -87,7 +87,7 @@ export async function companyDocuments(db: Db) {
       name: "02-brand.md", body: title("品牌语调", `${show(settings?.brand)}\n\n## 禁用词\n\n${lines(settings?.forbiddenTerms ?? [])}`),
     },
     {
-      name: "03-product.md", body: title("服务定义", settings?.service || "免费初诊提供候选人群、支持和反面证据、待验证项。首客启动包提供定位、商业证据、英文验证页、单渠道行动与增长复盘。参考价 ¥299，实际以老板确认且客户接受的报价为准。"),
+      name: "03-product.md", body: title("服务定义", settings?.service || "免费出海机会分析提供候选人群、支持和反面证据、待验证项。首客启动包提供定位、商业证据、英文验证页、单渠道行动与增长复盘。参考价 ¥299，实际以老板确认且客户接受的报价为准。"),
     },
     {
       name: "04-ops.md", body: title("运营与客服", `${show(settings?.operations)}\n\n## 闸门与权限\n\n${lines([

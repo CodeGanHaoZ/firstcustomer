@@ -113,7 +113,7 @@ async function callEndpoint(endpoint: Endpoint, request: ModelRequest) {
       : {}),
   } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
   if (endpoint.provider === "mimo" && !tools.length && request.preferStreaming) {
-    return streamMimoCompletion(endpoint, payload, request.signal);
+    return streamMimoCompletion(endpoint, payload, request.signal, request.onTextDelta);
   }
   const { data, response } = await endpoint.client.chat.completions.create(payload, { signal: request.signal }).withResponse();
   if (!Array.isArray(data?.choices)) {
@@ -126,6 +126,7 @@ async function streamMimoCompletion(
   endpoint: Endpoint,
   payload: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
   signal?: AbortSignal,
+  onTextDelta?: (delta: string) => void,
 ) {
   const { data, response } = await endpoint.client.chat.completions.create({
     ...payload,
@@ -138,7 +139,9 @@ async function streamMimoCompletion(
   for await (const chunk of data) {
     model = chunk.model || model;
     usage = chunk.usage ?? usage;
-    content += chunk.choices?.[0]?.delta?.content ?? "";
+    const delta = chunk.choices?.[0]?.delta?.content ?? "";
+    content += delta;
+    if (delta) onTextDelta?.(delta);
   }
   signal?.throwIfAborted();
   if (!content.trim()) throw responseFormatError(endpoint.provider, response);

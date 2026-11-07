@@ -71,7 +71,7 @@ export const TASK_TRIGGER_LABELS: Record<string, string> = {
 };
 
 export const DEPARTMENTS: { key: DepartmentKey; room: string; agent: string; duty: string }[] = [
-  { key: "frontdesk", room: "前台", agent: AGENT_LABELS.quote, duty: "整理初诊结果，起草提案和报价，接待客户问题" },
+  { key: "frontdesk", room: "前台", agent: AGENT_LABELS.quote, duty: "整理出海机会报告，起草提案和报价，接待客户问题" },
   { key: "research", room: "市场研究室", agent: AGENT_LABELS.research, duty: "研究海外需求、竞品定价和反面证据，每条结论都带来源" },
   { key: "strategy", room: "战略决策室", agent: AGENT_LABELS.strategy, duty: "比较两个目标人群，写出定位和实验计划，证据不够就打回研究室" },
   { key: "finance", room: "财务室", agent: AGENT_LABELS.receipt, duty: "读取付款截图，等老板核对到账，汇总真实收款和费用" },

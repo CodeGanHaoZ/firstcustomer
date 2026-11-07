@@ -20,7 +20,7 @@ const WORDMARK = "首客 HIFIRST";
 export async function generateMetadata() {
   const locale = await getLocale();
   return locale === "en" ? { title: "HiFirst · Find your first overseas customers", description: HOME_COPY.en.hero.description }
-    : { title: "首客 HiFirst", description: "帮中国创业者找到第一批真实海外客户的 AI 出海服务" };
+    : { title: "首客 HiFirst", description: "帮中国创业者找到第一批真实海外客户的 MiMo AI 出海服务" };
 }
 
 export default async function Home() {
@@ -38,14 +38,14 @@ export default async function Home() {
             <a href="#plans" className="nav__link">{copy.nav.plans}</a>
             <a href="#service-flow" className="nav__link">{copy.nav.flow}</a>
             <a href="#cta" className="nav__link">{copy.nav.start}</a>
+            <Link href="/account" className="nav__link">{session ? copy.nav.account : copy.nav.trial}</Link>
+            {!session ? <Link href="/login" className="nav__link nav__mobile-auth">{copy.nav.auth}</Link> : null}
           </nav>
           <div className="nav__actions">
             <LanguageSwitch locale={locale} />
-            {session ? (
-              <Link href="/account" className="btn btn--ghost btn--sm">{copy.nav.account}</Link>
-            ) : (
+            {!session ? (
               <Link href="/login" className="btn btn--ghost btn--sm">{copy.nav.auth}</Link>
-            )}
+            ) : null}
           </div>
           <button type="button" className="nav__toggle" data-nav-toggle aria-expanded="false" aria-label={copy.nav.menu}>
             <ArrowDown size={18} aria-hidden="true" />
@@ -54,7 +54,8 @@ export default async function Home() {
       </header>
 
       <main id="top">
-        {/* ---------- 首屏：左右分栏（左文案 / 右可点击的 Lumi 前台卡片） ---------- */}
+        {/* ---------- 首屏：左右分栏（左文案 / 右可点击的 Lumi 前台卡片），底部铺毛毡出海风景 ---------- */}
+        <div className="hero-scene">
         <section className="hero container hero--split">
           <div className="hero__copy">
             <p className="eyebrow" data-reveal>{copy.hero.eyebrow}</p>
@@ -72,12 +73,14 @@ export default async function Home() {
                 {copy.hero.office} <ArrowDown size={15} aria-hidden="true" />
               </a>
             </div>
+            <p className="meta" data-reveal>{copy.trialNote}</p>
           </div>
 
           <div className="hero__visual" data-reveal data-reveal-group="hero">
             <LumiChat locale={locale} />
           </div>
         </section>
+        </div>
 
         {/* ---------- 数字条：进视口滚动计数 ---------- */}
         <section className="container section--tight" aria-label={copy.statsLabel}>
@@ -263,7 +266,7 @@ export default async function Home() {
             <ul>
               <li><Link href="/login">{copy.footer.login}</Link></li>
               <li><Link href="/register">{copy.footer.register}</Link></li>
-              <li><Link href="/account">{copy.nav.account}</Link></li>
+              <li><Link href="/account">{session ? copy.nav.account : copy.nav.trial}</Link></li>
             </ul>
           </div>
         </div>

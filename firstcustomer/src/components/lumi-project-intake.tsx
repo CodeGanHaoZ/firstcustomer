@@ -1,191 +1,205 @@
 "use client";
 
-import { LocalizedImage } from "@/components/localized-controls";
+import Image from "next/image";
+import { ArrowUp, Check, ChevronDown, ClipboardList, LoaderCircle, Paperclip, RotateCcw, Square, X } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useFormStatus } from "react-dom";
 import { useLocale } from "@/components/locale-provider";
 import { translateUi } from "@/lib/ui-translation";
-import { T, I18n } from "@/components/ui-text";
-
-import Image from "next/image";
-import { ArrowLeft, ArrowRight, Check, ClipboardList, LoaderCircle, Paperclip, Pencil } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import { BRAND } from "@/lib/brand";
+import { INTAKE_STEPS, PUBLIC_INTAKE_DRAFT_KEY } from "@/lib/project-intake";
 import {
-  INTAKE_STEPS, PUBLIC_INTAKE_DRAFT_KEY, intakeAnswerError, intakeStepIndices, intakeQuestion, parseIntakeDraft, serializeIntakeDraft,
-  type IntakeDraft, type IntakeField,
-} from "@/lib/project-intake";
+  applyIntakeUpdates, INTAKE_HISTORY_LIMIT, INTAKE_MESSAGE_LIMIT, intakeReady, intakeResponseSchema,
+  LUMI_INTAKE_COPY, LUMI_INTAKE_DRAFT_KEY, parseConversationDraft, readIntakeStream,
+  type IntakeMessage,
+} from "@/lib/lumi-intake";
 
 const subscribe = () => () => {};
-const browserSnapshot = () => true;
-const serverSnapshot = () => false;
 const rabbit = "/brand/front-desk-rabbit.webp";
+type Props = { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string };
 
-function IntakePending({ children }: { children: ReactNode }) {
-  const { pending } = useFormStatus();
-  return <fieldset disabled={pending} aria-busy={pending} className="lumi-intake-fields">
-    {children}
-    {pending ? <p className="lumi-intake-pending" role="status"><LoaderCircle size={18} aria-hidden /><T>正在创建项目，请稍候…</T></p> : null}
-  </fieldset>;
+function ConfirmProject({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus(); const copy = LUMI_INTAKE_COPY[useLocale()];
+  return <button className="lumi-guide-confirm" type="submit" disabled={disabled || pending}>
+    {pending ? <LoaderCircle size={17} aria-hidden className="lumi-guide-spinner" /> : <Check size={17} aria-hidden />}
+    {pending ? copy.submitting : copy.confirm}
+  </button>;
 }
 
-export function LumiProjectIntake(props: { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string }) {
-  const ready = useSyncExternalStore(subscribe, browserSnapshot, serverSnapshot);
-  return ready ? <IntakeConversation {...props} /> : <div className="lumi-intake-loading" role="status"><T>Lumi 正在打开项目登记本…</T></div>;
+export function LumiProjectIntake(props: Props) {
+  const ready = useSyncExternalStore(subscribe, () => true, () => false);
+  const copy = LUMI_INTAKE_COPY[useLocale()];
+  return ready ? <IntakeConversation {...props} /> : <div className="lumi-guide-loading" role="status">{copy.loading}</div>;
 }
 
-function IntakeConversation({ action, maxTotalBytes, serverError }: { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string }) {
-  const locale = useLocale();
-  const t = (text: string) => translateUi(locale, text);
+function IntakeConversation({ action, maxTotalBytes, serverError }: Props) {
+  const locale = useLocale(); const copy = LUMI_INTAKE_COPY[locale];
   const [draft, setDraft] = useState(() => {
-    try { return parseIntakeDraft(localStorage.getItem(PUBLIC_INTAKE_DRAFT_KEY)); }
-    catch { return parseIntakeDraft(null); }
+    try { return parseConversationDraft(localStorage.getItem(LUMI_INTAKE_DRAFT_KEY), localStorage.getItem(PUBLIC_INTAKE_DRAFT_KEY)); }
+    catch { return parseConversationDraft(null); }
   });
-  const [restored] = useState(() => Object.values(draft.answers).some(Boolean));
-  const [lostImages] = useState(draft.hadImages);
+  const [restored] = useState(() => draft.messages.length > 0 || Object.values(draft.answers).some(Boolean));
+  const [busy, setBusy] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [partial, setPartial] = useState("");
+  const [error, setError] = useState<"failed" | "stopped" | "rateLimit" | null>(() => draft.messages.at(-1)?.role === "user" ? "stopped" : null);
   const [storageFailed, setStorageFailed] = useState(false);
-  const [error, setError] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [imageError, setImageError] = useState("");
-  const [editing, setEditing] = useState(false);
+  const [fileError, setFileError] = useState("");
+  const [briefOpen, setBriefOpen] = useState(() => window.matchMedia("(min-width: 1000px)").matches);
+  const request = useRef<AbortController | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const questionHeading = useRef<HTMLHeadingElement>(null);
-  const shouldFocus = useRef(false);
-  const step = INTAKE_STEPS[draft.step];
-  const review = !step;
-  const activeSteps = intakeStepIndices(draft);
-  const previousStep = activeSteps.filter((index) => index < draft.step).at(-1) ?? 0;
+  const scroll = useRef<HTMLDivElement>(null);
+  const followOutput = useRef(true);
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const ready = intakeReady(draft.answers);
+  const t = (text: string) => translateUi(locale, text);
 
   useEffect(() => {
-    if (shouldFocus.current) questionHeading.current?.focus();
-  }, [draft.step]);
+    const timer = window.setTimeout(() => {
+      try { localStorage.setItem(LUMI_INTAKE_DRAFT_KEY, JSON.stringify(draft)); setStorageFailed(false); }
+      catch { setStorageFailed(true); }
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [draft]);
+  useEffect(() => {
+    const area = scroll.current;
+    if (area && followOutput.current) area.scrollTop = area.scrollHeight;
+  }, [draft.messages.length, busy, partial, error]);
+  useEffect(() => {
+    const area = scroll.current;
+    if (!area) return;
+    const observer = new ResizeObserver(() => { if (followOutput.current) area.scrollTop = area.scrollHeight; });
+    observer.observe(area);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => () => { request.current?.abort(); request.current = null; }, []);
 
-  function save(next: IntakeDraft) {
-    setDraft(next);
-    try { localStorage.setItem(PUBLIC_INTAKE_DRAFT_KEY, serializeIntakeDraft(next)); setStorageFailed(false); }
-    catch { setStorageFailed(true); }
-  }
-  function update(field: IntakeField, value: string) {
-    setError("");
-    save({ ...draft, answers: { ...draft.answers, [field]: value } });
-  }
-  function goTo(index: number, edit = false) {
-    shouldFocus.current = true;
-    setError("");
-    setEditing(edit);
-    save({ ...draft, step: index });
-  }
-  function advance(skip = false) {
-    if (!step) return;
-    const message = step.field === "screenshots" ? (skip ? "" : imageError) : (skip ? "" : intakeAnswerError(step.field, draft.answers[step.field]));
-    if (message) { setError(message); return; }
-    const next = editing ? INTAKE_STEPS.length : activeSteps.find((index) => index > draft.step) ?? INTAKE_STEPS.length;
-    const answers = { ...draft.answers };
-    if (skip && step.field !== "screenshots") answers[step.field] = "";
-    if (skip && step.field === "screenshots") {
-      if (fileInput.current) fileInput.current.value = "";
-      setFiles([]); setImageError("");
-    }
-    shouldFocus.current = true;
-    setError(""); setEditing(false);
-    save({ ...draft, answers, step: next, reached: Math.max(draft.reached, next), hadImages: skip && step.field === "screenshots" ? false : files.length > 0 });
-  }
-  function editAnswer(index: number) { goTo(index, review); }
-  function answerText(index: number) {
-    const field = INTAKE_STEPS[index].field;
-    if (field === "screenshots") return files.length ? files.map((file) => file.name).join(locale === "en" ? ", " : "、") : t("未上传");
-    const value = draft.answers[field].trim();
-    return value ? (["stage", "goal"].includes(field) ? t(value) : value) : t("暂未填写");
-  }
-  function renderAnswers(full: boolean) {
-    return <dl className="lumi-intake-answers">{INTAKE_STEPS.map((item, index) => {
-      if (!full && index >= draft.reached) return null;
-      return <div key={item.field}>
-        <dt><T>{item.label}</T></dt><dd>{answerText(index)}</dd>
-        <I18n><button type="button" onClick={() => editAnswer(index)} aria-label={`修改${item.label}`}><Pencil size={14} aria-hidden /><span><T>修改</T></span></button></I18n>
-      </div>;
-    })}</dl>;
-  }
-
-  return <div className="lumi-intake-layout">
-    <aside className="lumi-intake-host">
-      <LocalizedImage className="lumi-intake-rabbit" src={rabbit} alt="Lumi 露米，首客的前台兔兔" width={240} height={240} priority />
-      <div><h1>{locale === "en" ? <>Tell <span lang="en">lumi</span><br className="lumi-intake-desktop-break" /> about your project</> : <>和 <span lang="en">lumi</span> 聊聊<br className="lumi-intake-desktop-break" />你的出海项目</>}</h1>
-        <p><T>我来帮你把想法整理清楚。</T><br /><T>我们一次聊一件事。</T></p></div>
-      <div className="lumi-intake-outcome"><ClipboardList size={20} aria-hidden /><p><T>确认提交后，自动免费分析出海机会，整理候选人群和下一步待验证的问题。</T></p></div>
-    </aside>
-
-    <I18n><section className="lumi-intake-desk" aria-label="Lumi 项目引导">
-      <div className="lumi-intake-progress">
-        <span><T>{review ? "需求卡已整理好" : editing ? `修改${step.label}` : `项目登记 · ${Math.max(0, activeSteps.indexOf(draft.step)) + 1} / ${activeSteps.length}`}</T></span>
-        <span><T>{review ? "请核对后提交" : "选填项可以跳过"}</T></span>
-        <I18n><progress max={activeSteps.length} value={activeSteps.filter((index) => index < draft.reached).length} aria-label="项目登记进度" /></I18n>
-      </div>
-      {serverError ? <p role="alert" className="lumi-intake-notice lumi-intake-error"><T>{serverError}</T><T>。文本资料已保留，请检查后重试。</T></p> : null}
-      {restored ? <p className="lumi-intake-notice"><T>已接着上次的文本草稿继续。</T><T>{lostImages ? "截图不会保存在浏览器中，请重新选择。" : ""}</T></p> : null}
-
-      <form action={action} noValidate onSubmit={(event) => {
-        if (!review) { event.preventDefault(); advance(); return; }
-        const invalid = INTAKE_STEPS.findIndex((item) => item.field !== "screenshots" && Boolean(intakeAnswerError(item.field, draft.answers[item.field])));
-        if (invalid >= 0 || imageError) {
-          event.preventDefault();
-          const index = invalid >= 0 ? invalid : 6;
-          goTo(index, true);
-          const field = INTAKE_STEPS[index].field;
-          setError(field === "screenshots" ? imageError : intakeAnswerError(field, draft.answers[field]));
+  async function replyTo(history: IntakeMessage[]) {
+    if (request.current || creating || fileError) return;
+    const controller = new AbortController(); request.current = controller;
+    setBusy(true); setPartial(""); setError(null);
+    try {
+      const body = new FormData();
+      body.set("conversation", JSON.stringify({ messages: history.slice(-INTAKE_HISTORY_LIMIT), answers: draft.answers }));
+      for (const file of files) body.append("screenshots", file);
+      const response = await fetch("/api/lumi/intake", { method: "POST", headers: { "X-HiFirst-Language": locale }, body, signal: controller.signal });
+      if (response.status === 429) { setError("rateLimit"); return; }
+      if (!response.ok || !response.body) throw new Error("Intake unavailable");
+      let completed = false;
+      await readIntakeStream(response.body, ({ event, data }) => {
+        if (request.current !== controller) return;
+        if (event === "error") throw new Error("Intake unavailable");
+        if (event === "reply" && data && typeof data === "object" && "text" in data && typeof data.text === "string") setPartial(data.text);
+        if (event === "result") {
+          const result = intakeResponseSchema.parse(data);
+          const answers = applyIntakeUpdates(draft.answers, result.updates);
+          if (intakeReady(answers) && !intakeReady(draft.answers) && window.matchMedia("(min-width: 1000px)").matches) setBriefOpen(true);
+          setDraft((previous) => ({ ...previous, messages: [...history, { role: "assistant" as const, content: result.reply }].slice(-80), answers, choices: result.choices }));
+          completed = true; setPartial("");
         }
-      }}>
-        {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
-        <div hidden aria-hidden><label htmlFor="website"><T>网站</T></label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
-        <IntakePending>
-          {!review && draft.step > 0 && !editing ? <div className="lumi-intake-last-answer"><span><T>上一项已记录</T></span><p>{answerText(previousStep)}</p><I18n><button type="button" onClick={() => goTo(previousStep)} aria-label={`修改${INTAKE_STEPS[previousStep].label}`}><Pencil size={14} aria-hidden /><T>修改</T></button></I18n></div> : null}
-          <div className="lumi-intake-question" key={draft.step}>
-            <div className="lumi-intake-speaker"><Image src={rabbit} alt="" width={40} height={40} /><span lang="en">lumi</span><span>{locale === "en" ? "Front desk" : <T>露米</T>}</span></div>
-            <h2 ref={questionHeading} tabIndex={-1} id="intake-question"><T>{review ? "收到，这是我们整理好的需求卡。" : intakeQuestion(step.field, step.question, draft.answers)}</T></h2>
-            <p id="intake-help"><T>{review ? "看看有没有需要调整的地方，确认后我就帮你提交。" : step.help}</T></p>
-          </div>
+      });
+      if (!completed) throw new Error("Incomplete intake reply");
+    } catch {
+      if (request.current === controller) setError(controller.signal.aborted ? "stopped" : "failed");
+    } finally {
+      if (request.current === controller) { request.current = null; setBusy(false); }
+    }
+  }
 
-          {step && step.field !== "screenshots" ? <div className="lumi-intake-response">
-            {"options" in step ? <fieldset className="lumi-intake-options" aria-labelledby="intake-question" aria-describedby={error ? "intake-error" : "intake-help"}>
-              <legend className="sr-only"><T>{step.label}</T></legend>
-              {step.options.map((option) => <label key={option}>
-                <input type="radio" name={`choice-${step.field}`} value={option} checked={draft.answers[step.field] === option} onChange={() => update(step.field, option)} />
-                <span><T>{option}</T></span><Check size={18} aria-hidden />
-              </label>)}
-            </fieldset> : <>
-              <label className="sr-only" htmlFor="intake-answer"><T>{step.label}</T></label>
-              {["productName", "currentWorkflow", "successCriteria", "constraints"].includes(step.field) ? <textarea id="intake-answer" rows={4} value={draft.answers[step.field]} maxLength={step.max} placeholder={t(step.placeholder)}
-                aria-invalid={Boolean(error)} aria-describedby={error ? "intake-help intake-error" : "intake-help"} onChange={(event) => update(step.field, event.target.value)} /> :
-                <input id="intake-answer" type={step.field === "productUrl" ? "url" : "text"} value={draft.answers[step.field]} maxLength={step.max} placeholder={t(step.placeholder)}
-                  autoComplete={step.field === "contact" ? "off" : undefined} aria-invalid={Boolean(error)} aria-describedby={error ? "intake-help intake-error" : "intake-help"}
-                  onChange={(event) => update(step.field, event.target.value)} />}
-              <div className="lumi-intake-input-note"><span><T>{"optional" in step ? "选填" : "必填"}</T></span><span>{draft.answers[step.field].length} / {step.max}</span></div>
-            </>}
-          </div> : null}
+  function send(text: string) {
+    const content = text.trim();
+    if (!content || busy || creating || fileError || content.length > INTAKE_MESSAGE_LIMIT) return;
+    const history: IntakeMessage[] = [...draft.messages, { role: "user" as const, content }].slice(-79);
+    followOutput.current = true;
+    setDraft((previous) => ({ ...previous, messages: history, input: "", choices: [] }));
+    void replyTo(history);
+  }
+  function clearFiles() {
+    setFiles([]); setFileError(""); if (fileInput.current) fileInput.current.value = "";
+    setDraft((previous) => ({ ...previous, hadImages: false }));
+  }
 
-          {/* Keep the file input mounted so changing steps never discards selected files. */}
-          <div hidden={step?.field !== "screenshots"} className="lumi-intake-response">
-            <label className="lumi-intake-upload" htmlFor="intake-screenshots"><Paperclip size={20} aria-hidden /><strong><T>选择产品截图</T></strong>
-              <span><T>PNG、JPG 或 WebP · 最多 3 张</T><br /><T>{maxTotalBytes ? "合计不超过 4 MB" : "每张不超过 5 MB"}</T></span></label>
-            <I18n><input ref={fileInput} id="intake-screenshots" className="lumi-intake-file" type="file" name="screenshots" multiple accept="image/png,image/jpeg,image/webp" aria-label="选择产品截图"
-              aria-invalid={Boolean(imageError)} aria-describedby={imageError ? "intake-error" : undefined} onChange={(event) => {
-                const selected = Array.from(event.target.files ?? []);
-                const message = selected.length > 3 ? "最多选择 3 张截图，请重新选择。" : selected.some((file) => file.size > 5 * 1024 * 1024) ? "每张截图不能超过 5 MB，请选择较小的图片。" : maxTotalBytes && selected.reduce((sum, file) => sum + file.size, 0) > maxTotalBytes ? "截图合计不能超过 4 MB，请选择较小的图片。" : selected.some((file) => !["image/png", "image/jpeg", "image/webp"].includes(file.type)) ? "请选择 PNG、JPG 或 WebP 图片。" : "";
-                setFiles(selected); setImageError(message); setError(message);
-                save({ ...draft, hadImages: selected.length > 0 });
-              }} /></I18n>
-            {files.length ? <ul className="lumi-intake-files">{files.map((file, index) => <li key={index}><Paperclip size={14} aria-hidden /><span>{file.name}</span><small>{(file.size / 1024 / 1024).toFixed(2)} MB</small></li>)}</ul> : null}
-          </div>
+  const rows = INTAKE_STEPS.filter((step) => step.field !== "screenshots" && (draft.answers[step.field] || ["productName", "stage", "goal", "contact"].includes(step.field)));
+  const canRetry = error && draft.messages.at(-1)?.role === "user";
 
-          {review ? <div className="lumi-intake-review">{renderAnswers(true)}<p><T>确认后保存为需求第 1 版，并免费分析出海机会。暂未填写的项目保留为未知；可在工作台补充，历史版本会保留。</T></p></div> : null}
-          {error ? <p className="lumi-intake-error" id="intake-error" role="alert"><T>{error}</T></p> : null}
-          <div className="lumi-intake-actions">
-            {editing ? <button type="button" className="lumi-intake-back" onClick={() => goTo(INTAKE_STEPS.length)}><ArrowLeft size={16} aria-hidden /><T>返回核对</T></button> : draft.step > 0 ? <button type="button" className="lumi-intake-back" onClick={() => goTo(previousStep)}><ArrowLeft size={16} aria-hidden /><T>上一步</T></button> : null}
-            <button type="submit" className="lumi-intake-next"><T>{review ? "确认提交，免费分析出海机会" : editing ? "保存修改" : "继续"}</T><ArrowRight size={17} aria-hidden /></button>
-            {step && "optional" in step ? <button type="button" className="lumi-intake-skip" onClick={() => advance(true)}><T>{step.skip}</T></button> : null}
+  return <div className="lumi-guide">
+    <header className="lumi-guide-title"><h1>{copy.title}</h1><p>{copy.subtitle}</p></header>
+    <div className="lumi-guide-workspace">
+      <section className="lumi-guide-thread" aria-label={copy.speaker}>
+        <div className="lumi-guide-scroll" ref={scroll} onScroll={(event) => { const area = event.currentTarget; followOutput.current = area.scrollHeight - area.scrollTop - area.clientHeight < 80; }}>
+          <div className="lumi-guide-log" role="log" aria-live="polite" aria-relevant="additions">
+            <article className="lumi-guide-message" data-role="assistant">
+              <div className="lumi-guide-author"><Image src={rabbit} alt="" width={32} height={32} /><strong>{BRAND.agentName}</strong><span>{copy.speaker}</span></div>
+              <p>{restored ? copy.restored : copy.greeting}</p>
+            </article>
+            {draft.messages.map((message, index) => <article className="lumi-guide-message" data-role={message.role} key={index}>
+              <div className="lumi-guide-author">{message.role === "assistant" ? <><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></> : <span>{copy.you}</span>}</div>
+              <p>{message.content}</p>
+            </article>)}
           </div>
-          {!review && draft.reached > 0 && !editing ? <details className="lumi-intake-record"><summary><T>查看已填资料</T></summary>{renderAnswers(false)}</details> : null}
-        </IntakePending>
-      </form>
-      <p className="lumi-intake-save" role="status"><T>{storageFailed ? "当前浏览器无法保存草稿，请保持页面打开直至提交。" : "文本草稿自动保存在此浏览器，截图需在本次提交。"}</T></p>
-    </section></I18n>
+          {busy || partial ? <article className="lumi-guide-message" data-role="assistant" aria-busy={busy}>
+            <div className="lumi-guide-author"><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></div>
+            {partial ? <p>{partial}</p> : <p className="lumi-guide-thinking" role="status"><LoaderCircle size={15} className="lumi-guide-spinner" aria-hidden />{copy.thinking}</p>}
+          </article> : null}
+          {error ? <div className="lumi-guide-error" role="alert"><p>{copy[error]}</p>{canRetry ? <button type="button" onClick={() => void replyTo(draft.messages)} disabled={busy || creating || Boolean(fileError)}><RotateCcw size={15} aria-hidden />{copy.retry}</button> : null}</div> : null}
+          {!busy && !ready && draft.choices.length ? <fieldset className="lumi-guide-choices"><legend>{copy.choiceHint}</legend>
+            {draft.choices.map((choice) => <button key={choice.value} type="button" disabled={creating} onClick={() => send(choice.value)}>{choice.label}<ArrowUp size={15} aria-hidden /></button>)}
+          </fieldset> : null}
+          {!draft.messages.length && !restored ? <div className="lumi-guide-starters">{copy.starters.map((text) => <button key={text} type="button" onClick={() => send(text)} disabled={busy || creating}>{text}<ArrowUp size={15} aria-hidden /></button>)}</div> : null}
+        </div>
+
+        <div className="lumi-guide-compose-area">
+          {serverError ? <p className="lumi-guide-error" role="alert">{t(serverError)} {copy.serverError}</p> : null}
+          {draft.hadImages && !files.length ? <p className="lumi-guide-note">{copy.lostImages}</p> : null}
+          {files.length ? <div className="lumi-guide-attachments">{files.map((file, index) => <span key={index}><Paperclip size={13} aria-hidden />{file.name}</span>)}<button type="button" onClick={clearFiles} disabled={busy || creating} aria-label={copy.remove}><X size={16} aria-hidden /></button></div> : null}
+          {fileError ? <p className="lumi-guide-error" role="alert">{fileError}</p> : null}
+          <form className="lumi-guide-composer" onSubmit={(event) => { event.preventDefault(); send(draft.input); }}>
+            <label className="sr-only" htmlFor="lumi-intake-message">{copy.send}</label>
+            <textarea ref={textarea} id="lumi-intake-message" rows={3} value={draft.input} maxLength={INTAKE_MESSAGE_LIMIT} placeholder={copy.placeholder} disabled={creating}
+              onChange={(event) => setDraft((previous) => ({ ...previous, input: event.target.value }))}
+              onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(draft.input); } }} />
+            <div className="lumi-guide-compose-tools">
+              <button type="button" onClick={() => fileInput.current?.click()} disabled={busy || creating} aria-label={copy.attach} title={copy.fileHelp}><Paperclip size={19} aria-hidden /></button>
+              <span>{draft.input.length ? `${draft.input.length} / ${INTAKE_MESSAGE_LIMIT}` : BRAND.agentName}</span>
+              {busy ? <button type="button" className="lumi-guide-send" onClick={() => request.current?.abort()} aria-label={copy.stop}><Square size={15} fill="currentColor" aria-hidden /></button>
+                : <button type="submit" className="lumi-guide-send" aria-label={copy.send} disabled={!draft.input.trim() || creating || Boolean(fileError)}><ArrowUp size={20} aria-hidden /></button>}
+            </div>
+          </form>
+          <input ref={fileInput} className="sr-only" type="file" name="screenshots" form="lumi-project-submit" multiple accept="image/png,image/jpeg,image/webp" aria-label={copy.attach} disabled={busy} tabIndex={-1}
+            onChange={(event) => {
+              const selected = Array.from(event.target.files ?? []);
+              const invalid = selected.length > 3 || selected.some((file) => file.size === 0 || file.size > 5 * 1024 * 1024 || !["image/png", "image/jpeg", "image/webp"].includes(file.type));
+              const tooLarge = maxTotalBytes && selected.reduce((sum, file) => sum + file.size, 0) > maxTotalBytes;
+              setFiles(selected); setFileError(invalid ? copy.imageError : tooLarge ? copy.imageTotal : "");
+              setDraft((previous) => ({ ...previous, hadImages: selected.length > 0 }));
+            }} />
+          <p className="lumi-guide-footnote" role="status">{storageFailed ? copy.storageError : copy.footer}</p>
+        </div>
+      </section>
+
+      <aside className="lumi-guide-brief">
+        <details open={briefOpen} onToggle={(event) => setBriefOpen(event.currentTarget.open)}>
+          <summary><span><ClipboardList size={18} aria-hidden />{copy.draft}</span>{ready ? <span className="lumi-guide-summary-status">{locale === "en" ? "Ready to confirm" : "可确认"}</span> : null}<ChevronDown size={17} aria-hidden /></summary>
+          <div className="lumi-guide-brief-content">
+            <p>{copy.summaryHint}</p>
+            <dl>{rows.map((step) => {
+              if (step.field === "screenshots") return null;
+              const value = draft.answers[step.field];
+              return <div key={step.field}><dt>{t(step.label)}</dt><dd data-empty={!value}>{value ? ["stage", "goal"].includes(step.field) ? t(value) : value : copy.unknown}</dd></div>;
+            })}</dl>
+            <form id="lumi-project-submit" action={action} onSubmit={(event) => {
+              if (!ready || busy || fileError || creating) { event.preventDefault(); return; }
+              setCreating(true);
+            }}>
+              {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
+              <div hidden aria-hidden><label htmlFor="website">Website</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
+              <p className="lumi-guide-readiness" data-ready={ready}>{ready ? <Check size={15} aria-hidden /> : null}{ready ? copy.ready : copy.incomplete}</p>
+              <ConfirmProject disabled={!ready || busy || creating || Boolean(fileError)} />
+            </form>
+          </div>
+        </details>
+      </aside>
+    </div>
   </div>;
 }

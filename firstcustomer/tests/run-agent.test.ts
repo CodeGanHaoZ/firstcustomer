@@ -277,7 +277,9 @@ describe("模型配置", () => {
     vi.stubGlobal("fetch", fetchStream);
     try {
       const client = createModelClient({ MIMO_API_KEY: "k" } as unknown as NodeJS.ProcessEnv);
-      const result = await client({ agent: "quote", tier: "flash", preferStreaming: true, messages: [{ role: "user", content: "hi" }] });
+      const deltas: string[] = [];
+      const result = await client({ agent: "quote", tier: "flash", preferStreaming: true, onTextDelta: (delta) => deltas.push(delta), messages: [{ role: "user", content: "hi" }] });
+      expect(deltas).toEqual(['{"answer"', ':"ok"}']);
       expect(result).toMatchObject({ content: '{"answer":"ok"}', model: "mimo-v2.6-flash",
         usage: { inputTokens: 13, outputTokens: 7, searchCalls: 0 } });
     } finally {

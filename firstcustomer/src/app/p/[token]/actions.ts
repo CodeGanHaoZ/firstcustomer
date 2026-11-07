@@ -145,7 +145,7 @@ export async function customerRequirementsAction(token: string, formData: FormDa
       fields: requirementFields.parse(Object.fromEntries(formData)),
     });
     if (saved.requirementVersion === version) return "需求内容没有变化，继续使用当前版本。";
-    return "新需求版本已保存，正在重新初诊；历史资料可在需求卡中查看。";
+    return "新需求版本已保存，正在重新分析出海机会；历史资料可在需求卡中查看。";
   });
 }
 

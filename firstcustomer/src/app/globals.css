@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-serif, var(--font-sans));
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -30,7 +30,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
+  --color-muted: var(--ui-muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -38,7 +38,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
+  --color-card: var(--ui-card);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,30 +49,32 @@
 }
 
 :root {
-  --background: #faf7ef;
-  --foreground: #243b2d;
-  --card: #fffdf6;
-  --card-foreground: #243b2d;
-  --popover: #fffdf6;
-  --popover-foreground: #243b2d;
-  --primary: #456447;
-  --primary-foreground: #fffdf6;
-  --secondary: #edf0e2;
-  --secondary-foreground: #2e4c36;
-  --muted: #eeeadf;
-  --muted-foreground: #586552;
-  --accent: #e8edda;
+  /* 与首页 editorial 纸感令牌同源：页面暖白、卡片浅纸、近黑标题、松绿操作。
+     shadcn 的 card / muted 改名为 --ui-*，避免与 editorial.css 的 --card（卡片纸面）和 --muted（次级文字色）互相覆盖。 */
+  --background: #fbfaf8;
+  --foreground: #2a2f28;
+  --ui-card: #f7f5ef;
+  --card-foreground: #2a2f28;
+  --popover: #fbfaf8;
+  --popover-foreground: #2a2f28;
+  --primary: #101210;
+  --primary-foreground: #fbfaf8;
+  --secondary: #f2eee2;
+  --secondary-foreground: #3e4c2f;
+  --ui-muted: #ece8dc;
+  --muted-foreground: #72776c;
+  --accent: #e8efdf;
   --accent-foreground: #243b2d;
-  --destructive: #a14334;
-  --border: #d8cfbc;
-  --input: #cbc1ac;
-  --ring: #59734e;
+  --destructive: #b4573f;
+  --border: #e5e0d2;
+  --input: #cfc9b6;
+  --ring: #456447;
   --chart-1: #456447;
   --chart-2: #a3653f;
   --chart-3: #758447;
   --chart-4: #a84a3b;
   --chart-5: #517383;
-  --radius: 0.625rem;
+  --radius: 0.875rem;
   --sidebar: #ebe6d9;
   --sidebar-foreground: #243b2d;
   --sidebar-primary: #456447;
@@ -86,7 +88,7 @@
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --ui-card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
@@ -94,7 +96,7 @@
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
+  --ui-muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);

@@ -274,8 +274,7 @@ main .container,
 .section-head .lead { margin-top: var(--sp-4); margin-inline: auto; max-width: 30em; }
 .section-head--left .lead { margin-inline: 0; }
 
-/* 常规定宽栅格 */
-.grid { display: grid; gap: var(--sp-5); }
+/* 常规定宽栅格：与 Tailwind 的 grid / gap-* 工具类并用（.grid 由 Tailwind 提供），这里只定列数 */
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -1011,6 +1010,12 @@ main .container,
    ========================================================================== */
 
 /* ---------- 首屏：左右分栏（左文案 / 右 Lumi 前台卡片） ---------- */
+/* 首屏通栏背景：毛毡森林出海风景贴底铺满，天空与 --paper 同色，上缘与底部自然融入页面。
+   底部留出一段空间让小河与草地露出来，文案和 Lumi 卡片仍在天空区域。 */
+.hero-scene {
+  padding-bottom: clamp(200px, 28vw, 460px);
+  background: var(--paper) url("/home/hero-landscape.webp") center bottom / max(100%, 900px) auto no-repeat;
+}
 .hero {
   padding-block: clamp(48px, 7vw, 96px) 0;
 }

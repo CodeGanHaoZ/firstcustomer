@@ -1,69 +1,92 @@
-import { LocalizedLink } from "@/components/localized-controls";
 import { getLocale } from "@/lib/locale-server";
 import { translateUi } from "@/lib/ui-translation";
 import { T } from "@/components/ui-text";
 import { desc, eq } from "drizzle-orm";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Info, Plus } from "lucide-react";
+import Image from "next/image";
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { LanguageSwitch } from "@/components/language-switch";
-import { BrandMark } from "@/components/brand-mark";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { PageHead, SceneFooter, SiteHeader, StatusPill } from "@/components/site-chrome";
+import { projectPhases } from "@/components/project-details";
+import { Button } from "@/components/ui/button";
 import { getDb } from "@/db";
 import { projects } from "@/db/schema";
 import { STATUS_LABELS, type ProjectStatus } from "@/domain/workflow";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { accountProjectToken } from "@/lib/customer-project";
 import { formatDateTime } from "@/lib/format";
-import { signOutAction } from "./actions";
+import { listTrialProjects, trialProjectTokens } from "@/lib/trial-projects";
+import { saveTrialProjectsAndReturnAction } from "./actions";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  return { title: translateUi(locale, "我的项目 · 首客 HiFirst"), robots: { index: false, follow: false } };
+  const [locale, session] = await Promise.all([getLocale(), getCustomerSession()]);
+  return { title: translateUi(locale, session ? "我的项目 · 首客 HiFirst" : "试用工作台 · 首客 HiFirst"), robots: { index: false, follow: false } };
 }
 
 export default async function AccountPage() {
-  const session = await getCustomerSession();
-  if (!session) redirect("/login");
-  const owned = await getDb().select({
+  const [session, tokens] = await Promise.all([getCustomerSession(), trialProjectTokens()]);
+  const db = getDb();
+  const [owned, trial] = await Promise.all([session ? db.select({
     id: projects.id, productName: projects.productName, status: projects.status,
     paused: projects.paused, updatedAt: projects.updatedAt,
-  }).from(projects).where(eq(projects.customerId, session.user.id)).orderBy(desc(projects.updatedAt));
+  }).from(projects).where(eq(projects.customerId, session.user.id)).orderBy(desc(projects.updatedAt)) : Promise.resolve([]),
+  listTrialProjects(db, tokens)]);
+  const visible = [...owned.map((project) => ({ ...project, token: accountProjectToken(project.id) })), ...trial]
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
-      <div className="flex items-center justify-between gap-4">
-        <LocalizedLink href="/" aria-label="首客首页"><BrandMark /></LocalizedLink>
-        <div className="flex flex-wrap items-center justify-end gap-3"><LanguageSwitch />
-          <form action={signOutAction}><Button type="submit" variant="outline"><T>退出登录</T></Button></form>
-        </div>
-      </div>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight"><T>我的项目</T></h1>
-          <p className="mt-2 text-sm break-all text-muted-foreground">{session.user.email}</p>
-        </div>
-        <Link href="/#cta" className={buttonVariants({ size: "lg" })}><T>新建出海项目</T></Link>
-      </header>
-      {owned.length ? (
-        <ul className="divide-y rounded-xl border bg-card">
-          {owned.map((project) => (
-            <li key={project.id}>
-              <Link href={`/p/${accountProjectToken(project.id)}`} className="flex items-center justify-between gap-3 px-4 py-4 hover:bg-secondary sm:px-6">
-                <span className="grid min-w-0 gap-1">
-                  <strong className="wrap-break-word">{project.productName}</strong>
-                  <span className="text-xs text-muted-foreground">{formatDateTime(project.updatedAt)}</span>
-                </span>
-                <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
-                  <T>{project.paused ? "已暂停" : STATUS_LABELS[project.status as ProjectStatus] ?? project.status}</T>
-                  <ArrowRight size={16} aria-hidden="true" />
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : <p className="rounded-xl border bg-card px-5 py-8 text-sm text-muted-foreground"><T>还没有项目。新建一个出海项目，就可以免费分析出海机会。</T></p>}
-    </main>
+    <div className="site-shell">
+      <SiteHeader current="account" />
+      <main className="site-main">
+        <PageHead
+          eyebrow={session ? <span className="normal-case tracking-normal">{session.user.email}</span> : <T>无需登录</T>}
+          title={<T>{session ? "我的项目" : "试用工作台"}</T>}
+          lead={session ? undefined : <T>无需登录，直接创建项目，查看办公室进度与出海机会报告。</T>}
+          actions={<Link href="/#cta" className="btn btn--primary btn--lg"><Plus size={16} aria-hidden="true" /><T>新建出海项目</T></Link>}
+        />
+        {!session ? (
+          <div className="notice rise" style={{ "--i": 1 } as CSSProperties}>
+            <Info size={16} aria-hidden="true" />
+            <p className="m-0"><T>当前浏览器会保留最近 12 个试用项目的入口，保存 30 天。清除浏览器数据后，请通过项目专属链接找回。</T>{" "}
+              <Link href="/register" className="link-u"><T>注册或登录后，这些试用项目会保存到你的账号，方便换设备继续。</T></Link></p>
+          </div>
+        ) : trial.length ? (
+          <form action={saveTrialProjectsAndReturnAction} className="notice notice--wait rise flex-wrap items-center justify-between" style={{ "--i": 1 } as CSSProperties}>
+            <p className="m-0"><T>本浏览器还有试用项目，可以保存到当前账号。</T></p>
+            <Button type="submit" size="sm"><T>保存试用项目到账号</T></Button>
+          </form>
+        ) : null}
+        {visible.length ? (
+          <ul className="card-grid">
+            {visible.map((project, index) => {
+              const status = project.status as ProjectStatus;
+              const { phases, index: phaseIndex, done } = projectPhases(status, false, "legacy");
+              const percent = done ? 100 : Math.max(8, Math.round(((Math.max(phaseIndex, 0) + 0.5) / phases.length) * 100));
+              return (
+                <li key={project.id} className="rise" style={{ "--i": Math.min(index + 2, 10) } as CSSProperties}>
+                  <Link href={`/p/${project.token}`} className="tile h-full">
+                    <p className="tile__meta">{formatDateTime(project.updatedAt)}</p>
+                    <h2 className="tile__title">{project.productName}</h2>
+                    <div className="meter" aria-hidden="true"><span style={{ "--p": `${percent}%`, "--i": index } as CSSProperties} /></div>
+                    <div className="tile__foot">
+                      <StatusPill status={status} paused={project.paused} label={project.paused ? "已暂停" : STATUS_LABELS[status] ?? project.status} />
+                      <ArrowRight size={16} className="tile__arrow" aria-hidden="true" />
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="empty rise" style={{ "--i": 2 } as CSSProperties}>
+            <Image src="/brand/front-desk-rabbit.webp" alt="" width={132} height={132} unoptimized />
+            <p><T>还没有项目。新建一个出海项目，就可以免费分析出海机会。</T></p>
+            <Link href="/#cta" className="btn btn--primary"><T>新建出海项目</T><ArrowRight size={14} className="arw" aria-hidden="true" /></Link>
+          </div>
+        )}
+      </main>
+      <SceneFooter />
+    </div>
   );
 }

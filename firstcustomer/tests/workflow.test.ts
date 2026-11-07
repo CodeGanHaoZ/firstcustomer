@@ -67,6 +67,8 @@ import { seedKnowledge } from "@/knowledge/seed";
 import { requirementHistory, reviseRequirements } from "@/workflow/requirements";
 import { requirementSnapshot, MAX_CLARIFICATION_ROUNDS } from "@/domain/requirements";
 import { workPackageReadiness } from "@/workflow/work-packages";
+import { authUsers } from "@/db/customer-auth-schema";
+import { claimTrialProjects, listTrialProjects } from "@/lib/trial-projects";
 
 let pg: EmbeddedPostgres;
 let db: Db;
@@ -108,6 +110,36 @@ beforeEach(async () => {
   await db.delete(companySettings);
   await db.delete(decisions);
   await db.delete(knowledgeArticles);
+});
+
+describe("免登录试用项目隔离", () => {
+  const input = { productName: "试用隔离验证", stage: "已有 MVP", goal: "找首批用户", contact: "test@example.com", productPlan: "free" as const };
+  it("当前浏览器仅能列出持有有效专属凭据的游客项目", async () => {
+    const first = await createProject(db, input);
+    const other = await createProject(db, input);
+    expect((await listTrialProjects(db, [first.token])).map(({ id }) => id)).toEqual([first.project.id]);
+    expect(await listTrialProjects(db, [])).toEqual([]);
+    expect(await listTrialProjects(db, ["a".repeat(43)])).toEqual([]);
+    await regenerateProjectLink(db, first.project.id);
+    expect(await listTrialProjects(db, [first.token])).toEqual([]);
+    expect((await listTrialProjects(db, [other.token])).map(({ id }) => id)).toEqual([other.project.id]);
+  });
+  it("登录归档只绑定当前凭据对应的未归属项目，不抢占其他账号项目", async () => {
+    const [owner, otherOwner] = await db.insert(authUsers).values([1, 2].map(() => {
+      const id = crypto.randomUUID();
+      return { id, name: "Trial test", email: `${id}@example.com` };
+    })).returning();
+    const guest = await createProject(db, input);
+    const unrelated = await createProject(db, input);
+    const owned = await createProject(db, { ...input, customerId: otherOwner.id });
+    expect(await claimTrialProjects(db, [guest.token, owned.token, "b".repeat(43)], owner.id)).toBe(1);
+    const all = await db.select({ id: projects.id, customerId: projects.customerId }).from(projects);
+    expect(all.find(({ id }) => id === guest.project.id)?.customerId).toBe(owner.id);
+    expect(all.find(({ id }) => id === unrelated.project.id)?.customerId).toBeNull();
+    expect(all.find(({ id }) => id === owned.project.id)?.customerId).toBe(otherOwner.id);
+    expect(await claimTrialProjects(db, [guest.token], otherOwner.id)).toBe(0);
+    expect(await listTrialProjects(db, [guest.token, owned.token])).toEqual([]);
+  });
 });
 
 // 用队列数组代替 pg-boss，循环执行直到项目停在需要人决定的状态。

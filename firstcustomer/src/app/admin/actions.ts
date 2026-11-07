@@ -8,7 +8,7 @@ import { pageContent } from "@/agents/schemas";
 import { getDb } from "@/db";
 import { leads, projects } from "@/db/schema";
 import { enqueueAdvance } from "@/jobs/queue";
-import { endAdminSession, passwordMatches, requireAdmin, startAdminSession } from "@/lib/auth";
+import { adminCredentialsMatch, endAdminSession, requireAdmin, startAdminSession } from "@/lib/auth";
 import { withinLimit } from "@/lib/request";
 import { readUploadedFiles, readUploadedImage } from "@/lib/uploads";
 import { confirmReceipt, decideQuote, MAX_AMOUNT_FEN, savePaymentCode, uploadReceipt } from "@/workflow/commerce";
@@ -41,7 +41,7 @@ import { editLandingPage } from "@/workflow/landing-edits";
 
 export async function loginAction(formData: FormData) {
   const allowed = await withinLimit("admin-login", 10, 600);
-  if (!allowed || !passwordMatches(String(formData.get("password") ?? ""))) {
+  if (!allowed || !adminCredentialsMatch(String(formData.get("username") ?? ""), String(formData.get("password") ?? ""))) {
     redirect("/admin/login?error=1");
   }
   await startAdminSession();

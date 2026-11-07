@@ -11,7 +11,7 @@ npm ci
 cp .env.example .env.local
 ```
 
-在 `.env.local` 里填 `ADMIN_PASSWORD` 和至少 32 字符的 `SESSION_SECRET`，后者可用 `openssl rand -base64 32` 生成。启用 `LLM_PROVIDER=stub`、`ALLOW_STUB=1`，然后按顺序开三个终端：
+在 `.env.local` 里填 `ADMIN_USERNAME`、`ADMIN_PASSWORD` 和至少 32 字符的 `SESSION_SECRET`，后者可用 `openssl rand -base64 32` 生成。启用 `LLM_PROVIDER=stub`、`ALLOW_STUB=1`，然后按顺序开三个终端：
 
 ```bash
 npm run db:dev
@@ -57,13 +57,13 @@ npm run dev
 | `MODEL_COST_SPONSORED` | 赛事赞助模型费用时设为 `1`，经营台保留标价并注明赞助 |
 | `FALLBACK_PROVIDER` / `FALLBACK_BASE_URL` / `FALLBACK_API_KEY` / `FALLBACK_MODEL` | 可选，主模型故障时使用兼容 OpenAI 接口的备用模型 |
 
-Lumi 的自由对话走 `/api/lumi`；项目研究与交付走后台任务。API Key 仅供服务器读取，不需要发给客户，也不应使用 `NEXT_PUBLIC_` 前缀。`.env.local`、`.env` 和 `.vercel/` 均不提交到 Git。
+首页和创建项目页的 Lumi 共用 `/api/lumi/intake`，支持真实 AI 多轮问答、流式回复、动态选项和需求草稿；原 `/api/lumi` 保留为通用问答接口。项目研究与交付走后台任务。API Key 仅供服务器读取，不需要发给客户，也不应使用 `NEXT_PUBLIC_` 前缀。`.env.local`、`.env` 和 `.vercel/` 均不提交到 Git。
 
 ## 客户账号
 
-客户通过 Better Auth 使用邮箱与密码注册、登录，密码至少 10 个字符。注册后进入「我的项目」，登录后提交的项目绑定当前账号；访客项目仍使用原有专属链接。
+客户通过 Better Auth 使用邮箱与密码注册、登录，密码至少 10 个字符。不登录也可以从 `/account` 进入「试用工作台」并创建项目，当前浏览器保存最近 12 个试用项目入口 30 天。注册或登录后，本浏览器持有有效凭据的试用项目归入账号；登录后提交的项目绑定当前账号。原有专属链接仍可使用。
 
-`BETTER_AUTH_SECRET` 可单独配置，未设置时沿用 `SESSION_SECRET`。固定使用自定义域名时，可通过 `BETTER_AUTH_URL` 指定完整的 HTTPS 地址。客户账号与经营台权限独立，经营者继续使用 `ADMIN_PASSWORD` 登录。目前未接入邮件验证、找回密码和第三方登录。
+`BETTER_AUTH_SECRET` 可单独配置，未设置时沿用 `SESSION_SECRET`。固定使用自定义域名时，可通过 `BETTER_AUTH_URL` 指定完整的 HTTPS 地址。客户账号与经营台权限独立，经营者使用独立的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录 `/admin/login`，所有环境均要求登录。修改内部账号或密码后旧会话失效。目前未接入邮件验证、找回密码和第三方登录。
 
 ## 常用命令
 
@@ -108,8 +108,8 @@ Research、Strategy、Launch、Growth、接待报价员、项目客服、COO 和
 - **证据工具多一个 `save_evidence`：** 摘录由模型挑选，由程序核对并决定等级，所以检索和保存分成两步。模型仍然不能直接写库。
 - **截图不算证据：** 截图由 MiMo 读取后只作为背景交给 Agent。要写进对外页面的产品事实，由老板在“人工补充证据”里登记为“产品事实（客户提供）”。
 - **追问只有一次：** Research 整个项目最多追问客户一次、最多 3 个问题。老板可以选择不再等待。
-- **客户账号和经营台分开：** 客户用邮箱和密码登录，从「我的项目」打开登录后提交的项目。访客和已有项目仍可使用专属链接。经营者通过 `ADMIN_PASSWORD` 登录。
-- **免费初诊：** `/projects/new` 由 Lumi 逐项引导登记，支持快捷选择、跳过选填项、草稿续填和最终摘要修改；确认提交后自动开始初诊，完成后可申请 Pro。文本草稿兼容旧表单并保存在当前浏览器，截图只保留在本次页面会话中。内部建项仍使用完整表单。
+- **客户账号和经营台分开：** 客户可免登录试用，登录或注册用于归档项目与跨设备访问。经营者通过独立的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录。
+- **免费出海机会分析：** `/projects/new` 由 Lumi 根据描述动态追问，一次提取多项信息，支持流式回复、动态选项、对话修订和截图理解。需求草稿随对话更新，核心信息齐备后由客户确认创建，再自动分析出海机会，完成后可申请 Pro。首页兔子对话与项目页共享草稿；兼容旧表单草稿，对话和文本保存在当前浏览器，截图只保留在本次页面会话中。未确认前不创建项目。内部建项仍使用完整表单。
 - **收款需要人工核对：** 老板在经营台上传收款码。客户接受报价后能扫码并上传截图，票据员提取信息，老板确认实际到账后才进入定位。现有项目沿用原流程，新建自有产品会标明身份并跳过收款。
 - **每日站会：** Worker 在北京时间 09:00 生成一次站会。老板可以手动提前生成。工位提醒运行超过 30 分钟的任务和超过 24 小时的老板待办。周报使用生成时的累计经营快照。
 - **发布版本：** 修改英文文案或选用产品截图会新建版本。旧版保持可用，直到新版完成声明检查和两道审批后替换。
@@ -129,6 +129,7 @@ Vercel 部署 Next.js，Neon 提供 PostgreSQL。首次部署及表结构变更�
 | --- | --- |
 | `DATABASE_URL` | Neon PostgreSQL 连接地址 |
 | `DATABASE_URL_UNPOOLED` | 可选，Neon 直连地址；配置后 pg-boss 优先使用它 |
+| `ADMIN_USERNAME` | 经营台账号，默认 `hifirst` |
 | `ADMIN_PASSWORD` | 经营台密码 |
 | `SESSION_SECRET` | 至少 32 字符的会话密钥 |
 | `BETTER_AUTH_SECRET` | 客户认证密钥；未设置时沿用 `SESSION_SECRET` |
@@ -152,7 +153,7 @@ Vercel 部署 Next.js，Neon 提供 PostgreSQL。首次部署及表结构变更�
 cp .env.example .env
 ```
 
-填好 `.env` 里的 `ADMIN_PASSWORD`、`SESSION_SECRET`、`MIMO_API_KEY`、`DOMAIN`、`POSTGRES_PASSWORD`，然后：
+填好 `.env` 里的 `ADMIN_USERNAME`、`ADMIN_PASSWORD`、`SESSION_SECRET`、`MIMO_API_KEY`、`DOMAIN`、`POSTGRES_PASSWORD`，然后：
 
 ```bash
 docker compose up -d --build

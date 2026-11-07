@@ -6,12 +6,14 @@ import { LocaleProvider } from "@/components/locale-provider";
 import { getLocale } from "@/lib/locale-server";
 import { localeTag } from "@/lib/locale";
 import "./globals.css";
+import "./editorial.css";
+import "./site.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   return {
   title: locale === "en" ? BRAND.englishName : `${BRAND.name} ${BRAND.englishName}`,
-  description: translateUi(locale, "帮中国创业者找到第一批真实海外客户的 AI 出海服务"),
+  description: translateUi(locale, "帮中国创业者找到第一批真实海外客户的 MiMo AI 出海服务"),
   };
 }
 

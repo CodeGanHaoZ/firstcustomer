@@ -1,6 +1,6 @@
 import { getLocale } from "@/lib/locale-server";
 import { translateUi } from "@/lib/ui-translation";
-import { LocalizedInput, LocalizedTextarea } from "@/components/localized-controls";
+import { LocalizedInput, LocalizedTag, LocalizedTextarea } from "@/components/localized-controls";
 import { T } from "@/components/ui-text";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Decide } from "@/components/decide";
 import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db";
 import { orders, payments, projects } from "@/db/schema";
@@ -97,9 +97,9 @@ function GateForm(props: {
   const { projectId, gate, state } = props;
   if (state.founder === "approved") {
     return (
-      <div className="flex flex-col gap-2 text-sm">
-        <p><T>你已把关，等待客户确认。</T></p>
-        {props.previewHref ? <a href={props.previewHref} className="self-start underline" target="_blank" rel="noreferrer"><T>预览第 </T>{props.version}<T> 版</T></a> : null}
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <span className="pill pill--wait"><T>你已把关，等待客户确认。</T></span>
+        {props.previewHref ? <a href={props.previewHref} className="btn btn--ghost btn--sm" target="_blank" rel="noreferrer"><T>预览第 </T>{props.version}<T> 版</T></a> : null}
         {props.isOwnProduct ? (
           <form action={ownProductConfirm.bind(null, projectId)}>
             <input type="hidden" name="gate" value={gate} />
@@ -113,35 +113,26 @@ function GateForm(props: {
     );
   }
   return (
-    <form action={founderDecision.bind(null, projectId)} className="flex flex-col gap-3 text-sm">
-      <p><T>{props.title}</T></p>
-      {props.previewHref ? <a href={props.previewHref} className="self-start underline" target="_blank" rel="noreferrer"><T>预览待审批的第 </T>{props.version}<T> 版</T></a> : null}
-      <input type="hidden" name="gate" value={gate} />
-      <input type="hidden" name="version" value={props.version} />
-      {props.options ? (
-        <fieldset className="flex flex-col gap-1">
-          <legend className="mb-1 font-medium"><T>向客户推荐</T></legend>
-          {props.options.map((option, i) => (
-            <label key={option.audience} className="flex gap-2">
-              <input type="radio" name="chosenOption" value={i} defaultChecked={i === props.recommended} />
-              {option.audience}
-            </label>
-          ))}
-        </fieldset>
-      ) : null}
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`${gate}-reason`}><T>退回原因（退回时必填）</T></Label>
-        <Input id={`${gate}-reason`} name="reason" maxLength={500} />
-      </div>
-      <div className="flex gap-2">
-        <Button type="submit" name="verdict" value="approve"><T>
-          把关通过
-        </T></Button>
-        <Button type="submit" name="verdict" value="reject" variant="outline"><T>
-          退回修改
-        </T></Button>
-      </div>
-    </form>
+    <div className="grid gap-4 text-sm">
+      <p className="paper__title text-[1.15rem]"><T>{props.title}</T></p>
+      {props.previewHref ? <a href={props.previewHref} className="btn btn--ghost btn--sm w-fit" target="_blank" rel="noreferrer"><T>预览待审批的第 </T>{props.version}<T> 版</T></a> : null}
+      <Decide action={founderDecision.bind(null, projectId)} approveLabel="把关通过" rejectLabel="退回修改" reasonLabel="退回原因（退回时必填）"
+        hidden={{ gate, version: props.version }}>
+        {props.options ? (
+          <fieldset className="m-0 grid gap-2 border-0 p-0">
+            <legend className="eyebrow mb-2"><T>向客户推荐</T></legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {props.options.map((option, i) => (
+                <label key={option.audience} className="pick">
+                  <input type="radio" name="chosenOption" value={i} defaultChecked={i === props.recommended} />
+                  <span><b>{option.audience}</b>{i === props.recommended ? <small><T>推荐</T></small> : null}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
+      </Decide>
+    </div>
   );
 }
 
@@ -176,32 +167,31 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   const decisionHistory = [...view.decisions].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
   return (
-    <main className="admin-section max-w-5xl">
-      <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium">
-        <Link className="underline underline-offset-4" href="/admin"><T>返回经营台</T></Link>
-        <a className="underline underline-offset-4" href="#deliverables"><T>查看交付清单</T></a>
-      </div>
+    <main className="admin-section">
       {view.simulated ? <SimulatedBanner /> : null}
-      <ProjectHeader project={project} />
+      <ProjectHeader project={project}
+        eyebrow={<Link className="link-u" href="/admin"><T>返回经营台</T></Link>}
+        actions={<a className="btn btn--ghost btn--sm" href="#deliverables"><T>查看交付清单</T></a>} />
       {customerHref ? (
-        <div className="space-y-2 rounded-lg border bg-card p-4 text-sm">
+        <div className="notice notice--ok flex-wrap items-center justify-between">
           <ClearProjectDraft intake="admin" />
-          <p><T>项目已创建。请将专属链接发给客户，链接将在此处显示 10 分钟。</T></p>
-          <Link prefetch={false} href={customerHref} className="font-semibold text-primary underline underline-offset-4"><T>打开客户专属链接</T></Link>
+          <p className="m-0"><T>项目已创建。请将专属链接发给客户，链接将在此处显示 10 分钟。</T></p>
+          <Link prefetch={false} href={customerHref} className="btn btn--primary btn--sm"><T>打开客户专属链接</T></Link>
         </div>
       ) : null}
-      {project.paused ? <p className="rounded-md border p-3 text-sm"><T>项目已暂停。正在执行的步骤完成后停下。</T></p> : null}
-      {error ? <p className="text-sm text-destructive"><T>{String(error)}</T></p> : null}
-      {notice ? <p className="break-all rounded-md border p-3 text-sm"><T>{String(notice)}</T></p> : null}
+      {project.paused ? <p className="notice notice--wait"><T>项目已暂停。正在执行的步骤完成后停下。</T></p> : null}
+      {error ? <p className="notice notice--fail" role="alert"><T>{String(error)}</T></p> : null}
+      {notice ? <p className="notice notice--ok break-all" role="status"><T>{String(notice)}</T></p> : null}
 
-      <Card id="decisions" className="scroll-mt-4 bg-secondary">
+      <Card id="decisions" className="scroll-mt-4 border-[#456447] bg-[#f2eee2] shadow-[0_0_0_3px_rgba(69,100,71,0.08)]">
         <CardHeader>
-          <CardTitle className="font-semibold"><T>待我决定</T></CardTitle>
+          <p className="eyebrow m-0"><T>当前一步</T></p>
+          <CardTitle><T>待我决定</T></CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {project.status === "submitted" && project.productPlan === "legacy" ? (
             <form action={bind(startResearchAction)}>
-              <Button type="submit"><T>开始研究</T></Button>
+              <Button type="submit" size="lg"><T>开始研究</T></Button>
             </form>
           ) : null}
           {project.productPlan === "free" && ["submitted", "free_ready"].includes(project.status) ? (
@@ -220,22 +210,17 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           {project.status === "awaiting_quote" && order?.proposal ? (
             <div className="flex flex-col gap-4">
               <ProposalDetails proposal={order.proposal} version={order.quoteVersion} quoteFen={order.quoteFen} />
-              <form action={bind(founderProposalAction)} className="flex flex-col gap-3 text-sm">
-                <input type="hidden" name="version" value={order.quoteVersion} />
-                <Label htmlFor="approved-quote"><T>报价（元）</T></Label>
-                <Input id="approved-quote" name="yuan" type="number" min="0.01" step="0.01" defaultValue={(order.quoteFen ?? 29900) / 100} />
-                <Label htmlFor="proposal-reason"><T>退回原因（退回时必填）</T></Label>
-                <Input id="proposal-reason" name="reason" maxLength={500} />
-                <div className="flex flex-wrap gap-2">
-                  <Button type="submit" name="verdict" value="approve"><T>确认价格与条款</T></Button>
-                  <Button type="submit" name="verdict" value="reject" variant="outline"><T>退回重写</T></Button>
-                </div>
-              </form>
+              <Decide action={bind(founderProposalAction)} approveLabel="确认价格与条款" rejectLabel="退回重写" reasonLabel="退回原因（退回时必填）"
+                hidden={{ version: order.quoteVersion }}>
+                <label className="grid max-w-xs gap-2 text-sm font-medium" htmlFor="approved-quote"><T>报价（元）</T>
+                  <Input id="approved-quote" name="yuan" type="number" min="0.01" step="0.01" defaultValue={(order.quoteFen ?? 29900) / 100} />
+                </label>
+              </Decide>
             </div>
           ) : null}
           {project.status === "awaiting_quote_acceptance" && order?.proposal ? (
             <>
-              <p className="text-sm"><T>报价已确认，等待客户接受。</T></p>
+              <p className="pill pill--wait m-0 w-fit"><T>报价已确认，等待客户接受。</T></p>
               <ProposalDetails proposal={order.proposal} version={order.quoteVersion} quoteFen={order.quoteFen} />
             </>
           ) : null}
@@ -243,9 +228,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
             <>
               <ReceiptUpload action={bind(founderReceiptUploadAction)} />
               {receipt && receipt.analysisStatus !== "pending" ? (
-                <form action={bind(confirmReceiptAction)} className="flex flex-col gap-3 border-t pt-4 text-sm">
+                <form action={bind(confirmReceiptAction)} className="grid gap-3 rounded-2xl border bg-background p-4 text-sm">
                   <input type="hidden" name="receiptId" value={receipt.id} />
-                  <Link href={`/admin/projects/${id}/receipts/${receipt.id}`} target="_blank" rel="noreferrer" className="self-start underline"><T>打开付款截图核对</T></Link>
+                  <Link href={`/admin/projects/${id}/receipts/${receipt.id}`} target="_blank" rel="noreferrer" className="btn btn--ghost btn--sm w-fit"><T>打开付款截图核对</T></Link>
                   <p><T>已接受的报价 </T>{formatYuan(order.quoteFen ?? 0)}。</p>
                   {receipt.analysis ? (
                     <p><T>截图读取金额 </T><T>{receipt.analysis.amountFen === null ? "未知" : formatYuan(receipt.analysis.amountFen)}</T><T> · 时间 </T>{receipt.analysis.paidAtText ?? <T>未知</T>}<T> · 付款方 </T>{receipt.analysis.payer ?? <T>未知</T>}。{receipt.analysis.unreadable}</p>
@@ -259,7 +244,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                   <Input id="payment-reference" name="reference" maxLength={200} />
                   <Label htmlFor="payment-reason"><T>金额差异原因（实收与报价不同时必填）</T></Label>
                   <Input id="payment-reason" name="reason" maxLength={500} />
-                  <Button type="submit" className="self-start"><T>确认实际到账并开始正式服务</T></Button>
+                  <Button type="submit" className="justify-self-start" size="lg"><T>确认实际到账并开始正式服务</T></Button>
                 </form>
               ) : <p className="text-sm"><T>{receipt ? "票据员正在读取付款截图。" : "客户已接受报价，等待付款截图。"}</T></p>}
               {receipt?.analysisStatus === "pending" ? <AutoRefresh /> : null}
@@ -297,13 +282,14 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                 <Label htmlFor="note"><T>你的决定</T></Label>
                 <LocalizedInput id="note" name="note" required placeholder="例如：按“尚未验证”继续" maxLength={500} />
               </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="target"><T>接下来交给</T></Label>
-                <select id="target" name="target" className="h-9 rounded-md border bg-background px-3" defaultValue={escalation.from}>
-                  <option value="researching"><T>Research 继续补查</T></option>
-                  {escalation.route !== "clarification-limit" ? <><option value="strategizing"><T>Strategy 继续制定</T></option><option value="preparing_page"><T>Launch 继续准备页面</T></option></> : null}
-                </select>
-              </div>
+              <fieldset className="m-0 border-0 p-0">
+                <legend className="mb-2 font-medium"><T>接下来交给</T></legend>
+                <div className="choice-group">
+                  {([["researching", "Research 继续补查"], ...(escalation.route !== "clarification-limit" ? [["strategizing", "Strategy 继续制定"], ["preparing_page", "Launch 继续准备页面"]] : [])] as [string, string][]).map(([value, label]) => (
+                    <label key={value} className="choice"><input type="radio" name="target" value={value} defaultChecked={value === escalation.from || (value === "researching" && !["strategizing", "preparing_page"].includes(escalation.from))} /><span><T>{label}</T></span></label>
+                  ))}
+                </div>
+              </fieldset>
               <Button type="submit" className="self-start"><T>
                 提交裁决
               </T></Button>
@@ -311,7 +297,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           ) : null}
           {project.status === "failed" ? (
             <form action={bind(retryAction)} className="flex flex-col gap-2 text-sm">
-              <p className="text-destructive"><T>失败原因：</T>{project.failedReason}</p>
+              <p className="notice notice--fail m-0"><T>失败原因：</T>{project.failedReason}</p>
               <Button type="submit" className="self-start"><T>
                 重试（已完成的部分会保留）
               </T></Button>
@@ -319,14 +305,14 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           ) : null}
           {project.status === "collecting" ? (
             <form action={bind(startReviewAction)}>
-              <Button type="submit"><T>开始复盘</T></Button>
+              <Button type="submit" size="lg"><T>开始复盘</T></Button>
             </form>
           ) : null}
           {project.status === "reviewing" && view.report ? (
             <div className="flex flex-col gap-3">
               <form action={bind(deliverAction)}>
                 <input type="hidden" name="deliveryStamp" value={readiness.stamp} />
-                <Button type="submit" disabled={!readiness.ready}><T>检查通过，确认交付</T></Button>
+                <Button type="submit" size="lg" disabled={!readiness.ready}><T>检查通过，确认交付</T></Button>
               </form>
               {canStartNextRound ? (
                 <GateForm
@@ -344,7 +330,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           (project.status === "reviewing" && !view.report) ? (
             <>
               <AutoRefresh />
-              <p className="text-sm text-muted-foreground"><T>Agent 正在工作，完成后这里会出现下一步。</T></p>
+              <p className="pill pill--live m-0 w-fit"><T>Agent 正在工作，完成后这里会出现下一步。</T></p>
             </>
           ) : null}
         </CardContent>
@@ -359,17 +345,18 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         <CardContent className="space-y-4 text-sm">
           {support.some((item) => item.status === "queued") && !project.paused ? <AutoRefresh /> : null}
           {support.length ? support.map((item) => (
-            <article key={item.id} className="space-y-2 border-b pb-3 last:border-b-0">
-              <p className="text-muted-foreground">{formatDateTime(item.createdAt)} · <T>{item.status === "escalated" ? "待老板处理" : item.risk === "complex" ? "疑难" : item.status === "queued" ? "等待客服" : "已回复"}</T></p>
-              <p className="font-medium whitespace-pre-wrap">{item.question}</p>
-              {item.reply ? <p className="whitespace-pre-wrap">{item.reply}</p> : null}
-              {item.draft && item.status === "escalated" ? <p className="text-muted-foreground"><T>处理建议　</T>{item.draft}</p> : null}
+            <article key={item.id} className="grid gap-2 border-b pb-4 last:border-b-0">
+              <p className="m-0 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">{formatDateTime(item.createdAt)}
+                <span className={item.status === "escalated" ? "pill pill--wait" : item.risk === "complex" ? "pill pill--fail" : item.status === "queued" ? "pill pill--live" : "pill pill--ok"}><T>{item.status === "escalated" ? "待老板处理" : item.risk === "complex" ? "疑难" : item.status === "queued" ? "等待客服" : "已回复"}</T></span></p>
+              <p className="m-0 max-w-[85%] rounded-2xl rounded-bl-md border bg-background px-4 py-2.5 font-medium whitespace-pre-wrap">{item.question}</p>
+              {item.reply ? <p className="m-0 max-w-[85%] justify-self-end rounded-2xl rounded-br-md bg-[#101210] px-4 py-2.5 whitespace-pre-wrap text-[#fbfaf8]">{item.reply}</p> : null}
+              {item.draft && item.status === "escalated" ? <p className="notice m-0"><T>处理建议　</T>{item.draft}</p> : null}
               {item.status === "escalated" || (item.status === "replied" && item.risk === "complex") ? (
-                <form action={bind(replyToSupportAction)} className="flex flex-col gap-2">
+                <form action={bind(replyToSupportAction)} className="flex items-end gap-2 rounded-2xl border bg-background p-2">
                   <input type="hidden" name="messageId" value={item.id} />
-                  <Label htmlFor={`support-${item.id}`}><T>给客户的回复</T></Label>
-                  <Textarea id={`support-${item.id}`} name="reply" maxLength={1200} required />
-                  <Button type="submit" className="self-start"><T>确认并回复</T></Button>
+                  <label htmlFor={`support-${item.id}`} className="sr-only"><T>给客户的回复</T></label>
+                  <Textarea id={`support-${item.id}`} name="reply" maxLength={1200} required rows={1} className="min-h-11 border-0 bg-transparent focus-visible:ring-0" />
+                  <Button type="submit" className="shrink-0"><T>确认并回复</T></Button>
                 </form>
               ) : null}
             </article>
@@ -415,10 +402,10 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           <CardContent>
             <form action={bind(feedbackAction)} className="flex flex-col gap-3 text-sm">
               <input type="hidden" name="landingPageId" value={view.page.id} />
-              <select name="type" className="h-9 w-32 rounded-md border bg-background px-3" defaultValue="reply">
-                <option value="reply"><T>回复</T></option>
-                <option value="comment"><T>评论</T></option>
-              </select>
+              <div className="choice-group">
+                <label className="choice"><input type="radio" name="type" value="reply" defaultChecked /><span><T>回复</T></span></label>
+                <label className="choice"><input type="radio" name="type" value="comment" /><span><T>评论</T></span></label>
+              </div>
               <LocalizedTextarea name="text" required maxLength={2000} placeholder="粘贴原话" />
               <LocalizedInput name="url" type="url" placeholder="来源链接（选填）" />
               <Button type="submit" className="self-start"><T>
@@ -426,38 +413,30 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               </T></Button>
             </form>
             {projectLeads.length ? (
-              <Table className="mt-4">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead><T>邮箱</T></TableHead>
-                    <TableHead><T>留言</T></TableHead>
-                    <TableHead><T>时间</T></TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projectLeads.map((lead) => (
-                    <TableRow key={lead.id}>
-                      <TableCell>{lead.email}<T>{lead.isTest ? " · 测试" : ""}</T></TableCell>
-                      <TableCell className="whitespace-normal">{lead.message}</TableCell>
-                      <TableCell>{formatDateTime(lead.createdAt)}</TableCell>
-                      <TableCell>
-                        <form action={bind(markTestLeadAction)}>
-                          <input type="hidden" name="leadId" value={lead.id} />
-                          <input type="hidden" name="test" value={lead.isTest ? "0" : "1"} />
-                          <Button type="submit" variant="outline" size="sm"><T>{lead.isTest ? "恢复计入" : "标记测试"}</T></Button>
-                        </form>
-                        <form action={bind(deleteLeadAction)}>
-                          <input type="hidden" name="leadId" value={lead.id} />
-                          <Button type="submit" variant="ghost" size="sm"><T>
-                            删除
-                          </T></Button>
-                        </form>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <ul className="mt-5 grid gap-2">
+                {projectLeads.map((lead) => (
+                  <li key={lead.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background px-4 py-3 text-sm">
+                    <span className="grid min-w-0 gap-0.5">
+                      <strong className="font-medium">{lead.email}{lead.isTest ? <span className="pill ms-2"><T>测试</T></span> : null}</strong>
+                      {lead.message ? <span className="text-muted-foreground">{lead.message}</span> : null}
+                      <span className="text-xs text-muted-foreground">{formatDateTime(lead.createdAt)}</span>
+                    </span>
+                    <span className="flex gap-1">
+                      <form action={bind(markTestLeadAction)}>
+                        <input type="hidden" name="leadId" value={lead.id} />
+                        <input type="hidden" name="test" value={lead.isTest ? "0" : "1"} />
+                        <Button type="submit" variant="outline" size="sm"><T>{lead.isTest ? "恢复计入" : "标记测试"}</T></Button>
+                      </form>
+                      <form action={bind(deleteLeadAction)}>
+                        <input type="hidden" name="leadId" value={lead.id} />
+                        <Button type="submit" variant="ghost" size="sm"><T>
+                          删除
+                        </T></Button>
+                      </form>
+                    </span>
+                  </li>
+                ))}
+              </ul>
             ) : null}
           </CardContent>
         </Card>
@@ -474,43 +453,41 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       />
       <div id="research"><EvidenceSection view={view} /></div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle><T>人工补充证据</T></CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={bind(manualEvidenceAction)} className="flex flex-col gap-3 text-sm">
-            <LocalizedInput name="url" type="url" required placeholder="来源链接" />
-            <LocalizedTextarea name="sourceText" required placeholder="粘贴来源原文（程序会核对摘录是否在原文里）" />
-            <LocalizedInput name="quote" required placeholder="要保存的摘录，从原文复制" />
-            <div className="flex flex-wrap gap-2">
-              <select name="kind" className="h-9 rounded-md border bg-background px-3" defaultValue="revenue">
-                <option value="revenue"><T>收入</T></option>
-                <option value="pricing"><T>定价</T></option>
-                <option value="signal"><T>信号</T></option>
-                <option value="pain"><T>痛点</T></option>
-                <option value="channel"><T>渠道</T></option>
-                <option value="product"><T>产品事实（客户提供）</T></option>
-              </select>
-              <select name="stance" className="h-9 rounded-md border bg-background px-3" defaultValue="support">
-                <option value="support"><T>支持</T></option>
-                <option value="against"><T>反面</T></option>
-                <option value="neutral"><T>中性</T></option>
-              </select>
-              <LocalizedInput name="product" placeholder="产品" className="w-40" />
-              <LocalizedInput name="numberValue" placeholder="数字，如 $170" className="w-32" />
-              <LocalizedInput name="metric" placeholder="口径，如 TTM" className="w-32" />
-            </div>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" name="customerAuthorized" /><T>
-              这是客户授权的支付数据（A 级）
-            </T></label>
-            <Button type="submit" className="self-start"><T>
-              保存证据
-            </T></Button>
-          </form>
-        </CardContent>
-      </Card>
+      <details className="fold">
+        <summary>
+          <span>
+            <span className="fold__title block"><T>人工补充证据</T></span>
+            <span className="fold__hint block"><T>Agent 找不到的来源，可以在这里手动补一条</T></span>
+          </span>
+        </summary>
+        <form action={bind(manualEvidenceAction)} className="fold__body grid gap-3 text-sm">
+          <LocalizedInput name="url" type="url" required placeholder="来源链接" />
+          <LocalizedTextarea name="sourceText" required placeholder="粘贴来源原文（程序会核对摘录是否在原文里）" />
+          <LocalizedInput name="quote" required placeholder="要保存的摘录，从原文复制" />
+          <LocalizedTag as="div" className="choice-group" role="radiogroup" aria-label="类型">
+            {([["revenue", "收入"], ["pricing", "定价"], ["signal", "信号"], ["pain", "痛点"], ["channel", "渠道"], ["product", "产品事实（客户提供）"]] as const).map(([value, label]) => (
+              <label key={value} className="choice"><input type="radio" name="kind" value={value} defaultChecked={value === "revenue"} /><span><T>{label}</T></span></label>
+            ))}
+          </LocalizedTag>
+          <LocalizedTag as="div" className="choice-group" role="radiogroup" aria-label="立场">
+            {([["support", "支持"], ["against", "反面"], ["neutral", "中性"]] as const).map(([value, label]) => (
+              <label key={value} className="choice"><input type="radio" name="stance" value={value} defaultChecked={value === "support"} /><span><T>{label}</T></span></label>
+            ))}
+          </LocalizedTag>
+          <div className="flex flex-wrap gap-2">
+            <LocalizedInput name="product" placeholder="产品" className="w-40" />
+            <LocalizedInput name="numberValue" placeholder="数字，如 $170" className="w-36" />
+            <LocalizedInput name="metric" placeholder="口径，如 TTM" className="w-36" />
+          </div>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="customerAuthorized" /><T>
+            这是客户授权的支付数据（A 级）
+          </T></label>
+          <Button type="submit" className="justify-self-start"><T>
+            保存证据
+          </T></Button>
+        </form>
+      </details>
 
       <Card id="tasks">
         <CardHeader>
@@ -519,14 +496,14 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         </CardHeader>
         <CardContent>
           {taskStatuses.length > 1 ? (
-            <form action={`/admin/projects/${id}#tasks`} method="get" className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-              <Label htmlFor="task-filter"><T>任务状态</T></Label>
-              <select id="task-filter" name="task" defaultValue={taskFilter} className="rounded-md border bg-background px-2 py-1">
-                <option value=""><T>全部</T></option>
-                {taskStatuses.map((status) => <option key={status} value={status}><T>{TASK_STATUS_LABELS[status] ?? status}</T></option>)}
-              </select>
-              <Button type="submit" variant="outline" size="sm"><T>筛选</T></Button>
-            </form>
+            <LocalizedTag as="nav" className="mb-4 flex flex-wrap items-center gap-2 text-sm" aria-label="任务状态">
+              {["", ...taskStatuses].map((status) => (
+                <Link key={status || "all"} href={`/admin/projects/${id}${status ? `?task=${status}` : ""}#tasks`} scroll={false}
+                  className={status === taskFilter ? "btn btn--primary btn--sm" : "btn btn--ghost btn--sm"} aria-current={status === taskFilter ? "true" : undefined}>
+                  <T>{status ? TASK_STATUS_LABELS[status] ?? status : "全部"}</T>
+                </Link>
+              ))}
+            </LocalizedTag>
           ) : null}
           {project.status !== "delivered" && project.status !== "cancelled" ? (
             <form action={bind(pauseProjectAction)} className="mb-4 flex flex-wrap items-center gap-2 text-sm">
@@ -535,36 +512,22 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               <span className="text-muted-foreground"><T>暂停会在当前步骤结束后生效。</T></span>
             </form>
           ) : null}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Agent</TableHead>
-                <TableHead><T>触发</T></TableHead>
-                <TableHead><T>状态</T></TableHead>
-                <TableHead><T>打回或拦截原因</T></TableHead>
-                <TableHead><T>模型</T></TableHead>
-                <TableHead><T>标价成本</T></TableHead>
-                <TableHead><T>开始时间</T></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visibleTasks.map((task) => (
-                <TableRow key={task.id} id={`task-${task.id}`} className="scroll-mt-4 target:bg-muted">
-                  <TableCell><T>{AGENT_LABELS[task.agent] ?? task.agent}</T></TableCell>
-                  <TableCell><T>{TASK_TRIGGER_LABELS[task.trigger] ?? task.trigger}</T></TableCell>
-                  <TableCell><T>{TASK_STATUS_LABELS[task.status] ?? task.status}</T></TableCell>
-                  <TableCell className="whitespace-normal">{task.sendBackReason ?? task.error ?? ""}</TableCell>
-                  <TableCell>
-                    <T>{task.provider ?? "无"}</T> / <T>{task.model ?? "无"}</T>
-                  </TableCell>
-                  <TableCell><T>{task.provider === "stub" ? "模拟" : hasModelListPrice(task.model) ? `¥${task.listCostYuan.toFixed(4)}` : "未计价"}</T></TableCell>
-                  <TableCell>{formatDateTime(task.startedAt)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <h3 className="mt-6 mb-2 text-sm font-medium"><T>状态变化</T></h3>
-          <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+          <ol className="m-0 grid list-none gap-2 ps-0">
+            {visibleTasks.map((task) => (
+              <li key={task.id} id={`task-${task.id}`} className="scroll-mt-24 grid gap-x-4 gap-y-1 rounded-xl border bg-background px-4 py-3 text-sm target:border-[#456447] sm:grid-cols-[minmax(0,1fr)_auto]">
+                <p className="m-0 flex flex-wrap items-center gap-2">
+                  <strong className="font-medium text-[#101210]"><T>{AGENT_LABELS[task.agent] ?? task.agent}</T></strong>
+                  <span className="admin-task-status pill" data-status={task.status}><T>{TASK_STATUS_LABELS[task.status] ?? task.status}</T></span>
+                  <span className="text-xs text-muted-foreground"><T>{TASK_TRIGGER_LABELS[task.trigger] ?? task.trigger}</T></span>
+                </p>
+                <p className="m-0 text-xs text-muted-foreground sm:text-end">{formatDateTime(task.startedAt)} · <T>{task.provider === "stub" ? "模拟" : hasModelListPrice(task.model) ? `¥${task.listCostYuan.toFixed(4)}` : "未计价"}</T></p>
+                {task.sendBackReason ?? task.error ? <p className="m-0 text-muted-foreground sm:col-span-2">{task.sendBackReason ?? task.error}</p> : null}
+                <p className="m-0 text-xs text-muted-foreground sm:col-span-2"><T>{task.provider ?? "无"}</T> / <T>{task.model ?? "无"}</T></p>
+              </li>
+            ))}
+          </ol>
+          <h3 className="eyebrow mt-7"><T>状态变化</T></h3>
+          <ul className="timeline">
             {audit.transitions.map((t) => (
               <li key={t.id}>
                 {formatDateTime(t.createdAt)} <T>{STATUS_LABELS[t.fromStatus as ProjectStatus] ?? t.fromStatus}</T> →{" "}
@@ -578,22 +541,17 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       <Card id="approval-history">
         <CardHeader><CardTitle><T>闸门记录</T></CardTitle></CardHeader>
         <CardContent>
-          {decisionHistory.length ? <Table aria-label="项目闸门记录">
-            <TableHeader><TableRow>
-              <TableHead><T>事项</T></TableHead><TableHead><T>版本或轮次</T></TableHead><TableHead><T>决定人</T></TableHead>
-              <TableHead><T>结果</T></TableHead><TableHead><T>理由</T></TableHead><TableHead><T>时间</T></TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {decisionHistory.map((decision) => <TableRow key={decision.id}>
-                <TableCell><T>{DECISION_LABELS[decision.gate] ?? decision.gate}</T></TableCell>
-                <TableCell>{decision.subjectVersion}</TableCell>
-                <TableCell><T>{decision.actorRole === "founder" ? "老板" : decision.actorRole === "customer" ? "客户" : "程序"}</T></TableCell>
-                <TableCell><T>{decision.verdict === "approve" ? "通过" : "退回"}</T></TableCell>
-                <TableCell className="min-w-32 max-w-72 whitespace-normal break-words">{decision.reason || <T>无</T>}</TableCell>
-                <TableCell>{formatDateTime(decision.createdAt)}</TableCell>
-              </TableRow>)}
-            </TableBody>
-          </Table> : <p className="text-sm text-muted-foreground"><T>还没有闸门记录。</T></p>}
+          {decisionHistory.length ? <LocalizedTag as="ul" className="timeline" aria-label="项目闸门记录">
+            {decisionHistory.map((decision) => <li key={decision.id} data-tone={decision.verdict === "approve" ? "ok" : "fail"}>
+              <span className="flex flex-wrap items-center gap-2">
+                <strong className="font-medium text-[#101210]"><T>{DECISION_LABELS[decision.gate] ?? decision.gate}</T></strong>
+                <span className="text-xs">#{decision.subjectVersion}</span>
+                <span className={decision.verdict === "approve" ? "pill pill--ok" : "pill pill--fail"}><T>{decision.verdict === "approve" ? "通过" : "退回"}</T></span>
+                <span className="text-xs"><T>{decision.actorRole === "founder" ? "老板" : decision.actorRole === "customer" ? "客户" : "程序"}</T> · {formatDateTime(decision.createdAt)}</span>
+              </span>
+              {decision.reason ? <span className="block break-words">{decision.reason}</span> : null}
+            </li>)}
+          </LocalizedTag> : <p className="text-sm text-muted-foreground"><T>还没有闸门记录。</T></p>}
         </CardContent>
       </Card>
 
@@ -604,10 +562,11 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         <CardContent className="flex flex-col gap-4 text-sm">
           {order ? (
             <>
-              <p>
-                {order.sku}：
-                <T>{order.quoteFen ? `报价 ¥${(order.quoteFen / 100).toFixed(2)}` : "未报价"}</T><T>，付款状态 </T>{order.status}<T>，交付状态 </T>{order.deliveryStatus}
-              </p>
+              <dl className="figures m-0">
+                <div className="figure"><dt className="order-last"><span>{order.sku}</span></dt><dd className="m-0"><b><T>{order.quoteFen ? `¥${(order.quoteFen / 100).toFixed(2)}` : "未报价"}</T></b></dd></div>
+                <div className="figure"><dt className="order-last"><span><T>付款状态</T></span></dt><dd className="m-0"><b className="text-[1.25rem]">{order.status}</b></dd></div>
+                <div className="figure"><dt className="order-last"><span><T>交付状态</T></span></dt><dd className="m-0"><b className="text-[1.25rem]">{order.deliveryStatus}</b></dd></div>
+              </dl>
               {orderPayments.map((p) => (
                 <p key={p.id} className="text-muted-foreground"><T>
                   已收 ¥</T>{(p.amountFen / 100).toFixed(2)}（{p.method}
@@ -615,11 +574,14 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                 </p>
               ))}
               {acceptanceNote ? (
-                <div className="rounded-md border p-3">
-                  <p className="font-medium"><T>客户修改意见 · </T>{formatDateTime(acceptanceNote.createdAt)}</p>
+                <div className="notice notice--wait grid">
+                  <p className="m-0 font-medium"><T>客户修改意见 · </T>{formatDateTime(acceptanceNote.createdAt)}</p>
                   <p className="whitespace-pre-wrap break-words">{acceptanceNote.reason}</p>
                 </div>
               ) : null}
+              <details className="fold bg-background">
+                <summary><span className="fold__title"><T>调整订单与人工记录</T></span></summary>
+                <div className="fold__body grid gap-3">
               {!project.requiresPayment && project.productPlan === "legacy" ? <><form action={bind(quoteAction)} className="flex items-end gap-2">
                 <input type="hidden" name="orderId" value={order.id} />
                 <LocalizedInput name="yuan" type="number" step="0.01" min="0" required placeholder="报价（元）" className="w-40" />
@@ -643,6 +605,8 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
                   更新老板人工分钟
                 </T></Button>
               </form>
+                </div>
+              </details>
             </>
           ) : null}
           <div className="flex flex-wrap gap-2">

@@ -1,7 +1,7 @@
 export const STATUS_LABELS = {
   submitted: "已提交",
-  researching: "研究中",
-  free_ready: "免费初诊完成",
+  researching: "分析出海机会中",
+  free_ready: "出海机会报告已生成",
   drafting_quote: "起草报价中",
   awaiting_quote: "待老板确认报价",
   awaiting_quote_acceptance: "待客户接受报价",

@@ -27,7 +27,7 @@ export async function reviseRequirements(db: Db, enqueue: (id: string, tx?: Db) 
   return db.transaction(async (tx) => {
     const [previous] = await tx.select().from(projects).where(eq(projects.id, input.projectId)).for("update");
     if (!previous || previous.requirementVersion !== input.version) throw new Error("需求版本已更新，请刷新后再修改");
-    if (!canReviseRequirements(previous)) throw new Error("当前范围已进入执行、已暂停或已达到初诊修订上限，请联系经营者处理范围变更");
+    if (!canReviseRequirements(previous)) throw new Error("当前范围已进入执行、已暂停或已达到机会分析修订上限，请联系经营者处理范围变更");
     const running = await tx.select({ id: agentTasks.id }).from(agentTasks)
       .where(and(eq(agentTasks.projectId, previous.id), eq(agentTasks.status, "running"))).limit(1);
     if (running.length) throw new Error("项目仍有任务运行，请等待结束后修改需求");
@@ -37,7 +37,7 @@ export async function reviseRequirements(db: Db, enqueue: (id: string, tx?: Db) 
       clarificationRounds: 0, clarificationsClosed: false, status: "researching", failedFrom: null, failedReason: null,
       pendingRequest: null, escalation: null, updatedAt: new Date(),
     }).where(eq(projects.id, previous.id)).returning();
-    await recordRequirementVersion(tx, saved, "customer", "客户确认修订需求，重新初诊");
+    await recordRequirementVersion(tx, saved, "customer", "客户确认修订需求，重新分析出海机会");
     await tx.insert(stateTransitions).values({ projectId: saved.id, fromStatus: previous.status, toStatus: "researching",
       actor: "customer", reason: `客户确认需求第 ${saved.requirementVersion} 版，范围第 ${saved.scopeVersion} 版；旧范围资料保留为历史` });
     await enqueue(saved.id, tx);

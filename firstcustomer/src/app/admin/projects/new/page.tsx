@@ -3,6 +3,7 @@ import { translateUi } from "@/lib/ui-translation";
 import { T } from "@/components/ui-text";
 import Link from "next/link";
 import { ProjectIntake } from "@/components/project-intake";
+import { PageHead } from "@/components/site-chrome";
 import { requireAdmin } from "@/lib/auth";
 import { createFounderProjectAction } from "./actions";
 
@@ -15,10 +16,10 @@ export default async function NewFounderProjectPage({ searchParams }: PageProps<
   await requireAdmin();
   const { error } = await searchParams;
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10">
-      <Link href="/admin" className="self-start text-sm underline"><T>返回办公室</T></Link>
-      <h1 className="text-3xl font-bold tracking-tight"><T>新建项目</T></h1>
-      {error ? <p className="text-sm text-destructive"><T>{String(error)}</T></p> : null}
+    <main className="site-main site-main--narrow">
+      <PageHead eyebrow={<Link href="/admin" className="link-u"><T>返回办公室</T></Link>} title={<T>新建项目</T>}
+        lead={<T>一句话说清产品，点选阶段和目标，就能开始。其余资料可以之后再补。</T>} />
+      {error ? <p className="notice notice--fail" role="alert"><T>{String(error)}</T></p> : null}
       <ProjectIntake action={createFounderProjectAction} founder />
     </main>
   );

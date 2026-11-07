@@ -5,10 +5,11 @@ import { desc } from "drizzle-orm";
 import Link from "next/link";
 import { OfficeBoard, type DeskItem } from "@/components/office-board";
 import type { StandupOutput } from "@/agents/schemas";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowRight } from "lucide-react";
+import type { CSSProperties } from "react";
+import { StatusPill } from "@/components/site-chrome";
 import { getDb } from "@/db";
 import { agentTasks, orders, projects } from "@/db/schema";
 import { AGENT_LABELS } from "@/domain/office";
@@ -29,11 +30,16 @@ export async function generateMetadata() {
 const money = (fen: number) => `¥${(fen / 100).toFixed(2)}`;
 
 function AttentionList({ items }: { items: DeskItem[] }) {
-  return <ul className="flex flex-col gap-2 text-sm">
-    {items.map(({ id, title, action, href }) => (
-      <li key={id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <Link className="break-all underline" href={href}>{title}</Link>
-        <span className="text-muted-foreground"><T>{action}</T></span>
+  return <ul className="grid gap-2 text-sm">
+    {items.map(({ id, title, action, href }, index) => (
+      <li key={id} className="rise" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
+        <Link className="group flex items-center justify-between gap-3 rounded-xl border bg-background px-4 py-3 transition-[border-color,transform] duration-300 hover:-translate-y-px hover:border-input" href={href}>
+          <span className="grid min-w-0 gap-0.5">
+            <strong className="truncate font-medium text-[#101210]">{title}</strong>
+            <span className="text-xs text-muted-foreground"><T>{action}</T></span>
+          </span>
+          <ArrowRight size={15} className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+        </Link>
       </li>
     ))}
   </ul>;
@@ -94,21 +100,23 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         <CardHeader><CardTitle><T>COO 每日站会</T></CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           {standup ? (
-            <dl className="grid gap-3 sm:grid-cols-3">
-              <div><dt className="font-semibold"><T>昨天</T></dt><dd>{standup.yesterday}</dd></div>
-              <div><dt className="font-semibold"><T>今天</T></dt><dd>{standup.today}</dd></div>
-              <div><dt className="font-semibold"><T>卡点</T></dt><dd>{standup.blockers}</dd></div>
+            <dl className="m-0 grid gap-3 sm:grid-cols-3">
+              {([["昨天", standup.yesterday], ["今天", standup.today], ["卡点", standup.blockers]] as const).map(([label, text], index) => (
+                <div key={label} className={`rise grid content-start gap-1 rounded-xl p-4 ${label === "卡点" ? "bg-[#faebd4]" : "bg-background border"}`} style={{ "--i": index } as CSSProperties}>
+                  <dt className="eyebrow m-0"><T>{label}</T></dt><dd className="m-0 leading-relaxed">{text}</dd>
+                </div>
+              ))}
             </dl>
           ) : <p><T>{standupRunning ? "COO 正在汇总站会。" : coo.standup?.status === "failed" ? "站会生成失败，可以重新生成。" : "还没有站会记录。"}</T></p>}
           {standup && coo.standup ? <p className="text-muted-foreground">{formatDateTime(coo.standup.createdAt)}<T>{coo.standup.provider === "stub" ? " · 模拟站会" : ""}</T></p> : null}
           {stalled.length ? (
             <div>
-              <p className="font-semibold"><T>已运行超过 30 分钟</T></p>
+              <p className="eyebrow"><T>已运行超过 30 分钟</T></p>
               <AttentionList items={stalled} />
             </div>
           ) : <p className="text-muted-foreground"><T>当前没有运行超过 30 分钟的任务。</T></p>}
           <div id="overdue">
-            <p className="font-semibold"><T>超过 </T>{OWNER_REMINDER_HOURS}<T> 小时的老板待办</T></p>
+            <p className="eyebrow"><T>超过 </T>{OWNER_REMINDER_HOURS}<T> 小时的老板待办</T></p>
             {overdue.length ? <AttentionList items={overdue} /> : <p className="text-muted-foreground"><T>当前没有超时待办。</T></p>}
           </div>
           <form action={createStandupReport}><Button type="submit" variant="outline" disabled={standupRunning}><T>生成今日站会</T></Button></form>
@@ -136,46 +144,36 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           <CardTitle><T>全部项目</T></CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead><T>产品</T></TableHead>
-                <TableHead><T>状态</T></TableHead>
-                <TableHead><T>订单</T></TableHead>
-                <TableHead><T>Agent 任务</T></TableHead>
-                <TableHead><T>打回</T></TableHead>
-                <TableHead><T>模型</T></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {all.map((project) => {
-                const own = tasks.filter((t) => t.projectId === project.id);
-                const order = allOrders.find((o) => o.projectId === project.id);
-                const providers = [...new Set(own.map((t) => t.provider).filter(Boolean))];
-                return (
-                  <TableRow key={project.id}>
-                    <TableCell>
-                      <Link className="underline" href={`/admin/projects/${project.id}`}>
-                        {project.productName}
-                      </Link>
-                      {project.isOwnProduct ? <Badge variant="outline"><T>自有产品</T></Badge> : null}
-                    </TableCell>
-                    <TableCell><T>{STATUS_LABELS[project.status as ProjectStatus] ?? project.status}</T></TableCell>
-                    <TableCell>
+          <ul className="card-grid">
+            {all.map((project, index) => {
+              const own = tasks.filter((t) => t.projectId === project.id);
+              const order = allOrders.find((o) => o.projectId === project.id);
+              const providers = [...new Set(own.map((t) => t.provider).filter(Boolean))];
+              const sentBack = own.filter((t) => t.status === "sent_back").length;
+              return (
+                <li key={project.id} className="rise" style={{ "--i": Math.min(index, 10) } as CSSProperties}>
+                  <Link href={`/admin/projects/${project.id}`} className="tile h-full bg-background">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusPill status={project.status} paused={project.paused} label={project.paused ? "已暂停" : STATUS_LABELS[project.status as ProjectStatus] ?? project.status} />
+                      {project.isOwnProduct ? <span className="pill pill--line"><T>自有产品</T></span> : null}
+                    </div>
+                    <h3 className="tile__title">{project.productName}</h3>
+                    <p className="tile__meta">
                       <T>{order?.status === "paid"
                         ? "已付款"
                         : order?.status === "quoted" || order?.status === "accepted"
                           ? `${order.status === "accepted" ? "已接受" : "已报价"} ${money(order.quoteFen ?? 0)}`
                           : "未报价"}</T>
-                    </TableCell>
-                    <TableCell>{own.length}</TableCell>
-                    <TableCell>{own.filter((t) => t.status === "sent_back").length}</TableCell>
-                    <TableCell><T>{providers.join("、") || "无"}</T></TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                    </p>
+                    <div className="tile__foot tile__meta">
+                      <span><T>Agent 任务</T> {own.length}{sentBack ? <> · <T>打回</T> {sentBack}</> : null} · <T>{providers.join("、") || "无"}</T></span>
+                      <ArrowRight size={15} className="tile__arrow" aria-hidden="true" />
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
           {all.length === 0 ? (
             <p className="pt-3 text-sm text-muted-foreground"><T>还没有项目。</T></p>
           ) : null}

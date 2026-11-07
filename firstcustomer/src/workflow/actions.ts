@@ -104,7 +104,7 @@ export async function setOwnProduct(db: Db, projectId: string, isOwnProduct: boo
     .where(and(eq(projects.id, projectId), eq(projects.productPlan, "legacy"),
       project.requiresPayment ? eq(projects.status, "submitted") : undefined))
     .returning({ id: projects.id });
-  if (!changed.length) throw new Error("请在开始初诊前标记自有产品");
+  if (!changed.length) throw new Error("请在免费分析出海机会前标记自有产品");
 }
 
 export async function startResearch(db: Db, enqueue: Enqueue, projectId: string) {

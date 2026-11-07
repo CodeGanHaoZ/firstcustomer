@@ -250,3 +250,9 @@
   .brand-welcome, .brand-welcome-shell, .lumi-chat-backdrop, .lumi-chat { transition: none; }
   .lumi-chat-status svg { animation: none; }
 }
+
+/* Keep optional customer login reachable in the compact navigation. */
+.home-page .nav__mobile-auth { display: none; }
+@media (max-width: 900px) {
+  .home-page .nav__mobile-auth { display: inline-flex; }
+}

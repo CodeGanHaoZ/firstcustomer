@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { KNOWLEDGE_AGENTS, KNOWLEDGE_CATEGORIES, type KnowledgeAgent, type KnowledgeContent } from "@/knowledge/types";
 
-const selectClass = "min-h-10 w-full rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export function KnowledgeEditor({ id, revision, initial }: { id?: string; revision: number; initial: KnowledgeContent }) {
   const [draft, setDraft] = useState(initial);
@@ -37,7 +36,7 @@ export function KnowledgeEditor({ id, revision, initial }: { id?: string; revisi
   }
 
   return (
-    <form action={action} className="grid gap-6">
+    <form action={action} className="paper rise grid gap-6">
       <input type="hidden" name="id" value={id ?? ""} />
       <input type="hidden" name="revision" value={revision} />
       <fieldset disabled={pending} className="grid min-w-0 gap-6 disabled:opacity-70">
@@ -47,25 +46,33 @@ export function KnowledgeEditor({ id, revision, initial }: { id?: string; revisi
           <LocalizedInput className="min-h-10" id="knowledge-title" name="title" required minLength={2} maxLength={100}
             value={draft.title} onChange={(event) => update("title", event.target.value)} placeholder="例如：免费出海机会分析的服务范围" />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="knowledge-category"><T>分类</T></Label>
-            <select className={selectClass} id="knowledge-category" name="category" value={draft.category}
-              onChange={(event) => update("category", event.target.value as KnowledgeContent["category"])}>
-              {Object.entries(KNOWLEDGE_CATEGORIES).map(([value, label]) => <option value={value} key={value}><T>{label}</T></option>)}
-            </select>
+        <fieldset className="m-0 grid gap-2 border-0 p-0">
+          <legend className="mb-2 text-sm font-medium"><T>分类</T></legend>
+          <div className="choice-group">
+            {Object.entries(KNOWLEDGE_CATEGORIES).map(([value, label]) => (
+              <label className="choice" key={value}>
+                <input type="radio" name="category" value={value} checked={draft.category === value}
+                  onChange={() => update("category", value as KnowledgeContent["category"])} />
+                <span><T>{label}</T></span>
+              </label>
+            ))}
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="knowledge-visibility"><T>可见范围</T></Label>
-            <select className={selectClass} id="knowledge-visibility" name="visibility" value={draft.visibility}
-              onChange={(event) => setDraft((previous) => ({ ...previous,
-                visibility: event.target.value as KnowledgeContent["visibility"],
-                agents: event.target.value === "internal" ? previous.agents.filter((agent) => agent !== "lumi") : previous.agents,
-              }))}>
-              <option value="internal"><T>仅内部 Agent</T></option><option value="public"><T>可用于公开答复</T></option>
-            </select>
+        </fieldset>
+        <fieldset className="m-0 grid gap-2 border-0 p-0">
+          <legend className="mb-2 text-sm font-medium"><T>可见范围</T></legend>
+          <div className="choice-group">
+            {([["internal", "仅内部 Agent"], ["public", "可用于公开答复"]] as const).map(([value, label]) => (
+              <label className="choice" key={value}>
+                <input type="radio" name="visibility" value={value} checked={draft.visibility === value}
+                  onChange={() => setDraft((previous) => ({ ...previous,
+                    visibility: value,
+                    agents: value === "internal" ? previous.agents.filter((agent) => agent !== "lumi") : previous.agents,
+                  }))} />
+                <span><T>{label}</T></span>
+              </label>
+            ))}
           </div>
-        </div>
+        </fieldset>
         <div className="grid gap-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Label htmlFor="knowledge-content"><T>正文</T></Label>

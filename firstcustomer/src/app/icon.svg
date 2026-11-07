@@ -1,11 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="16" fill="#34563d"/>
-  <path d="M23 34c-4-5-7-15-6-21 1-5 6-6 9-3 4 4 6 12 6 20l-9 4Zm11-4c0-8 2-16 6-20 3-3 8-2 9 3 1 6-2 16-6 21l-9-4Z" fill="#fff2d9"/>
-  <path d="M25 27c-3-5-4-12-2-13 2-1 5 7 5 13h-3Zm13 0c0-6 3-14 5-13 2 1 1 8-2 13h-3Z" fill="#de9583"/>
-  <path d="M32 26c12 0 20 7 20 16 0 10-8 14-20 14s-20-4-20-14c0-9 8-16 20-16Z" fill="#fff2d9"/>
-  <circle cx="24" cy="41" r="2.4" fill="#344231"/>
-  <circle cx="40" cy="41" r="2.4" fill="#344231"/>
-  <circle cx="20" cy="47" r="2.9" fill="#de9583"/>
-  <circle cx="44" cy="47" r="2.9" fill="#de9583"/>
-  <path d="M29 46h6c0 2-1.4 3.4-3 3.4S29 48 29 46Z" fill="#344231"/>
+  <rect width="64" height="64" rx="14" fill="#284936"/>
+  <g transform="translate(5 5) scale(.84375)">
+    <path d="M5 20 59 3v58L48 56V19L36 27v7h-8v-7l-7-3v26L5 59Z" fill="#f8f6ef"/>
+    <path d="M28 41h8v11h-8Z" fill="#f8f6ef"/>
+    <path d="m36 27 12-8v37l-12-5Z" fill="#a9bd8f"/>
+  </g>
 </svg>

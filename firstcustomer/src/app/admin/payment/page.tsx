@@ -20,7 +20,7 @@ export default async function PaymentSettingsPage({ searchParams }: PageProps<"/
   await requireAdmin();
   const [{ error, saved }, codeReady] = await Promise.all([searchParams, hasPaymentCode(getDb())]);
   return (
-    <main className="admin-section max-w-3xl">
+    <main className="admin-section max-w-4xl">
       <header className="admin-section-heading">
         <div>
           <h1><T>首客收款设置</T></h1>
@@ -30,10 +30,10 @@ export default async function PaymentSettingsPage({ searchParams }: PageProps<"/
       <Card>
         <CardHeader><CardTitle><T>服务费收款码</T></CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
-          <p><T>{codeReady ? "已配置收款码。" : "尚未配置收款码。"}</T></p>
-          {error ? <p role="alert" className="text-destructive"><T>{String(error)}</T></p> : null}
-          {saved === "1" && codeReady ? <p role="status"><T>已保存新的收款码。</T></p> : null}
-          <form action={uploadPaymentCodeAction} className="flex flex-wrap items-end gap-2">
+          <p className={codeReady ? "pill pill--ok m-0 w-fit" : "pill pill--wait m-0 w-fit"}><T>{codeReady ? "已配置收款码。" : "尚未配置收款码。"}</T></p>
+          {error ? <p role="alert" className="notice notice--fail"><T>{String(error)}</T></p> : null}
+          {saved === "1" && codeReady ? <p role="status" className="notice notice--ok"><T>已保存新的收款码。</T></p> : null}
+          <form action={uploadPaymentCodeAction} className="flex flex-wrap items-end gap-3 rounded-2xl border border-dashed border-input bg-background p-4">
             <div className="flex min-w-0 flex-col gap-2">
               <Label htmlFor="payment-code-file"><T>收款码图片（最大 </T>{hostedUploadLimit ? 4 : 5} MB）</Label>
               <ImageUploadInput id="payment-code-file" name="paymentCode" required maxTotalBytes={hostedUploadLimit} />

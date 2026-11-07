@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/.playwright-cli/
+/output/
 
 # next.js
 /.next/
@@ -42,4 +44,5 @@ next-env.d.ts
 
 .local-pg
 .local-knowledge/
+.local-admin-credentials.txt
 !.env.example

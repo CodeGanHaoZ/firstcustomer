@@ -619,7 +619,7 @@ async function runResearch(deps: EngineDeps, project: Project) {
     return;
   }
   if (project.productPlan === "free") {
-    await transition(db, project, "free_ready", "research", "免费初诊已完成", { pendingRequest: null });
+    await transition(db, project, "free_ready", "research", "出海机会报告已生成", { pendingRequest: null });
     return;
   }
   const order = usesQuoteFlow(project) ? await projectOrder(db, project.id) : null;

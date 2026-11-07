@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { LUMI_INTAKE_DRAFT_KEY } from "@/lib/lumi-intake";
 
 type Intake = "admin" | "public";
 const draftKey = (intake: Intake) => `fc:intake:${intake}`;
@@ -22,6 +23,7 @@ export function ProjectDraftForm({ action, intake, children }: {
         if (input instanceof HTMLInputElement && input.type === "checkbox") input.checked = saved[name] === "1";
         else if ((input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement || input instanceof HTMLSelectElement)
           && typeof saved[name] === "string") input.value = saved[name];
+        else if (input instanceof RadioNodeList && typeof saved[name] === "string") input.value = saved[name];
       }
     } catch {
       // Drafts are optional when browser storage is unavailable.
@@ -39,12 +41,15 @@ export function ProjectDraftForm({ action, intake, children }: {
       // The form can still be submitted.
     }
   };
-  return <form ref={form} action={action} onChange={save} className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 sm:p-6">{children}</form>;
+  return <form ref={form} action={action} onChange={save} className="paper rise grid gap-5 sm:grid-cols-2">{children}</form>;
 }
 
 export function ClearProjectDraft({ intake }: { intake: Intake }) {
   useEffect(() => {
-    try { localStorage.removeItem(draftKey(intake)); } catch { /* Storage is optional. */ }
+    try {
+      localStorage.removeItem(draftKey(intake));
+      if (intake === "public") localStorage.removeItem(LUMI_INTAKE_DRAFT_KEY);
+    } catch { /* Storage is optional. */ }
   }, [intake]);
   return null;
 }

@@ -12,7 +12,7 @@ export default async function NewProjectPage({ searchParams }: PageProps<"/proje
   const { error } = await searchParams;
   return (
     <main className="lumi-intake-page">
-      <I18n><nav className="lumi-intake-nav" aria-label="项目登记导航"><LocalizedLink href="/" aria-label="首客首页"><BrandMark /></LocalizedLink><div className="flex flex-wrap items-center justify-end gap-4"><LanguageSwitch /><Link href="/"><T>返回首页</T></Link></div></nav></I18n>
+      <I18n><nav className="lumi-intake-nav" aria-label="项目登记导航"><LocalizedLink href="/" aria-label="首客首页"><BrandMark /></LocalizedLink><div className="flex flex-wrap items-center justify-end gap-4"><LanguageSwitch /><Link href="/account"><T>试用工作台</T></Link></div></nav></I18n>
       <LumiProjectIntake action={createProjectAction} maxTotalBytes={hostedUploadLimit} serverError={error ? String(error) : undefined} />
     </main>
   );

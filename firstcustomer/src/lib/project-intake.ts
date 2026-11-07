@@ -5,14 +5,14 @@ export const INTAKE_GOALS = ["找需求", "验证", "找首批用户", "提升�
 
 export const INTAKE_STEPS = [
   { field: "productName", label: "产品名称或想法", question: "先聊聊，你想做一个什么样的产品？", help: "一两句话就好：叫什么、帮谁、解决什么问题。", placeholder: "例如：一款帮独立开发者快速制作英文产品演示的工具。", max: 500 },
-  { field: "stage", label: "当前阶段", question: "这个产品现在走到哪一步了？", help: "选择最接近的状态，我们会按这个阶段做初诊。", options: INTAKE_STAGES },
-  { field: "goal", label: "当前最想解决的事", question: "眼下，你最希望先解决什么？", help: "先聚焦一件事，让这次初诊更有方向。", options: INTAKE_GOALS },
+  { field: "stage", label: "当前阶段", question: "这个产品现在走到哪一步了？", help: "选择最接近的状态，我们会按这个阶段分析出海机会。", options: INTAKE_STAGES },
+  { field: "goal", label: "当前最想解决的事", question: "眼下，你最希望先解决什么？", help: "先聚焦一件事，让这次出海机会分析更有方向。", options: INTAKE_GOALS },
   { field: "targetMarket", label: "希望进入的市场", question: "有没有特别想进入的市场？", help: "可以说国家、地区或目标人群。还没想好也没关系。", placeholder: "例如：北美的独立开发者", max: 200, optional: true, skip: "还没想好，请帮我判断" },
   { field: "productUrl", label: "产品网址", question: "方便让我看看你的产品吗？", help: "如果已有官网或演示链接，可以放在这里。没有也可以继续。", placeholder: "https://", max: 2048, optional: true, skip: "暂时没有网址" },
   { field: "budgetNote", label: "预算和时间", question: "这次尝试，有预算或时间上的考虑吗？", help: "写一个大致范围即可，帮助我们安排下一步。", placeholder: "例如：先用两周验证，预算 1000 元以内", max: 200, optional: true, skip: "暂时不确定" },
   { field: "screenshots", label: "产品截图", question: "要不要带上几张产品截图？", help: "界面、原型或功能截图都可以，让我们更容易理解你的产品。", optional: true, skip: "先不上传截图" },
   { field: "currentWorkflow", label: "现行做法", question: "现在，你或目标用户是怎么处理这个问题的？", help: "说说最近一次的做法、替代工具，或最容易卡住的一步。", placeholder: "例如：先手动整理素材，再用表格记录，最费时间的是反复修改。", max: 1000, optional: true, skip: "这项还不清楚，先记为未知" },
-  { field: "successCriteria", label: "希望验证的结果", question: "这次初诊，你最希望确认哪件事？", help: "尽量说一个可以检查的结果，帮助我们聚焦验证。", placeholder: "例如：明确先服务哪类人，以及通过哪个渠道验证需求。", max: 1000, optional: true, skip: "请先帮我整理待验证问题" },
+  { field: "successCriteria", label: "希望验证的结果", question: "这次出海机会分析，你最希望确认哪件事？", help: "尽量说一个可以检查的结果，帮助我们聚焦验证。", placeholder: "例如：明确先服务哪类人，以及通过哪个渠道验证需求。", max: 1000, optional: true, skip: "请先帮我整理待验证问题" },
   { field: "constraints", label: "限制条件", question: "有哪些必须保留的工具或不能做的事？", help: "比如技术栈、时间、可提供的样本，以及不希望公开的内容。", placeholder: "例如：保留现有网站，只能提供脱敏截图，暂不投放广告。", max: 1000, optional: true, skip: "暂时没有补充" },
   { field: "contact", label: "联系方式", question: "最后，怎么联系到你？", help: "留下微信或邮箱，用于交付与必要联系。", placeholder: "你的微信号或邮箱", max: 200 },
 ] as const;

@@ -4,7 +4,7 @@
   color: var(--foreground);
   --office-ink: var(--foreground);
   --office-muted: var(--muted-foreground);
-  --office-paper: var(--card);
+  --office-paper: var(--ui-card);
   --office-rule: var(--border);
 }
 .office-shell :focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }

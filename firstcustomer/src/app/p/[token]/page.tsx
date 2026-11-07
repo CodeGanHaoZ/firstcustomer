@@ -1,4 +1,4 @@
-import { LocalizedLink } from "@/components/localized-controls";
+import { LocalizedTextarea } from "@/components/localized-controls";
 import { getLocale } from "@/lib/locale-server";
 import { translateUi } from "@/lib/ui-translation";
 import { T } from "@/components/ui-text";
@@ -6,8 +6,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { LanguageSwitch } from "@/components/language-switch";
-import { BrandMark } from "@/components/brand-mark";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
+import type { CSSProperties } from "react";
+import { Decide } from "@/components/decide";
+import { SceneFooter, SiteHeader } from "@/components/site-chrome";
 import { PaymentCodeImage, ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
 import { OfficeMap, type OfficeStation } from "@/components/office-map";
 import { OfficeStage } from "@/components/office-stage";
@@ -28,11 +30,7 @@ import {
   ScreenshotsSection,
   SimulatedBanner,
 } from "@/components/project-details";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { getDb } from "@/db";
 import type { Gate } from "@/domain/approval";
 import { customerProgress } from "@/domain/customer-progress";
@@ -118,213 +116,205 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
   const finished = project.status === "free_ready" || project.status === "cancelled" || (project.status === "delivered" && order?.deliveryStatus === "accepted");
   const refresh = supportPending || activeRoom || project.status === "submitted" ? 3 : progress.refreshSeconds ?? (finished ? null : 12);
 
-  return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
-        <LocalizedLink href="/#cta" aria-label="返回首页" className="inline-flex"><BrandMark /></LocalizedLink>
-        <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-          {project.productPlan !== "legacy" || canStartFree ? (
-            <span className="rounded-md bg-secondary px-2 py-1 text-secondary-foreground">
-              <T>{proPaid ? "Pro" : project.productPlan === "pro" ? "Free · Pro 待开通" : "Free"}</T>
-            </span>
-          ) : null}
-          <span className="text-muted-foreground"><T>客户项目工作台</T></span><LanguageSwitch />
-        </div>
-      </div>
-      {intake === "public" ? <ClearProjectDraft intake="public" /> : null}
-      {view.simulated ? <SimulatedBanner /> : null}
-      <ProjectHeader project={project} />
-      {error ? <p className="text-sm text-destructive"><T>{String(error)}</T></p> : null}
-      {notice ? <p className="rounded-md border p-3 text-sm"><T>{String(notice)}</T></p> : null}
-      <p className="text-sm text-muted-foreground">
-        {isAccountProjectToken(token) ? (
-          <><T>你可以随时从 </T><Link href="/account" className="font-semibold underline underline-offset-4"><T>我的项目</T></Link><T> 回到这里。</T></>
-        ) : <T>通过这个专属链接可查看当前项目的进度、报价和交付。请妥善保管，如需作废请联系首客。</T>}
-      </p>
+  const planLabel = proPaid ? "Pro" : project.productPlan === "pro" ? "Free · Pro 待开通" : "Free";
+  const showPlan = project.productPlan !== "legacy" || canStartFree;
 
-      {refresh ? <AutoRefresh seconds={refresh} /> : null}
-      <Card className="bg-secondary" aria-labelledby="customer-progress-title">
-        <CardHeader><CardTitle><h2 id="customer-progress-title"><T>当前进度</T></h2></CardTitle></CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm">
-          <div role="status">
-            <p className="font-semibold"><T>{progress.title}</T></p>
-            <p className="text-muted-foreground"><T>{progress.detail}</T></p>
+  return (
+    <div className="site-shell">
+      <SiteHeader current="project" />
+      <main className="site-main site-main--narrow">
+        {intake === "public" ? <ClearProjectDraft intake="public" /> : null}
+        {view.simulated ? <SimulatedBanner /> : null}
+        <ProjectHeader
+          project={project}
+          eyebrow={<><T>客户项目工作台</T>{showPlan ? <> · <T>{planLabel}</T></> : null}</>}
+          actions={<Link href="/account" className="btn btn--ghost btn--sm"><T>{isAccountProjectToken(token) ? "我的项目" : "试用工作台"}</T></Link>}
+        />
+        {error ? <p className="notice notice--fail" role="alert"><T>{String(error)}</T></p> : null}
+        {notice ? <p className="notice notice--ok" role="status"><T>{String(notice)}</T></p> : null}
+
+        {refresh ? <AutoRefresh seconds={refresh} /> : null}
+        <section className="paper paper--tan rise" style={{ "--i": 3 } as CSSProperties} aria-labelledby="customer-progress-title">
+          <div className="paper__head">
+            <div role="status">
+              <p className="eyebrow m-0" id="customer-progress-title"><T>当前进度</T></p>
+              <h2 className="paper__title mt-1"><T>{progress.title}</T></h2>
+              <p className="paper__lead"><T>{progress.detail}</T></p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {progress.action ? <a className="btn btn--ghost" href={progress.action.href}><T>{progress.action.label}</T><ArrowRight size={14} className="arw" aria-hidden="true" /></a> : null}
+              {canStartFree ? (
+                <Link href="/#cta" className="btn btn--primary">
+                  <T>{project.status === "failed" ? "重新分析出海机会" : "免费分析出海机会"}</T><ArrowRight size={14} className="arw" aria-hidden="true" />
+                </Link>
+              ) : null}
+            </div>
           </div>
-          {progress.action ? <a className="self-start font-medium underline underline-offset-4" href={progress.action.href}><T>{progress.action.label}</T></a> : null}
-          {canStartFree ? (
-            <Link href="/#cta" className={buttonVariants()}>
-              <T>{project.status === "failed" ? "重新分析出海机会" : "免费分析出海机会"}</T>
-            </Link>
-          ) : null}
-          <section aria-labelledby="customer-office-title" className="mt-2 grid gap-3 border-t pt-4">
+          <section aria-labelledby="customer-office-title" className="grid gap-3">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h3 id="customer-office-title" className="text-base font-semibold"><T>项目办公室</T></h3>
-              {refresh ? <p className="text-xs text-muted-foreground"><T>自动更新当前项目进度</T></p> : null}
+              <h3 id="customer-office-title" className="eyebrow m-0"><T>项目办公室</T></h3>
+              {refresh ? <p className="pill pill--live m-0"><T>自动更新当前项目进度</T></p> : null}
             </div>
             <OfficeStage transfer={transfer} customerView focusRoom={activeRoom}>
               <OfficeMap stations={stations} customerView />
             </OfficeStage>
           </section>
-        </CardContent>
-      </Card>
+        </section>
 
-      {commercialOrder && visibleProposal ? (
-        <Card id="proposal">
-          <CardHeader><CardTitle><T>首客服务提案</T></CardTitle></CardHeader>
-          <CardContent className="flex flex-col gap-4">
+        {openGate ? (
+          <section id="approval" className="paper paper--focus rise" aria-labelledby="approval-title">
+            <p className="eyebrow m-0"><T>待你确认</T></p>
+            <h2 id="approval-title" className="paper__title mt-1"><T>{GATE_TEXT[openGate]}</T></h2>
+            {openGate === "publish" ? <p className="paper__lead"><T>实验使用一个免费渠道。额外付费推广需要单独确认。</T><T>{project.budgetNote ? `你提交的预算和时间要求为「${project.budgetNote}」。` : ""}</T></p> : null}
+            {openGate === "publish" && view.page ? (
+              <a href={`/p/${token}/preview?version=${view.page.version}`} target="_blank" rel="noreferrer" className="btn btn--ghost btn--sm mt-4"><T>
+                预览待确认的第 </T>{view.page.version}<T> 版
+              </T><ArrowUpRight size={14} aria-hidden="true" /></a>
+            ) : null}
+            <div className="mt-5">
+              <Decide action={customerDecision.bind(null, token)} approveLabel="确认采用" rejectLabel="退回修改" reasonLabel="退回原因（退回时必填）"
+                hidden={{ gate: openGate, version: openGate === "publish" ? view.page?.version : openGate === "positioning" ? project.positioningVersion : project.round }} />
+            </div>
+          </section>
+        ) : null}
+
+        {commercialOrder && visibleProposal ? (
+          <section id="proposal" className="paper rise" aria-labelledby="proposal-title">
+            <h2 id="proposal-title" className="paper__title mb-5"><T>首客服务提案</T></h2>
             <ProposalDetails proposal={visibleProposal} version={commercialOrder.quoteVersion} quoteFen={commercialOrder.quoteFen} />
             {project.status === "awaiting_quote_acceptance" ? (
-              <form action={customerProposalAction.bind(null, token)} className="flex flex-col gap-3">
-                <input type="hidden" name="version" value={commercialOrder.quoteVersion} />
-                <Label htmlFor="proposal-feedback"><T>退回原因（退回时必填）</T></Label>
-                <Input id="proposal-feedback" name="reason" maxLength={500} />
-                <div className="flex flex-wrap gap-2">
-                  <Button name="verdict" value="approve" type="submit"><T>接受报价</T></Button>
-                  <Button name="verdict" value="reject" type="submit" variant="outline"><T>退回报价</T></Button>
-                </div>
-              </form>
+              <div className="mt-6 border-t pt-5">
+                <Decide action={customerProposalAction.bind(null, token)} approveLabel="接受报价" rejectLabel="退回报价" reasonLabel="退回原因（退回时必填）"
+                  hidden={{ version: commercialOrder.quoteVersion }} />
+              </div>
             ) : null}
             {commercialOrder.status === "paid" ? (
-              <div className="space-y-1 rounded-md border p-3 text-sm">
-                <p className="font-medium"><T>首客已确认到账，正式服务已开始。</T></p>
-                {confirmedPayment ? <p><T>实际到账 </T>{formatYuan(confirmedPayment.amountFen)} · {formatDateTime(confirmedPayment.paidAt)}</p> : null}
+              <div className="notice notice--ok mt-5">
+                <p className="m-0"><T>首客已确认到账，正式服务已开始。</T>{confirmedPayment ? <> <T>实际到账 </T>{formatYuan(confirmedPayment.amountFen)} · {formatDateTime(confirmedPayment.paidAt)}</> : null}</p>
               </div>
             ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
+          </section>
+        ) : null}
 
-      {view.diagnosis ? (
-        <Card id="diagnosis" className="scroll-mt-4">
-          <CardHeader><CardTitle><T>出海机会报告</T></CardTitle></CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p>{view.diagnosis.summary}</p>
-            <ul className="list-disc space-y-1 pl-5">
-              {view.diagnosis.candidates.map((candidate) => <li key={candidate.name}><strong>{candidate.name}</strong>　{candidate.why}</li>)}
+        {view.diagnosis ? (
+          <section id="diagnosis" className="paper scroll-mt-24 rise" aria-labelledby="diagnosis-title">
+            <p className="eyebrow m-0"><T>出海机会报告</T></p>
+            <h2 id="diagnosis-title" className="paper__title mt-1 max-w-[30em]">{view.diagnosis.summary}</h2>
+            <ul className="card-grid mt-5">
+              {view.diagnosis.candidates.map((candidate, index) => (
+                <li key={candidate.name} className="tile rise bg-background" style={{ "--i": index } as CSSProperties}>
+                  <p className="tile__meta"><T>候选人群</T> {String(index + 1).padStart(2, "0")}</p>
+                  <h3 className="tile__title">{candidate.name}</h3>
+                  <p className="m-0 text-sm leading-relaxed text-muted-foreground">{candidate.why}</p>
+                </li>
+              ))}
             </ul>
-            {view.diagnosis.unknowns.length ? <p><T>待验证　</T>{view.diagnosis.unknowns.join("、")}</p> : null}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {project.productPlan === "free" && project.status === "free_ready" && !project.paused ? (
-        <Card aria-labelledby="project-pro-title">
-          <CardHeader><CardTitle><h2 id="project-pro-title"><T>升级到 Pro</T></h2></CardTitle></CardHeader>
-          <CardContent className="flex flex-col gap-3 text-sm">
-            <p><T>根据出海机会报告继续做完整定位、英文验证页、渠道行动和增长复盘。</T></p>
-            <p className="text-muted-foreground"><T>申请后可查看服务提案和报价，由你决定是否付款。</T></p>
-            <form action={customerRequestProAction.bind(null, token)}>
-              <Button type="submit"><T>申请 Pro 报价</T></Button>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {awaitingPayment ? (
-        <Card id="payment">
-          <CardHeader><CardTitle><T>首客服务付款与到账确认</T></CardTitle></CardHeader>
-          <CardContent className="flex flex-col gap-4 text-sm">
-            {receipt ? <p><T>付款截图已收到，等待首客核对实际到账。 </T><a className="underline" href={`/p/${token}/receipts/${receipt.id}`}><T>查看截图</T></a></p> : (
-              codeReady ? <><PaymentCodeImage token={token} /><p><T>扫码后请上传付款截图。</T></p></>
-                : <p><T>首客正在准备收款码，收款码配置后会在这里显示。</T></p>
-            )}
-            {project.status === "awaiting_payment" ? <ReceiptUpload action={customerReceiptAction.bind(null, token)} /> : null}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {openGate ? (
-        <Card id="approval" className="border-primary">
-          <CardHeader>
-            <CardTitle><T>待你确认</T></CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={customerDecision.bind(null, token)} className="flex flex-col gap-3">
-              <p className="text-sm"><T>{GATE_TEXT[openGate]}</T></p>
-              {openGate === "publish" && view.page ? (
-                <a href={`/p/${token}/preview?version=${view.page.version}`} target="_blank" rel="noreferrer" className="self-start text-sm underline"><T>
-                  预览待确认的第 </T>{view.page.version}<T> 版
-                </T></a>
-              ) : null}
-              {openGate === "publish" ? <p className="text-sm"><T>实验使用一个免费渠道。额外付费推广需要单独确认。</T><T>{project.budgetNote ? `你提交的预算和时间要求为「${project.budgetNote}」。` : ""}</T></p> : null}
-              <input type="hidden" name="gate" value={openGate} />
-              <input type="hidden" name="version" value={openGate === "publish" ? view.page?.version : openGate === "positioning" ? project.positioningVersion : project.round} />
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="reason"><T>退回原因（退回时必填）</T></Label>
-                <Input id="reason" name="reason" maxLength={500} />
+            {view.diagnosis.unknowns.length ? (
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <span className="eyebrow m-0"><T>待验证</T></span>
+                {view.diagnosis.unknowns.map((item) => <span key={item} className="pill pill--wait">{item}</span>)}
               </div>
-              <div className="flex gap-2">
-                <Button type="submit" name="verdict" value="approve"><T>
-                  确认采用
-                </T></Button>
-                <Button type="submit" name="verdict" value="reject" variant="outline"><T>
-                  退回修改
-                </T></Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
+            ) : null}
+          </section>
+        ) : null}
 
-      <RequirementCard project={project} history={requirements} action={customerRequirementsAction.bind(null, token)} />
-      <WorkPackageList readiness={readiness} />
-      <div id="clarifications" hidden={!view.clarifications.length}><ClarificationSection
-        questions={view.clarifications}
-        requirementVersion={project.requirementVersion}
-        canAnswer={project.status === "needs_info"}
-        answerAction={customerAnswers.bind(null, token)}
-      /></div>
-      {advancedAvailable ? (
-        <>
-          <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#delivery" />
-          <div id="strategy"><PositioningSection view={view} /></div>
-          <div id="launch"><PageSection view={view} previewHref={`/p/${token}/preview`} /></div>
-          <div id="growth"><GrowthSection view={view} /></div>
-        </>
-      ) : null}
-      {project.status === "delivered" ? (
-        <Card id="delivery">
-          <CardHeader><CardTitle><T>交付验收</T></CardTitle></CardHeader>
-          <CardContent className="flex flex-col gap-3 text-sm">
-            {order?.deliveryStatus === "accepted" ? <p><T>你已确认验收。</T></p> : (
-              <form action={customerAcceptanceAction.bind(null, token)} className="flex flex-col gap-3">
-                <input type="hidden" name="deliveryStamp" value={readiness.stamp} />
-                {order?.deliveryStatus === "changes_requested" ? <p><T>修改意见已提交，可补充意见或确认验收。</T></p> : null}
-                <Label htmlFor="acceptance-note"><T>需要修改的地方（退回时必填）</T></Label>
-                <Textarea id="acceptance-note" name="reason" maxLength={500} />
-                <div className="flex gap-2">
-                  <Button name="verdict" value="approve" type="submit" disabled={!readiness.ready}><T>确认验收</T></Button>
-                  <Button name="verdict" value="reject" type="submit" variant="outline"><T>提出修改</T></Button>
-                </div>
+        {project.productPlan === "free" && project.status === "free_ready" && !project.paused ? (
+          <section className="paper paper--apricot rise" aria-labelledby="project-pro-title">
+            <div className="paper__head mb-0">
+              <div>
+                <p className="eyebrow m-0">Pro</p>
+                <h2 id="project-pro-title" className="paper__title mt-1"><T>升级到 Pro</T></h2>
+                <p className="paper__lead"><T>根据出海机会报告继续做完整定位、英文验证页、渠道行动和增长复盘。</T></p>
+                <p className="paper__lead"><T>申请后可查看服务提案和报价，由你决定是否付款。</T></p>
+              </div>
+              <form action={customerRequestProAction.bind(null, token)}>
+                <Button type="submit" size="lg"><T>申请 Pro 报价</T><ArrowRight size={15} aria-hidden="true" /></Button>
               </form>
+            </div>
+          </section>
+        ) : null}
+
+        {awaitingPayment ? (
+          <section id="payment" className="paper rise" aria-labelledby="payment-title">
+            <h2 id="payment-title" className="paper__title"><T>首客服务付款与到账确认</T></h2>
+            <div className="mt-5 grid items-start gap-5 sm:grid-cols-[auto_1fr]">
+              {receipt ? <p className="notice notice--ok m-0 sm:col-span-2"><T>付款截图已收到，等待首客核对实际到账。 </T><a className="underline underline-offset-4" href={`/p/${token}/receipts/${receipt.id}`}><T>查看截图</T></a></p> : (
+                codeReady ? <><PaymentCodeImage token={token} /><p className="paper__lead m-0 self-center"><T>扫码后请上传付款截图。</T></p></>
+                  : <p className="notice notice--wait m-0 sm:col-span-2"><T>首客正在准备收款码，收款码配置后会在这里显示。</T></p>
+              )}
+              {project.status === "awaiting_payment" ? <div className="sm:col-span-2"><ReceiptUpload action={customerReceiptAction.bind(null, token)} /></div> : null}
+            </div>
+          </section>
+        ) : null}
+
+        <div id="clarifications" hidden={!view.clarifications.length}><ClarificationSection
+          questions={view.clarifications}
+          requirementVersion={project.requirementVersion}
+          canAnswer={project.status === "needs_info"}
+          answerAction={customerAnswers.bind(null, token)}
+        /></div>
+        {project.status === "delivered" ? (
+          <section id="delivery" className={order?.deliveryStatus === "accepted" ? "paper rise" : "paper paper--focus rise"} aria-labelledby="delivery-title">
+            <p className="eyebrow m-0"><T>交付验收</T></p>
+            {order?.deliveryStatus === "accepted" ? <h2 id="delivery-title" className="paper__title mt-1"><T>你已确认验收。</T></h2> : (
+              <>
+                <h2 id="delivery-title" className="paper__title mt-1"><T>{order?.deliveryStatus === "changes_requested" ? "修改意见已提交，可补充意见或确认验收。" : "请确认交付成果"}</T></h2>
+                <div className="mt-5">
+                  <Decide action={customerAcceptanceAction.bind(null, token)} approveLabel="确认验收" rejectLabel="提出修改" reasonLabel="需要修改的地方（退回时必填）"
+                    hidden={{ deliveryStamp: readiness.stamp }} approveDisabled={!readiness.ready} multiline />
+                </div>
+              </>
             )}
-          </CardContent>
-        </Card>
-      ) : null}
-      <Card id="support">
-        <CardHeader><CardTitle><T>问首客客服</T></CardTitle></CardHeader>
-        <CardContent className="flex flex-col gap-4 text-sm">
-          <form action={customerSupportAction.bind(null, token)} className="flex flex-col gap-2">
-            <Label htmlFor="support-question"><T>你的问题</T></Label>
-            <Textarea id="support-question" name="question" required maxLength={1000} />
-            <Button type="submit" className="self-start"><T>提交问题</T></Button>
-          </form>
-          {support.map((item) => (
-            <article key={item.id} className="space-y-2 border-t pt-3">
-              <p className="font-medium whitespace-pre-wrap">{item.question}</p>
-              <p className="whitespace-pre-wrap">{item.reply ?? <T>{item.status === "escalated" ? "已转给首客老板处理。" : "客服已收到问题，等待处理。"}</T>}</p>
-            </article>
-          ))}
-        </CardContent>
-      </Card>
-      <ScreenshotsSection
-        images={view.images}
-        hrefFor={(imageId) => `/p/${token}/images/${imageId}`}
-        editable={project.status !== "delivered" && project.status !== "cancelled"}
-        uploadAction={customerUploadImages.bind(null, token)}
-        deleteAction={customerDeleteImage.bind(null, token)}
-      />
-      <div id="research"><EvidenceSection view={view} /></div>
-    </main>
+          </section>
+        ) : null}
+        {advancedAvailable ? (
+          <>
+            <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#delivery" />
+            <div id="strategy"><PositioningSection view={view} /></div>
+            <div id="launch"><PageSection view={view} previewHref={`/p/${token}/preview`} /></div>
+            <div id="growth"><GrowthSection view={view} /></div>
+          </>
+        ) : null}
+        <RequirementCard project={project} history={requirements} action={customerRequirementsAction.bind(null, token)} />
+        <WorkPackageList readiness={readiness} />
+        <ScreenshotsSection
+          images={view.images}
+          hrefFor={(imageId) => `/p/${token}/images/${imageId}`}
+          editable={project.status !== "delivered" && project.status !== "cancelled"}
+          uploadAction={customerUploadImages.bind(null, token)}
+          deleteAction={customerDeleteImage.bind(null, token)}
+        />
+        <div id="research"><EvidenceSection view={view} /></div>
+
+        <details id="support" className="fold rise" open={support.length > 0 || undefined}>
+          <summary>
+            <span>
+              <span className="fold__title block"><T>问首客客服</T></span>
+              <span className="fold__hint block"><T>{support.length ? `已提问 ${support.length} 次` : "有疑问随时问，客服会在这里回复"}</T></span>
+            </span>
+          </summary>
+          <div className="fold__body grid gap-4 text-sm">
+            {support.map((item) => (
+              <article key={item.id} className="grid gap-2">
+                <p className="m-0 max-w-[85%] justify-self-end rounded-2xl rounded-br-md bg-[#101210] px-4 py-2.5 whitespace-pre-wrap text-[#fbfaf8]">{item.question}</p>
+                <p className="m-0 max-w-[85%] rounded-2xl rounded-bl-md border bg-background px-4 py-2.5 whitespace-pre-wrap">{item.reply ?? <T>{item.status === "escalated" ? "已转给首客老板处理。" : "客服已收到问题，等待处理。"}</T>}</p>
+              </article>
+            ))}
+            <form action={customerSupportAction.bind(null, token)} className="flex items-end gap-2 rounded-2xl border bg-background p-2">
+              <label htmlFor="support-question" className="sr-only"><T>你的问题</T></label>
+              <LocalizedTextarea id="support-question" name="question" required maxLength={1000} rows={1} placeholder="你的问题" className="min-h-11 border-0 bg-transparent focus-visible:ring-0" />
+              <Button type="submit" className="shrink-0"><T>提交问题</T></Button>
+            </form>
+          </div>
+        </details>
+
+        <p className="meta">
+          {isAccountProjectToken(token) ? (
+            <><T>你可以随时从 </T><Link href="/account" className="link-u"><T>我的项目</T></Link><T> 回到这里。</T></>
+          ) : <><T>通过专属链接查看当前项目，也可从本浏览器的 </T><Link href="/account" className="link-u"><T>试用工作台</T></Link><T> 返回。请保存此链接，方便找回项目。</T></>}
+        </p>
+      </main>
+      <SceneFooter low />
+    </div>
   );
 }

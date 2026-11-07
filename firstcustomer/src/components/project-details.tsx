@@ -1,17 +1,17 @@
-import { LocalizedInput } from "@/components/localized-controls";
+import { LocalizedInput, LocalizedTag } from "@/components/localized-controls";
 import { T, I18n } from "@/components/ui-text";
 import type { PositioningOption, VisionOutput } from "@/agents/schemas";
 import { ImageUploadInput } from "@/components/image-upload-input";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { GRADE_LABELS, type Grade } from "@/domain/evidence";
-import { MAIN_FLOW, STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
+import { STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { safeHref } from "@/lib/request";
+import type { CSSProperties, ReactNode } from "react";
+import { StatusPill } from "@/components/site-chrome";
 import { hostedUploadLimit } from "@/lib/uploads";
 import type { Project, ProjectView } from "@/workflow/queries";
 
@@ -47,37 +47,53 @@ function SourceLink({ url }: { url: string | null }) {
 
 export function SimulatedBanner() {
   return (
-    <p className="rounded-md border border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-900"><T>
+    <p className="notice notice--wait"><T>
       这个项目由模拟模型运行，所有研究和文案都是示例，不是真实结果。
     </T></p>
   );
 }
 
-export function StatusFlow({ status, quoteFlow, plan = "legacy" }: { status: string; quoteFlow: boolean; plan?: Project["productPlan"] }) {
-  const flow: ProjectStatus[] = plan === "free"
-    ? ["submitted", "researching", "free_ready"]
-    : quoteFlow
-      ? [...MAIN_FLOW.slice(0, 2), ...(plan === "pro" ? ["free_ready"] as const : []), "drafting_quote", "awaiting_quote", "awaiting_quote_acceptance", "awaiting_payment", ...MAIN_FLOW.slice(2)]
-      : MAIN_FLOW;
-  const current = status === "reading_receipt" ? "awaiting_payment" : status;
-  const index = flow.indexOf(current as ProjectStatus);
+/** 把细分状态归到几个大阶段，进度路径只画阶段，当前精确状态写在标签里。 */
+const PHASES: { label: string; statuses: ProjectStatus[] }[] = [
+  { label: "提交资料", statuses: ["submitted"] },
+  { label: "分析出海机会", statuses: ["researching", "free_ready"] },
+  { label: "报价与付款", statuses: ["drafting_quote", "awaiting_quote", "awaiting_quote_acceptance", "awaiting_payment", "reading_receipt"] },
+  { label: "定位方案", statuses: ["strategizing", "awaiting_positioning"] },
+  { label: "英文页发布", statuses: ["preparing_page", "awaiting_publish", "published"] },
+  { label: "收集与复盘", statuses: ["collecting", "reviewing"] },
+  { label: "交付验收", statuses: ["delivered"] },
+];
+
+export function projectPhases(status: string, quoteFlow: boolean, plan: Project["productPlan"] = "legacy", failedFrom?: string | null) {
+  const phases = plan === "free"
+    ? [PHASES[0], PHASES[1], { label: "机会报告", statuses: ["free_ready"] as ProjectStatus[] }]
+    : PHASES.filter((phase) => quoteFlow || phase.label !== "报价与付款");
+  const lookup = status === "failed" || status === "needs_info" || status === "awaiting_founder" || status === "cancelled"
+    ? (status === "needs_info" ? "researching" : failedFrom ?? "")
+    : status;
+  let index = phases.findIndex((phase) => phase.statuses.includes(lookup as ProjectStatus));
+  if (plan === "free" && lookup === "free_ready") index = 2;
+  if (plan === "free" && lookup === "researching") index = 1;
+  const done = status === "delivered" || (plan === "free" && status === "free_ready");
+  return { phases, index, done };
+}
+
+export function StatusFlow({ status, quoteFlow, plan = "legacy", failedFrom }: { status: string; quoteFlow: boolean; plan?: Project["productPlan"]; failedFrom?: string | null }) {
+  const { phases, index, done } = projectPhases(status, quoteFlow, plan, failedFrom);
+  const alert = status === "failed" || status === "cancelled";
   return (
-    <ol className="flex flex-wrap gap-2 text-sm">
-      {flow.map((step, i) => (
-        <li key={step} aria-current={step === current ? "step" : undefined}>
-          <Badge className="transition-none" variant={step === current ? "default" : i < index ? "secondary" : "outline"}>
-            <T>{STATUS_LABELS[step]}</T>
-          </Badge>
-        </li>
-      ))}
-      {index < 0 ? (
-        <li aria-current="step">
-          <Badge variant={status === "failed" || status === "cancelled" ? "destructive" : "secondary"}>
-            <T>{STATUS_LABELS[status as ProjectStatus] ?? status}</T>
-          </Badge>
-        </li>
-      ) : null}
-    </ol>
+    <LocalizedTag as="ol" className="path" aria-label="项目进度">
+      {phases.map((phase, i) => {
+        const state = i < index || (done && i === index) ? "done" : i === index ? (alert ? "alert" : "current") : "todo";
+        return (
+          <li key={phase.label} className="path__step" data-state={state} style={{ "--i": i } as CSSProperties}
+            aria-current={state === "current" || state === "alert" ? "step" : undefined}>
+            <span className="path__dot" aria-hidden="true" />
+            <span className="path__label"><T>{phase.label}</T></span>
+          </li>
+        );
+      })}
+    </LocalizedTag>
   );
 }
 
@@ -106,19 +122,26 @@ export function DeliverablesSection({ view, deliveryStatus, closingHref }: {
   ];
 
   return (
-    <Card id="deliverables">
-      <CardHeader><CardTitle><T>交付清单</T></CardTitle></CardHeader>
-      <CardContent>
-        <dl className="divide-y text-sm">
-          {items.map(({ label, href, state }) => (
-            <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2 first:pt-0 last:pb-0" key={label}>
-              <dt className="font-medium">{href ? <a href={href} className="underline underline-offset-4"><T>{label}</T></a> : <T>{label}</T>}</dt>
-              <dd className="text-muted-foreground"><T>{state}</T></dd>
-            </div>
-          ))}
-        </dl>
-      </CardContent>
-    </Card>
+    <section id="deliverables" aria-labelledby="deliverables-title" className="grid gap-4">
+      <div className="block-title"><h2 id="deliverables-title"><T>交付清单</T></h2></div>
+      <ul className="card-grid">
+        {items.map(({ label, href, state }, i) => {
+          const body = (
+            <>
+              <p className="tile__meta">0{i + 1}</p>
+              <h3 className="tile__title"><T>{label}</T></h3>
+              <p className="tile__meta"><T>{state}</T></p>
+              <div className="meter" aria-hidden="true"><span style={{ "--p": href ? "100%" : "12%", "--i": i } as CSSProperties} /></div>
+            </>
+          );
+          return (
+            <li key={label} className="rise" style={{ "--i": i } as CSSProperties}>
+              {href ? <a href={href} className="tile h-full">{body}</a> : <div className="tile h-full">{body}</div>}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -150,7 +173,7 @@ export function ClarificationSection(props: {
     );
   }
   return (
-    <Card className="border-primary">
+    <Card className="border-[#456447] shadow-[0_0_0_3px_rgba(69,100,71,0.08)]">
       <CardHeader>
         <CardTitle><T>需要补充这些信息</T></CardTitle>
       </CardHeader>
@@ -207,10 +230,10 @@ export function ScreenshotsSection(props: {
         {images.map((image) => {
           const analysis = image.analysis as VisionOutput | null;
           return (
-            <div key={image.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row">
+            <div key={image.id} className="flex flex-col gap-3 rounded-2xl border bg-background p-3 sm:flex-row">
               <a href={hrefFor(image.id)} target="_blank" rel="noreferrer" className="shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <I18n><img src={hrefFor(image.id)} alt="上传的截图" className="h-24 w-36 rounded object-cover" /></I18n>
+                <I18n><img src={hrefFor(image.id)} alt="上传的截图" className="h-24 w-36 rounded-xl object-cover" /></I18n>
               </a>
               <div className="flex flex-1 flex-col gap-1">
                 <p className="font-medium">
@@ -242,15 +265,15 @@ export function ScreenshotsSection(props: {
           </form>
         ) : null}
         {editable ? (
-          <form action={props.uploadAction} className="flex flex-col gap-2">
+          <form action={props.uploadAction} className="flex flex-col gap-3 rounded-2xl border border-dashed border-input p-4">
             <Label htmlFor="image-files"><T>上传截图（一次最多 3 张，</T><T>{hostedUploadLimit ? "合计不超过 4 MB" : "每张不超过 5 MB"}</T>）</Label>
             <ImageUploadInput id="image-files" name="images" multiple required maxTotalBytes={hostedUploadLimit} />
             <div className="flex flex-wrap gap-2">
-              <select name="kind" className="h-9 rounded-md border bg-background px-3" defaultValue="product">
-                <option value="product"><T>我们的产品</T></option>
-                <option value="competitor"><T>竞品</T></option>
-              </select>
-              <LocalizedInput name="note" placeholder="说明（选填）" maxLength={200} className="w-60" />
+              <LocalizedTag as="fieldset" className="choice-group" aria-label="截图类型">
+                <label className="choice"><input type="radio" name="kind" value="product" defaultChecked /><span><T>我们的产品</T></span></label>
+                <label className="choice"><input type="radio" name="kind" value="competitor" /><span><T>竞品</T></span></label>
+              </LocalizedTag>
+              <LocalizedInput name="note" placeholder="说明（选填）" maxLength={200} className="h-9 w-60" />
               <Button type="submit" variant="outline"><T>
                 上传
               </T></Button>
@@ -266,41 +289,22 @@ export function EvidenceSection({ view }: { view: ProjectView }) {
   const support = view.evidence.filter((e) => e.stance !== "against");
   const against = view.evidence.filter((e) => e.stance === "against");
   const counterSearches = view.searches.filter((s) => s.purpose === "counter");
-  const rows = (items: ProjectView["evidence"]) =>
-    items.map((e) => (
-      <TableRow key={e.id}>
-        <TableCell className="whitespace-normal">
-          <p>{e.excerpt}</p>
-          {e.numberValue ? (
-            <p className="text-xs text-muted-foreground">
-              {e.numberValue}
-              {e.metric ? `（${e.metric}）` : ""}
-            </p>
-          ) : null}
-        </TableCell>
-        <TableCell><T>{KIND_LABELS[e.kind] ?? e.kind}</T></TableCell>
-        <TableCell><T>{e.grade ? GRADE_LABELS[e.grade as Grade] : "不适用"}</T></TableCell>
-        <TableCell><T>{e.status === "verified" ? "已验证" : "待验证"}</T></TableCell>
-        <TableCell>
-          <SourceLink url={e.url} />
-          <p className="text-xs text-muted-foreground">{formatDate(e.collectedAt)}</p>
-        </TableCell>
-      </TableRow>
-    ));
-  const table = (items: ProjectView["evidence"], empty: string) =>
+  const cards = (items: ProjectView["evidence"], empty: string) =>
     items.length ? (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead><T>内容</T></TableHead>
-            <TableHead><T>类型</T></TableHead>
-            <TableHead><T>付费证据等级</T></TableHead>
-            <TableHead><T>状态</T></TableHead>
-            <TableHead><T>来源和日期</T></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>{rows(items)}</TableBody>
-      </Table>
+      <ul className="card-grid card-grid--wide">
+        {items.map((e, i) => (
+          <li key={e.id} className="tile rise bg-background" style={{ "--i": Math.min(i, 8) } as CSSProperties}>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="pill"><T>{KIND_LABELS[e.kind] ?? e.kind}</T></span>
+              <span className={e.status === "verified" ? "pill pill--ok" : "pill pill--wait"}><T>{e.status === "verified" ? "已验证" : "待验证"}</T></span>
+              {e.grade ? <span className="pill pill--line"><T>{GRADE_LABELS[e.grade as Grade]}</T></span> : null}
+            </div>
+            <p className="m-0 leading-relaxed">{e.excerpt}</p>
+            {e.numberValue ? <p className="tile__value text-[1.35rem]">{e.numberValue}{e.metric ? <span className="ms-1 font-sans text-xs text-muted-foreground">（{e.metric}）</span> : null}</p> : null}
+            <p className="tile__foot tile__meta"><SourceLink url={e.url} /><span>{formatDate(e.collectedAt)}</span></p>
+          </li>
+        ))}
+      </ul>
     ) : (
       <p className="text-sm text-muted-foreground"><T>{empty}</T></p>
     );
@@ -310,15 +314,15 @@ export function EvidenceSection({ view }: { view: ProjectView }) {
       <CardHeader>
         <CardTitle><T>市场证据</T></CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <h3 className="font-medium"><T>支持证据</T></h3>
-        {table(support, "还没有支持证据")}
-        <h3 className="font-medium"><T>反面证据</T></h3>
-        {table(against, "还没有找到反面证据")}
+      <CardContent className="flex flex-col gap-5">
+        <h3 className="eyebrow m-0"><T>支持证据</T> · {support.length}</h3>
+        {cards(support, "还没有支持证据")}
+        <h3 className="eyebrow m-0"><T>反面证据</T> · {against.length}</h3>
+        {cards(against, "还没有找到反面证据")}
         {counterSearches.length ? (
-          <div className="text-sm">
-            <h3 className="font-medium"><T>反向检索记录</T></h3>
-            <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+          <details className="fold bg-background">
+            <summary><span className="fold__title"><T>反向检索记录</T></span></summary>
+            <ul className="fold__body m-0 list-disc pl-10 text-sm text-muted-foreground">
               {counterSearches.map((s) => (
                 <li key={s.id}>
                   {s.candidate}<T>：在 </T>{s.source}<T> 查“</T>{s.query}”，
@@ -326,7 +330,7 @@ export function EvidenceSection({ view }: { view: ProjectView }) {
                 </li>
               ))}
             </ul>
-          </div>
+          </details>
         ) : null}
       </CardContent>
     </Card>
@@ -350,22 +354,23 @@ export function PositioningSection({ view }: { view: ProjectView }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4 text-sm">
         <p>{positioning.rationale}</p>
-        <ul className="flex flex-col gap-3">
+        <ul className="card-grid">
           {options.map((option, i) => (
-            <li key={option.audience} className="rounded-md border p-3">
-              <p className="font-medium"><T>
-                方案 </T>{i + 1}：{option.audience}
-                <T>{i === positioning.recommendedOption ? "（推荐）" : ""}</T>
-                <T>{i === positioning.chosenOption ? "（已选）" : ""}</T>
-              </p>
-              <p><T>问题：</T>{option.problem}</p>
-              <p><T>价值主张：</T>{option.value_prop}</p>
-              <p className="text-muted-foreground">{option.why}</p>
+            <li key={option.audience} className={`tile rise ${i === positioning.chosenOption || i === positioning.recommendedOption ? "border-[#456447] bg-background" : "bg-background"}`} style={{ "--i": i } as CSSProperties}>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="tile__meta"><T>方案 </T>{i + 1}</span>
+                {i === positioning.recommendedOption ? <span className="pill pill--live"><T>推荐</T></span> : null}
+                {i === positioning.chosenOption ? <span className="pill pill--ok"><T>已选</T></span> : null}
+              </div>
+              <h3 className="tile__title">{option.audience}</h3>
+              <p className="m-0"><T>问题：</T>{option.problem}</p>
+              <p className="m-0"><T>价值主张：</T>{option.value_prop}</p>
+              <p className="tile__meta">{option.why}</p>
             </li>
           ))}
         </ul>
-        <div>
-          <h3 className="font-medium"><T>实验计划</T></h3>
+        <div className="rounded-2xl bg-[#faebd4] p-4">
+          <h3 className="eyebrow m-0 mb-2"><T>实验计划</T></h3>
           <p><T>假设：</T>{experiment.hypothesis}</p>
           <p><T>渠道：</T>{experiment.channel}</p>
           <p><T>
@@ -420,28 +425,15 @@ export function PageSection({ view, previewHref }: { view: ProjectView; previewH
         <div>
           <h3 className="font-medium"><T>事实声明与证据对照</T></h3>
           {pageClaims.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead><T>声明</T></TableHead>
-                  <TableHead><T>类型</T></TableHead>
-                  <TableHead><T>证据摘录</T></TableHead>
-                  <TableHead><T>来源</T></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pageClaims.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="whitespace-normal">{c.text}</TableCell>
-                    <TableCell><T>{CLAIM_LABELS[c.kind] ?? c.kind}</T></TableCell>
-                    <TableCell className="whitespace-normal"><T>{c.excerpt ?? "无"}</T></TableCell>
-                    <TableCell>
-                      <SourceLink url={c.url} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <ul className="mt-2 grid gap-2">
+              {pageClaims.map((c) => (
+                <li key={c.id} className="grid gap-1 rounded-xl border bg-background p-3">
+                  <div className="flex flex-wrap items-center gap-2"><span className="pill"><T>{CLAIM_LABELS[c.kind] ?? c.kind}</T></span><SourceLink url={c.url} /></div>
+                  <p className="m-0 font-medium">{c.text}</p>
+                  <p className="m-0 text-muted-foreground"><T>{c.excerpt ?? "无"}</T></p>
+                </li>
+              ))}
+            </ul>
           ) : (
             <p className="text-muted-foreground"><T>这版页面没有事实声明。</T></p>
           )}
@@ -451,7 +443,7 @@ export function PageSection({ view, previewHref }: { view: ProjectView; previewH
             <h3 className="font-medium"><T>渠道任务：</T>{campaign.channel}</h3>
             <p className="text-muted-foreground">{campaign.reason}</p>
             {assets.map((asset) => (
-              <div key={asset.title} className="rounded-md border p-3">
+              <div key={asset.title} className="rounded-xl border bg-background p-3">
                 <p className="font-medium">{asset.title}</p>
                 <p className="whitespace-pre-wrap">{asset.body}</p>
               </div>
@@ -505,28 +497,18 @@ export function GrowthSection({ view }: { view: ProjectView }) {
           </div>
         ) : null}
         {numbers ? (
-          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div>
-              <dt className="text-muted-foreground"><T>独立访问（按日去重）</T></dt>
-              <dd className="text-lg font-medium">{numbers.visits}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground"><T>CTA 点击</T></dt>
-              <dd className="text-lg font-medium">{numbers.ctaClicks}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground"><T>有效留资（不是付费）</T></dt>
-              <dd className="text-lg font-medium">{numbers.leads}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground"><T>回复和评论</T></dt>
-              <dd className="text-lg font-medium">{numbers.replies}</dd>
-            </div>
+          <dl className="figures m-0">
+            {([["独立访问（按日去重）", numbers.visits], ["CTA 点击", numbers.ctaClicks], ["有效留资（不是付费）", numbers.leads], ["回复和评论", numbers.replies]] as const).map(([label, value]) => (
+              <div className="figure" key={label}>
+                <dd className="m-0"><b>{value}</b></dd>
+                <dt className="order-first"><span><T>{label}</T></span></dt>
+              </div>
+            ))}
           </dl>
         ) : null}
         {report ? (
           <div className="flex flex-col gap-2">
-            <p className="font-medium"><T>结论：</T>{report.verdict_label}</p>
+            <p className="m-0"><span className="pill pill--live"><T>结论：</T>{report.verdict_label}</span></p>
             <p>{report.summary}</p>
             <h3 className="font-medium"><T>做过的动作</T></h3>
             <ul className="list-disc pl-5">
@@ -554,16 +536,26 @@ export function GrowthSection({ view }: { view: ProjectView }) {
   );
 }
 
-export function ProjectHeader({ project }: { project: Project }) {
+export function ProjectHeader({ project, eyebrow, actions }: { project: Project; eyebrow?: ReactNode; actions?: ReactNode }) {
   return (
-    <header className="flex flex-col gap-3">
-      <h1 className="text-3xl font-bold tracking-tight break-words">{project.productName}</h1>
-      <p className="text-sm text-muted-foreground">
-        <T>{project.stage}</T> · <T>{project.goal}</T>
-        {project.targetMarket ? ` · ${project.targetMarket}` : ""}
-        <T>{project.isOwnProduct ? " · 自有产品" : ""}</T>
-      </p>
-      <StatusFlow status={project.status} quoteFlow={usesQuoteFlow(project)} plan={project.productPlan} />
+    <header className="grid gap-6">
+      <div className="page-head rise">
+        <div className="page-head__copy">
+          {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
+          <h1 className="page-head__title">{project.productName}</h1>
+          <div className="page-head__meta">
+            <StatusPill status={project.status} paused={project.paused} label={project.paused ? "已暂停" : STATUS_LABELS[project.status as ProjectStatus] ?? project.status} />
+            <span className="pill pill--line"><T>{project.stage}</T></span>
+            <span className="pill pill--line"><T>{project.goal}</T></span>
+            {project.targetMarket ? <span className="pill pill--line">{project.targetMarket}</span> : null}
+            {project.isOwnProduct ? <span className="pill pill--line"><T>自有产品</T></span> : null}
+          </div>
+        </div>
+        {actions ? <div className="page-head__actions">{actions}</div> : null}
+      </div>
+      <div className="paper rise" style={{ "--i": 2 } as CSSProperties}>
+        <StatusFlow status={project.status} quoteFlow={usesQuoteFlow(project)} plan={project.productPlan} failedFrom={project.failedFrom} />
+      </div>
     </header>
   );
 }

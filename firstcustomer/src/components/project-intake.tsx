@@ -8,7 +8,24 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { hostedUploadLimit } from "@/lib/uploads";
 
-const selectClass = "h-9 rounded-md border bg-background px-3 text-sm";
+const STAGES = ["没有产品", "有想法", "已有 MVP", "已上线"] as const;
+const GOALS = ["找需求", "验证", "找首批用户", "提升转化"] as const;
+
+function Choices({ name, label, options, value }: { name: string; label: string; options: readonly string[]; value: string }) {
+  return (
+    <fieldset className="flex flex-col gap-2 sm:col-span-2">
+      <legend className="mb-2 text-sm font-medium"><T>{label}</T></legend>
+      <div className="choice-group">
+        {options.map((option) => (
+          <label className="choice" key={option}>
+            <input type="radio" name={name} value={option} defaultChecked={option === value} required />
+            <span><T>{option}</T></span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 export function ProjectIntake({ action, founder = false }: {
   action: (formData: FormData) => Promise<void>;
@@ -24,45 +41,39 @@ export function ProjectIntake({ action, founder = false }: {
           <Label htmlFor="productName"><T>产品名称或想法</T></Label>
           <LocalizedTextarea id="productName" name="productName" required maxLength={500} placeholder="一两句话即可" />
         </div>
+        <Choices name="stage" label="当前阶段" options={STAGES} value="已有 MVP" />
+        <Choices name="goal" label="当前最想解决的事" options={GOALS} value="找首批用户" />
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="contact"><T>联系方式</T></Label>
+          <LocalizedInput id="contact" name="contact" required maxLength={200} placeholder="微信或邮箱，用于交付与必要联系" />
+        </div>
+        <details className="fold bg-background sm:col-span-2">
+          <summary>
+            <span>
+              <span className="fold__title block"><T>补充更多信息（选填）</T></span>
+              <span className="fold__hint block"><T>网址、市场、预算、现行做法与截图，不填也能先开始</T></span>
+            </span>
+          </summary>
+          <div className="fold__body grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Label htmlFor="productUrl"><T>产品网址（选填）</T></Label>
           <Input id="productUrl" name="productUrl" type="url" placeholder="https://" />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="stage"><T>当前阶段</T></Label>
-          <select id="stage" name="stage" required className={selectClass} defaultValue="已有 MVP">
-            <option value={"没有产品"}><T>没有产品</T></option>
-            <option value={"有想法"}><T>有想法</T></option>
-            <option value={"已有 MVP"}><T>已有 MVP</T></option>
-            <option value={"已上线"}><T>已上线</T></option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-2">
           <Label htmlFor="targetMarket"><T>希望进入的市场（选填）</T></Label>
-          <LocalizedInput id="targetMarket" name="targetMarket" placeholder="不填则请 AI 帮你判断" maxLength={200} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="goal"><T>当前最想解决的事</T></Label>
-          <select id="goal" name="goal" required className={selectClass} defaultValue="找首批用户">
-            <option value={"找需求"}><T>找需求</T></option>
-            <option value={"验证"}><T>验证</T></option>
-            <option value={"找首批用户"}><T>找首批用户</T></option>
-            <option value={"提升转化"}><T>提升转化</T></option>
-          </select>
+          <LocalizedInput id="targetMarket" name="targetMarket" placeholder="不填则请 MiMo AI 帮你判断" maxLength={200} />
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="budgetNote"><T>预算和时间（选填）</T></Label>
           <Input id="budgetNote" name="budgetNote" maxLength={200} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="contact"><T>联系方式</T></Label>
-          <LocalizedInput id="contact" name="contact" required maxLength={200} placeholder="微信或邮箱，用于交付与必要联系" />
         </div>
         {([ ["currentWorkflow", "现行做法"], ["successCriteria", "希望验证的结果"], ["constraints", "限制条件"] ] as const).map(([name, label]) => <div key={name} className="flex flex-col gap-2 sm:col-span-2"><Label htmlFor={name}><T>{label}</T><T>（选填）</T></Label><Textarea id={name} name={name} maxLength={1000} /></div>)}
         <div className="flex min-w-0 flex-col gap-2 sm:col-span-2">
           <Label htmlFor="screenshots"><T>产品截图（选填，最多 3 张，</T><T>{hostedUploadLimit ? "合计不超过 4 MB" : "每张不超过 5 MB"}</T>）</Label>
           <ImageUploadInput id="screenshots" name="screenshots" multiple maxTotalBytes={hostedUploadLimit} />
         </div>
+          </div>
+        </details>
         {founder ? <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" name="own" value="1" /><T> 这是首客自有产品</T></label> : null}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:col-span-2">
           <Button type="submit"><T>提交项目</T></Button>

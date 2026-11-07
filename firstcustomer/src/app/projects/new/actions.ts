@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { accountProjectToken } from "@/lib/customer-project";
 import { withinLimit } from "@/lib/request";
+import { rememberTrialProject } from "@/lib/trial-projects";
 import { submitProject } from "@/workflow/intake";
 import { startFreeDiagnosis } from "@/workflow/plans";
 
@@ -19,12 +20,13 @@ export async function createProjectAction(formData: FormData) {
     redirect(`/projects/new?error=${encodeURIComponent(error instanceof Error ? error.message : "提交失败")}`);
   });
   const query = new URLSearchParams({ intake: "public" });
+  if (!session) await rememberTrialProject(token);
   let warning = imageWarning;
   try {
     await startFreeDiagnosis(db, projectId);
   } catch (error) {
-    console.error("免费初诊入队失败", error);
-    warning = [warning, "项目已保存。暂未进入初诊队列，请在项目页重试。"].filter(Boolean).join(" ");
+    console.error("免费出海机会分析入队失败", error);
+    warning = [warning, "项目已保存。暂未进入出海机会分析队列，请在项目页重试。"].filter(Boolean).join(" ");
   }
   if (warning) query.set("error", warning);
   redirect(`/p/${session ? accountProjectToken(projectId) : token}?${query}`);

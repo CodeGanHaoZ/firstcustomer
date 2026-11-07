@@ -19,6 +19,7 @@ function translateTemplate(text: string): string | undefined {
   if ((match = text.match(/^请缩短到 (\d+) 个字符以内。$/))) return `Please use no more than ${match[1]} characters.`;
   if ((match = text.match(/^范围 (\d+) · 第 (\d+) 轮$/))) return `Scope ${match[1]} · Round ${match[2]}`;
   if ((match = text.match(/^找到 (\d+) 条$/))) return `${match[1]} results found`;
+  if ((match = text.match(/^已提问 (\d+) 次$/))) return `${match[1]} ${match[1] === "1" ? "question" : "questions"} asked`;
   if ((match = text.match(/^已执行（(.+)）$/))) return `Executed (${message(match[1]) ?? match[1]})`;
   if ((match = text.match(/^匹配到 (\d+) 篇已发布资料：$/))) return `${match[1]} published resources matched:`;
   if ((match = text.match(/^已发布 · 第 (\d+) 版$/))) return `Published · Version ${match[1]}`;

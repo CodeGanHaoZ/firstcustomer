@@ -1,9 +1,9 @@
 import { getLocale } from "@/lib/locale-server";
 import { translateUi } from "@/lib/ui-translation";
 import { T, I18n } from "@/components/ui-text";
-import { ChevronDown, Download, Pencil } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
+import type { CSSProperties } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db";
@@ -23,31 +23,37 @@ export default async function ContextPage({ searchParams }: PageProps<"/admin/co
   const db = getDb();
   const [settings, docs] = await Promise.all([getCompanySettings(db), companyDocuments(db)]);
   return (
-    <main className="admin-section max-w-4xl">
+    <main className="admin-section">
       <header className="admin-section-heading">
         <div><h1><T>公司卷宗</T></h1><p><T>从当前数据库生成的 00–08 卷宗，导出时联系方式已脱敏。</T></p></div>
         <div className="flex flex-wrap gap-2">
-          <a href="#company-settings" className={buttonVariants({ variant: "outline" })}><Pencil aria-hidden="true" /><T>编辑设置</T></a>
+          <a href="#company-settings-form" className={buttonVariants({ variant: "outline" })}><Pencil aria-hidden="true" /><T>编辑设置</T></a>
           <a href="/admin/context/export" className={buttonVariants()}><Download aria-hidden="true" /><T>导出 Markdown ZIP</T></a>
         </div>
       </header>
-      {error ? <p role="alert" className="text-sm text-destructive"><T>{String(error)}</T></p> : null}
-      <I18n><section aria-label="九份卷宗" className="divide-y overflow-hidden rounded-xl border bg-card">
-        {docs.map((doc) => (
-          <details key={doc.name} className="group">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold hover:bg-secondary">
-              {doc.name}
-              <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-muted-foreground group-open:rotate-180" />
+      {error ? <p role="alert" className="notice notice--fail"><T>{String(error)}</T></p> : null}
+      <I18n><section aria-label="九份卷宗" className="grid items-start gap-3 md:grid-cols-2">
+        {docs.map((doc, index) => (
+          <details key={doc.name} className="fold rise" style={{ "--i": index } as CSSProperties}>
+            <summary>
+              <span className="flex items-center gap-3">
+                <span className="font-serif text-lg text-[#456447]">{doc.name.match(/^\d+/)?.[0] ?? String(index).padStart(2, "0")}</span>
+                <span className="fold__title">{doc.name.replace(/^\d+[\s._-]*/, "")}</span>
+              </span>
             </summary>
-            <pre className="border-t px-4 py-3 font-sans text-sm leading-relaxed break-words whitespace-pre-wrap">{doc.body}</pre>
+            <pre className="fold__body m-0 font-sans text-sm leading-relaxed break-words whitespace-pre-wrap text-muted-foreground">{doc.body}</pre>
           </details>
         ))}
       </section></I18n>
-      <Card id="company-settings" className="scroll-mt-4">
-        <CardHeader><CardTitle><T>公司设置与宪章</T></CardTitle></CardHeader>
-        <CardContent>
-          <form action={saveCompanyContext} className="grid gap-3 text-sm">
-            <p><T>{settings?.charterConfirmedAt ? `闸门①已确认 · 第 ${settings.charterVersion} 版 · ${formatDateTime(settings.charterConfirmedAt)}` : "闸门①待老板确认"}</T></p>
+      <details id="company-settings" className="fold scroll-mt-24">
+        <summary>
+          <span>
+            <span className="fold__title block"><T>公司设置与宪章</T></span>
+            <span className="fold__hint block"><span className={settings?.charterConfirmedAt ? "pill pill--ok" : "pill pill--wait"}><T>{settings?.charterConfirmedAt ? `闸门①已确认 · 第 ${settings.charterVersion} 版 · ${formatDateTime(settings.charterConfirmedAt)}` : "闸门①待老板确认"}</T></span></span>
+          </span>
+        </summary>
+        <div className="fold__body">
+          <form id="company-settings-form" action={saveCompanyContext} className="grid scroll-mt-24 gap-3 text-sm">
             <Label htmlFor="charter"><T>公司宪章 · 定位、对象、价值、红线</T></Label>
             <Textarea id="charter" name="charter" defaultValue={settings?.charter} maxLength={4000} rows={4} />
             <Label htmlFor="brand"><T>品牌语调</T></Label>
@@ -59,12 +65,12 @@ export default async function ContextPage({ searchParams }: PageProps<"/admin/co
             <Label htmlFor="operations"><T>客服知识和标准流程</T></Label>
             <Textarea id="operations" name="operations" defaultValue={settings?.operations} maxLength={3000} />
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" name="intent" value="save" variant="outline"><T>保存设置</T></Button>
               <Button type="submit" name="intent" value="confirm"><T>保存并确认宪章</T></Button>
+              <Button type="submit" name="intent" value="save" variant="outline"><T>保存设置</T></Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </details>
     </main>
   );
 }

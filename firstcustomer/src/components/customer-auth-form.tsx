@@ -9,6 +9,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { saveTrialProjectsAction } from "@/app/account/actions";
 
 const auth = createAuthClient();
 
@@ -41,6 +42,13 @@ export function CustomerAuthForm({ register }: { register: boolean }) {
         else if (result.error.status >= 500) setError("暂时连不上账号服务，请稍后再试。");
         else setError(register ? "暂时无法注册。若邮箱已注册，请直接登录。" : "邮箱或密码不正确，请再试一次。");
         setPending(false);
+        return;
+      }
+      try {
+        await saveTrialProjectsAction();
+      } catch {
+        router.replace("/account");
+        router.refresh();
         return;
       }
       router.replace("/account");

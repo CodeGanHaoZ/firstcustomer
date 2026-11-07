@@ -42,8 +42,8 @@ export async function workPackageReadiness(db: Db, project: Project) {
       attempts: attempts.length, costYuan: attempts.reduce((sum, task) => sum + task.listCostYuan, 0), checks,
       status: attempts.at(-1)?.status === "failed" ? "failed" : checks.every((check) => check.passed) ? "verified" : "waiting" });
   };
-  add("research", "市场初诊", research?.id ?? null, [
-    { label: "初诊摘要与候选人群已保存", passed: Boolean(researchOutput?.summary?.trim() && researchOutput.candidates?.length) },
+  add("research", "出海机会分析", research?.id ?? null, [
+    { label: "机会分析摘要与候选人群已保存", passed: Boolean(researchOutput?.summary?.trim() && researchOutput.candidates?.length) },
     { label: "引用证据属于当前范围且已核对、未过期", passed: ids.length > 0 && ids.every((id) => evidence.some((item) => item.id === id && item.status === "verified" && item.expiresAt >= new Date())) },
   ]);
   if (project.productPlan !== "free") {

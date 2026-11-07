@@ -43,7 +43,7 @@ export function customerProgress(input: {
   if (phase) {
     const detail = actor === "截图读取员" ? "截图读取员正在整理你上传的图片。"
       : actor ? `${actor}正在${phase.work}。` : `正在等待${phase.label}开始处理。`;
-    return { title: STATUS_LABELS[input.status as ProjectStatus], detail, refreshSeconds: 3 };
+    return { title: input.status === "researching" ? "正在分析你的出海机会" : STATUS_LABELS[input.status as ProjectStatus], detail, refreshSeconds: 3 };
   }
   if (input.openGate) {
     return { title: "待你确认", detail: CONFIRMATION_TEXT[input.openGate], action: { href: "#approval", label: "查看待确认事项" } };
@@ -51,9 +51,9 @@ export function customerProgress(input: {
 
   switch (input.status) {
     case "submitted": return input.canStartFree
-      ? { title: "可以开始免费初诊", detail: "提交的资料已保存。点击下方按钮即可排队开始。", refreshSeconds: 3 }
+      ? { title: "可以免费分析出海机会", detail: "提交的资料已保存。点击下方按钮即可排队开始。", refreshSeconds: 3 }
       : { title: "已提交", detail: "项目已提交，等待首客老板确认后开始研究。", refreshSeconds: 12 };
-    case "free_ready": return { title: "免费初诊已完成", detail: "你可以查看候选人群和待验证事项，或申请 Pro 继续做定位与发布。", action: { href: "#diagnosis", label: "查看初诊结果" } };
+    case "free_ready": return { title: "你的出海机会报告已生成", detail: "你可以查看候选人群和待验证事项，或申请 Pro 继续做定位与发布。", action: { href: "#diagnosis", label: "查看出海机会报告" } };
     case "needs_info": return { title: "待你补充资料", detail: "研究员需要你补充信息，可以先保存已填的回答。", action: { href: "#clarifications", label: "回答追问" } };
     case "awaiting_quote": return { title: "首客正在核对报价", detail: "服务范围和价格确认后会在这里显示。", refreshSeconds: 12 };
     case "awaiting_quote_acceptance": return input.quoteVisible
@@ -71,7 +71,7 @@ export function customerProgress(input: {
     case "reviewing": return { title: "复盘已生成", detail: "首客正在核对复盘与交付清单。", action: { href: "#growth", label: "查看增长复盘" }, refreshSeconds: 12 };
     case "awaiting_founder": return { title: "等首客决定下一步", detail: "前序材料已保存，首客会先核对当前问题。", refreshSeconds: 12 };
     case "failed": return input.canStartFree
-      ? { title: "初诊暂未完成", detail: "项目资料已保留，可以重新启动免费初诊。" }
+      ? { title: "出海机会分析暂未完成", detail: "项目资料已保留，可以重新分析出海机会。" }
       : { title: "处理遇到问题", detail: "首客可以核对原因并继续，已保存的交付记录可查阅。", action: { href: "#support", label: "询问进度" }, refreshSeconds: 12 };
     case "delivered": return input.deliveryStatus === "accepted"
       ? { title: "已验收", detail: "你已确认验收，可以随时查阅交付清单。", action: { href: "#deliverables", label: "查看交付清单" } }
