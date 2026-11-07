@@ -1060,7 +1060,7 @@ main .container,
   background: var(--paper) url("/home/hero-landscape.webp") center bottom / max(100%, 900px) auto no-repeat;
 }
 .hero {
-  padding-block: clamp(48px, 7vw, 96px) 0;
+  padding-block: clamp(20px, 3vw, 44px) 0;
 }
 .hero--split {
   display: grid;
