@@ -18,7 +18,7 @@ export async function SiteHeader({ current, extra }: { current?: NavKey; extra?:
   return (
     <header className="nav nav--static site-nav">
       <div className="nav__inner container">
-        <LocalizedLink href="/" className="nav__brand" aria-label="首客首页"><BrandMark /></LocalizedLink>
+        <LocalizedLink href="/#top" className="nav__brand" aria-label="首客首页"><BrandMark /></LocalizedLink>
         <LocalizedTag as="nav" className="nav__menu" aria-label="主导航">
           <Link href="/#office" className="nav__link"><T>办公室</T></Link>
           <Link href="/account" className="nav__link" aria-current={current === "account" ? "page" : undefined}>

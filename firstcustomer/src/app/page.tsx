@@ -27,10 +27,10 @@ export default async function Home() {
   const [session, locale] = await Promise.all([getCustomerSession(), getLocale()]);
   const copy = HOME_COPY[locale];
   return (
-    <div className="home-page" lang={localeTag(locale)}>
+    <div className="home-page" lang={localeTag(locale)} id="top">
       <header className="nav">
         <div className="nav__inner container">
-          <Link href="/" className="nav__brand" aria-label={copy.nav.home}>
+          <Link href="/#top" className="nav__brand" aria-label={copy.nav.home}>
             <BrandMark />
           </Link>
           <nav className="nav__menu" aria-label={copy.nav.label}>
