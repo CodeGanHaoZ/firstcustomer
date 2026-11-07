@@ -81,9 +81,9 @@ export default async function Home() {
 
         {/* ---------- 数字条：进视口滚动计数 ---------- */}
         <section className="container section--tight" aria-label={copy.statsLabel}>
-          <div className="stats" data-reveal>
+          <div className="stats">
             {copy.stats.map(({ value, unit, label }, index) => (
-              <div className="stat" key={index}>
+              <div className="stat" key={index} data-reveal data-reveal-group="stats">
                 <b><span data-count={value}>0</span><small>{unit}</small></b>
                 <span>{label}</span>
               </div>

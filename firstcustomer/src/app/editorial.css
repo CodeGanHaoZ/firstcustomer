@@ -929,6 +929,10 @@ main .container,
     transition-duration: 0.01ms !important;
   }
   [data-reveal] { opacity: 1; transform: none; filter: none; }
+  /* 延迟也要归零，否则数字条的单位/笔刷会卡在 480ms 延迟前不出现 */
+  .stat b small,
+  .stat b::after,
+  .stat b > span { transition-delay: 0s !important; }
 }
 
 /* ==========================================================================
@@ -1090,7 +1094,8 @@ main .container,
 }
 .stat:first-child { border-left: 0; }
 .stat b {
-  display: block;
+  position: relative;
+  display: inline-block;
   font-family: var(--font-serif);
   font-weight: 400;
   font-size: clamp(2.6rem, 5vw, 4.25rem);
@@ -1098,17 +1103,63 @@ main .container,
   letter-spacing: -0.02em;
   color: var(--ink);
 }
-/* 计数数字是 <b> 内的 <span>，必须把它从下方 .stat>span 标签样式里豁免 */
+/* 计数数字是 <b> 内的 <span>，必须把它从下方 .stat>span 标签样式里豁免。
+   默认就是墨色；进视口后渐变高光从右往左扫一遍（background-clip:text），
+   JS 失效时高光停在初始位置，数字仍是纯墨色可读 */
 .stat b > span {
-  display: inline;
+  display: inline-block;
   margin: 0;
   font-size: inherit;
   font-weight: inherit;
   letter-spacing: inherit;
   text-transform: none;
-  color: inherit;
+  background: linear-gradient(105deg, var(--ink) 42%, var(--forest) 50%, var(--ink) 58%);
+  background-size: 240% 100%;
+  background-position: 130% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: background-position 950ms var(--ease) 150ms;
 }
-.stat b small { font-size: 0.42em; letter-spacing: 0; margin-left: 4px; color: var(--sage-deep); }
+.stat.is-live b > span { background-position: -30% 0; }
+/* 计数结束：一次性的弹簧 pop，把视线钉在最终数字上 */
+.stat.is-done b > span { animation: stat-pop 640ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes stat-pop {
+  0% { transform: scale(1); }
+  38% { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+/* 数字底下一条墨绿笔刷，随计数一起从中间往两边扫开 */
+.stat b::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.1em;
+  width: 88%;
+  height: 0.13em;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+    transparent,
+    var(--forest) 18%,
+    var(--forest) 82%,
+    transparent);
+  opacity: 0.5;
+  transform: translateX(-50%) scaleX(0);
+  transition: transform 720ms var(--ease) 320ms;
+  pointer-events: none;
+}
+.stat.is-live b::after { transform: translateX(-50%) scaleX(1); }
+.stat b small {
+  display: inline-block;
+  font-size: 0.42em;
+  letter-spacing: 0;
+  margin-left: 4px;
+  color: var(--sage-deep);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 520ms var(--ease) 480ms, transform 520ms var(--ease) 480ms;
+}
+.stat.is-live b small { opacity: 1; transform: none; }
 .stat > span {
   display: block;
   margin-top: var(--sp-3);

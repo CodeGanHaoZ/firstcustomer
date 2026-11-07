@@ -105,8 +105,11 @@ export function EditorialMotion() {
       };
       const run = (el: HTMLElement) => {
         const target = parseFloat(el.getAttribute("data-count") || "0") || 0;
+        const statBox = el.closest<HTMLElement>(".stat");
+        statBox?.classList.add("is-live");
         if (reduceMotion) {
           el.textContent = fmt(el, target);
+          statBox?.classList.add("is-done");
           return;
         }
         const dur = 1100;
@@ -117,6 +120,7 @@ export function EditorialMotion() {
           const eased = 1 - Math.pow(1 - p, 3);
           el.textContent = fmt(el, target * eased);
           if (p < 1) requestAnimationFrame(frame);
+          else statBox?.classList.add("is-done");
         };
         requestAnimationFrame(frame);
       };
