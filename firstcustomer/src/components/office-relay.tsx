@@ -25,7 +25,12 @@ export function OfficeRelay({ scene, scenes, sceneIndex, phase, locale, progress
         <div className="relay-transfer">
           <span className="relay-transfer-label">{t("交接成果", "The handoff")}</span>
           <div className="relay-transfer-rail" aria-hidden="true"><span /><ArrowRight size={18} /></div>
-          <div className="relay-document"><FileText size={27} strokeWidth={1.5} aria-hidden="true" /><strong>{scene.document}</strong></div>
+          <div className="relay-document" data-stamped={phase >= 3 ? "true" : undefined}>
+            <span className="relay-document-no" aria-hidden="true">NO.{String(sceneIndex + 1).padStart(2, "0")}</span>
+            <FileText size={24} strokeWidth={1.5} aria-hidden="true" />
+            <strong>{scene.document}</strong>
+            <span className="relay-document-stamp" aria-hidden="true">{t("已接收", "RECEIVED")}</span>
+          </div>
           <span className="relay-transfer-state">{phase >= 3 ? t("接收后，继续下一步", "Received. The next task follows.") : t("带着依据，交给下一位", "Evidence travels with the work.")}</span>
         </div>
       </div>

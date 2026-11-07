@@ -18,12 +18,17 @@
 .relay-person p { margin: 0; color: #d5ddcc; font-size: 13px; line-height: 1.6; }
 .relay-party blockquote { position: relative; margin: .8rem 0 0; padding: .5rem 0 0; color: #fff9e9; font-size: 16px; line-height: 1.9; text-wrap: pretty; max-width: 34ch; }
 .relay-transfer { position: relative; grid-column: 2; grid-row: 1; align-self: center; display: grid; justify-items: center; gap: .7rem; }
-.relay-transfer-label { color: #d5ddcc; font-size: 12px; }
+.relay-transfer-label { color: #d5ddcc; font-size: 12px; letter-spacing: .12em; }
 .relay-transfer-rail { position: absolute; display: flex; align-items: center; inset: 62px -24px auto; color: var(--sage-soft); }
-.relay-transfer-rail > span { height: 1px; background: currentColor; flex: 1; }
-.relay-document { position: relative; z-index: 1; display: grid; justify-items: center; align-content: center; gap: .55rem; width: 108px; min-height: 104px; padding: .85rem .6rem; border-radius: 3px 12px 3px 3px; background: #fff7df; color: var(--pine); transform: rotate(-4deg); transition: transform 650ms cubic-bezier(.16,1,.3,1); }
-.relay-document strong { font-size: 13px; line-height: 1.5; font-weight: 600; text-align: center; }
-.office-relay:is([data-phase="3"],[data-phase="4"],[data-phase="5"]) .relay-document { transform: translateX(12px) rotate(4deg); }
+.relay-transfer-rail > span { height: 0; border-top: 1px dashed currentColor; flex: 1; opacity: .75; }
+.relay-document { position: relative; z-index: 1; display: grid; justify-items: center; align-content: center; gap: .45rem; width: 118px; min-height: 112px; padding: .95rem .6rem .8rem; border-radius: 4px; background: #fffdf4 repeating-linear-gradient(transparent 0 13px, rgba(80,95,70,.06) 13px 14px); color: var(--pine); box-shadow: 0 14px 24px -14px rgba(15,28,19,.55), 0 2px 6px -2px rgba(15,28,19,.35); transform: rotate(-4deg); transition: transform 650ms cubic-bezier(.16,1,.3,1); }
+.relay-document::before { content: ""; position: absolute; top: -8px; left: 50%; width: 46px; height: 15px; transform: translateX(-50%) rotate(-2deg); background: rgba(214,222,196,.42); border-inline: 1px dashed rgba(255,255,255,.35); }
+.relay-document-no { font-size: 10px; letter-spacing: .18em; color: #8a947f; font-variant-numeric: tabular-nums; }
+.relay-document strong { font-size: 13.5px; line-height: 1.5; font-weight: 650; text-align: center; }
+.relay-document-stamp { position: absolute; right: 5px; bottom: 5px; display: grid; place-items: center; width: 40px; height: 40px; border: 1.5px solid rgba(178,74,58,.8); border-radius: 50%; color: rgba(178,74,58,.92); font-size: 10.5px; font-weight: 650; letter-spacing: .05em; line-height: 1.1; text-align: center; transform: rotate(-14deg) scale(0); opacity: 0; }
+.relay-document[data-stamped="true"] .relay-document-stamp { animation: relay-stamp 520ms cubic-bezier(.2,1.4,.4,1) 120ms forwards; }
+@keyframes relay-stamp { 0% { transform: rotate(-32deg) scale(1.9); opacity: 0; } 55% { opacity: 1; } 100% { transform: rotate(-14deg) scale(1); opacity: 1; } }
+.office-relay:is([data-phase="3"],[data-phase="4"],[data-phase="5"]) .relay-document { transform: translateX(14px) rotate(3deg); }
 .relay-transfer-state { max-width: 19ch; color: #d5ddcc; font-size: 12px; text-align: center; line-height: 1.7; }
 .relay-decision { display: flex; align-items: flex-start; gap: .8rem; padding-top: 1.25rem; border-top: 1px solid #c8d2ba40; }
 .relay-decision > svg { flex: 0 0 auto; margin-top: .2rem; color: var(--sage-soft); }
@@ -111,8 +116,11 @@
   .relay-transfer-label, .relay-transfer-state { grid-column: 2; text-align: left; max-width: 19ch; }
   .relay-transfer-label { align-self: end; }
   .relay-document { grid-column: 1; grid-row: 1 / 3; display: flex; width: auto; max-width: 150px; min-height: 54px; padding: .8rem; gap: .5rem; transform: rotate(-3deg); }
+  .relay-document::before { display: none; }
   .relay-document svg { flex: 0 0 auto; width: 23px; }
   .relay-document strong { text-align: left; font-size: 12px; }
+  .relay-document-stamp { position: static; width: auto; height: auto; padding: .2rem .45rem; border-radius: 3px; font-size: 10px; transform: rotate(-6deg); }
+  .relay-document[data-stamped="true"] .relay-document-stamp { animation: none; transform: rotate(-6deg); opacity: 1; }
   .relay-transfer-rail { display: none; }
   .office-relay:is([data-phase="3"],[data-phase="4"],[data-phase="5"]) .relay-document { transform: rotate(3deg); }
   .relay-decision p { font-size: 15px; }
@@ -148,5 +156,6 @@
 @media (prefers-reduced-motion: reduce) {
   .office-activity-bars > i { animation: none; }
   .relay-document, .relay-chapters button, .relay-chapter-node .office-mini-portrait { transition: none; }
+  .relay-document[data-stamped="true"] .relay-document-stamp { animation: none; transform: rotate(-14deg); opacity: 1; }
   .relay-chapters button:hover .office-mini-portrait { transform: none; }
 }
