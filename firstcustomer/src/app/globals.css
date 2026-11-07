@@ -151,3 +151,11 @@ html.page-entering body {
   html.page-leaving body { transition: none; }
   html.page-entering body { animation: none; }
 }
+
+/* Shared language control on every workspace surface. */
+.language-switch { margin: 0; flex-shrink: 0; }
+.language-switch button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 10px; border: 1px solid var(--line, var(--border)); border-radius: 999px; background: transparent; color: var(--muted-foreground); font-family: var(--font-sans, sans-serif); font-size: 12px; cursor: pointer; transition: border-color 180ms, background 180ms; }
+.language-switch button:hover { border-color: var(--primary); background: var(--secondary); }
+.language-switch button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.language-switch button:disabled { opacity: .6; cursor: wait; }
+.language-switch [data-active="true"] { color: var(--foreground); font-weight: 700; }

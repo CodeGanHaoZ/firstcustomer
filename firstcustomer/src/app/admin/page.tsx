@@ -1,5 +1,7 @@
+import { getLocale } from "@/lib/locale-server";
+import { translateUi } from "@/lib/ui-translation";
+import { T } from "@/components/ui-text";
 import { desc } from "drizzle-orm";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { OfficeBoard, type DeskItem } from "@/components/office-board";
 import type { StandupOutput } from "@/agents/schemas";
@@ -19,7 +21,10 @@ import { createStandupReport } from "./reports/actions";
 import "./office.css";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "首客内部经营台", robots: { index: false, follow: false } };
+export async function generateMetadata() {
+  const locale = await getLocale();
+  return { title: translateUi(locale, "首客内部经营台"), robots: { index: false, follow: false } };
+}
 
 const money = (fen: number) => `¥${(fen / 100).toFixed(2)}`;
 
@@ -28,7 +33,7 @@ function AttentionList({ items }: { items: DeskItem[] }) {
     {items.map(({ id, title, action, href }) => (
       <li key={id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <Link className="break-all underline" href={href}>{title}</Link>
-        <span className="text-muted-foreground">{action}</span>
+        <span className="text-muted-foreground"><T>{action}</T></span>
       </li>
     ))}
   </ul>;
@@ -86,60 +91,60 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         revision={revision} listMode={view === "list"} />
       <div className="office-operations">
       <Card id="standup">
-        <CardHeader><CardTitle>COO 每日站会</CardTitle></CardHeader>
+        <CardHeader><CardTitle><T>COO 每日站会</T></CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           {standup ? (
             <dl className="grid gap-3 sm:grid-cols-3">
-              <div><dt className="font-semibold">昨天</dt><dd>{standup.yesterday}</dd></div>
-              <div><dt className="font-semibold">今天</dt><dd>{standup.today}</dd></div>
-              <div><dt className="font-semibold">卡点</dt><dd>{standup.blockers}</dd></div>
+              <div><dt className="font-semibold"><T>昨天</T></dt><dd>{standup.yesterday}</dd></div>
+              <div><dt className="font-semibold"><T>今天</T></dt><dd>{standup.today}</dd></div>
+              <div><dt className="font-semibold"><T>卡点</T></dt><dd>{standup.blockers}</dd></div>
             </dl>
-          ) : <p>{standupRunning ? "COO 正在汇总站会。" : coo.standup?.status === "failed" ? "站会生成失败，可以重新生成。" : "还没有站会记录。"}</p>}
-          {standup && coo.standup ? <p className="text-muted-foreground">{formatDateTime(coo.standup.createdAt)}{coo.standup.provider === "stub" ? " · 模拟站会" : ""}</p> : null}
+          ) : <p><T>{standupRunning ? "COO 正在汇总站会。" : coo.standup?.status === "failed" ? "站会生成失败，可以重新生成。" : "还没有站会记录。"}</T></p>}
+          {standup && coo.standup ? <p className="text-muted-foreground">{formatDateTime(coo.standup.createdAt)}<T>{coo.standup.provider === "stub" ? " · 模拟站会" : ""}</T></p> : null}
           {stalled.length ? (
             <div>
-              <p className="font-semibold">已运行超过 30 分钟</p>
+              <p className="font-semibold"><T>已运行超过 30 分钟</T></p>
               <AttentionList items={stalled} />
             </div>
-          ) : <p className="text-muted-foreground">当前没有运行超过 30 分钟的任务。</p>}
+          ) : <p className="text-muted-foreground"><T>当前没有运行超过 30 分钟的任务。</T></p>}
           <div id="overdue">
-            <p className="font-semibold">超过 {OWNER_REMINDER_HOURS} 小时的老板待办</p>
-            {overdue.length ? <AttentionList items={overdue} /> : <p className="text-muted-foreground">当前没有超时待办。</p>}
+            <p className="font-semibold"><T>超过 </T>{OWNER_REMINDER_HOURS}<T> 小时的老板待办</T></p>
+            {overdue.length ? <AttentionList items={overdue} /> : <p className="text-muted-foreground"><T>当前没有超时待办。</T></p>}
           </div>
-          <form action={createStandupReport}><Button type="submit" variant="outline" disabled={standupRunning}>生成今日站会</Button></form>
+          <form action={createStandupReport}><Button type="submit" variant="outline" disabled={standupRunning}><T>生成今日站会</T></Button></form>
         </CardContent>
       </Card>
 
       <Card id="pending">
         <CardHeader>
-          <CardTitle>待我决定（{todo.length}）</CardTitle>
+          <CardTitle><T>待我决定（</T>{todo.length}）</CardTitle>
         </CardHeader>
         <CardContent>
           {todo.length ? <AttentionList items={todo} /> : (
-            <p className="text-sm text-muted-foreground">现在没有要你决定的事。</p>
+            <p className="text-sm text-muted-foreground"><T>现在没有要你决定的事。</T></p>
           )}
         </CardContent>
       </Card>
 
       {waiting.length ? <Card id="waiting">
-        <CardHeader><CardTitle>等客户处理（{waiting.length}）</CardTitle></CardHeader>
+        <CardHeader><CardTitle><T>等客户处理（</T>{waiting.length}）</CardTitle></CardHeader>
         <CardContent><AttentionList items={waiting} /></CardContent>
       </Card> : null}
 
       <Card id="projects">
         <CardHeader>
-          <CardTitle>全部项目</CardTitle>
+          <CardTitle><T>全部项目</T></CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>产品</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>订单</TableHead>
-                <TableHead>Agent 任务</TableHead>
-                <TableHead>打回</TableHead>
-                <TableHead>模型</TableHead>
+                <TableHead><T>产品</T></TableHead>
+                <TableHead><T>状态</T></TableHead>
+                <TableHead><T>订单</T></TableHead>
+                <TableHead><T>Agent 任务</T></TableHead>
+                <TableHead><T>打回</T></TableHead>
+                <TableHead><T>模型</T></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -153,26 +158,26 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                       <Link className="underline" href={`/admin/projects/${project.id}`}>
                         {project.productName}
                       </Link>
-                      {project.isOwnProduct ? <Badge variant="outline">自有产品</Badge> : null}
+                      {project.isOwnProduct ? <Badge variant="outline"><T>自有产品</T></Badge> : null}
                     </TableCell>
-                    <TableCell>{STATUS_LABELS[project.status as ProjectStatus] ?? project.status}</TableCell>
+                    <TableCell><T>{STATUS_LABELS[project.status as ProjectStatus] ?? project.status}</T></TableCell>
                     <TableCell>
-                      {order?.status === "paid"
+                      <T>{order?.status === "paid"
                         ? "已付款"
                         : order?.status === "quoted" || order?.status === "accepted"
                           ? `${order.status === "accepted" ? "已接受" : "已报价"} ${money(order.quoteFen ?? 0)}`
-                          : "未报价"}
+                          : "未报价"}</T>
                     </TableCell>
                     <TableCell>{own.length}</TableCell>
                     <TableCell>{own.filter((t) => t.status === "sent_back").length}</TableCell>
-                    <TableCell>{providers.join("、") || "无"}</TableCell>
+                    <TableCell><T>{providers.join("、") || "无"}</T></TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
           {all.length === 0 ? (
-            <p className="pt-3 text-sm text-muted-foreground">还没有项目。</p>
+            <p className="pt-3 text-sm text-muted-foreground"><T>还没有项目。</T></p>
           ) : null}
         </CardContent>
       </Card>

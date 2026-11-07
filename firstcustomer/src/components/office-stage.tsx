@@ -1,5 +1,7 @@
 "use client";
 
+import { T, I18n } from "@/components/ui-text";
+
 import { ArrowRight, Play, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { DepartmentKey, OfficeTransfer } from "@/domain/office";
@@ -189,24 +191,24 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
       {!customerView || transfer ? <div className="office-stage-bar">
         <p className="office-transfer-summary" role="status">
           {playing === "demo" ? (
-            <>交接演示 <strong>{roomName(previewRoute.from)}</strong><ArrowRight size={14} aria-hidden="true" /><strong>{roomName(previewRoute.to)}</strong></>
+            <><T>交接演示 </T><strong><T>{roomName(previewRoute.from)}</T></strong><ArrowRight size={14} aria-hidden="true" /><strong><T>{roomName(previewRoute.to)}</T></strong></>
           ) : transfer ? (
-            <>最近交接 <strong>{roomName(transfer.from)}</strong><ArrowRight size={14} aria-hidden="true" /><strong>{roomName(transfer.to)}</strong></>
-          ) : "小人会在任务交接时沿走廊送文件"}
+            <><T>最近交接 </T><strong><T>{roomName(transfer.from)}</T></strong><ArrowRight size={14} aria-hidden="true" /><strong><T>{roomName(transfer.to)}</T></strong></>
+          ) : <T>小人会在任务交接时沿走廊送文件</T>}
         </p>
         {!customerView ? <div className="office-stage-actions">
           {viewControl}
           <div className="office-motion-controls">
-            {transfer ? <button className="office-control" type="button" disabled={playing !== null} onClick={() => play(transfer.from, transfer.to, "handoff", true)}><RotateCcw size={14} aria-hidden="true" />重播交接</button> : null}
-            <button className="office-control office-control-primary" type="button" disabled={playing !== null} onClick={() => play(previewRoute.from, previewRoute.to, "demo", true)}><Play size={14} aria-hidden="true" />演示交接</button>
+            {transfer ? <button className="office-control" type="button" disabled={playing !== null} onClick={() => play(transfer.from, transfer.to, "handoff", true)}><RotateCcw size={14} aria-hidden="true" /><T>重播交接</T></button> : null}
+            <button className="office-control office-control-primary" type="button" disabled={playing !== null} onClick={() => play(previewRoute.from, previewRoute.to, "demo", true)}><Play size={14} aria-hidden="true" /><T>演示交接</T></button>
           </div>
         </div> : null}
       </div> : null}
-      <p className="office-pan-hint" id={hintId}>左右滑动查看整间办公室</p>
-      <div className="office-map-viewport" role="region" aria-label={customerView ? "当前项目的办公室地图" : "首客办公室地图"} aria-describedby={hintId} tabIndex={0} ref={viewport}
+      <p className="office-pan-hint" id={hintId}><T>左右滑动查看整间办公室</T></p>
+      <I18n><div className="office-map-viewport" role="region" aria-label={customerView ? "当前项目的办公室地图" : "首客办公室地图"} aria-describedby={hintId} tabIndex={0} ref={viewport}
         onPointerDown={() => { follow.current = false; }} onWheel={() => { follow.current = false; }}>
         {children}
-      </div>
+      </div></I18n>
     </div>
   );
 }

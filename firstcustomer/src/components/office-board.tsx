@@ -1,3 +1,4 @@
+import { T } from "@/components/ui-text";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowDownRight, ArrowUpRight, FolderOpen, Grid2X2, List } from "lucide-react";
@@ -57,32 +58,32 @@ export function OfficeBoard({
   const handoff = departments.flatMap(({ key, handoff }) => handoff ? [{ key, ...handoff }] : [])
     .sort((left, right) => right.at.getTime() - left.at.getTime())[0];
   const viewControl = listMode
-    ? <Link href={modeUrl} className="office-control"><Grid2X2 size={15} aria-hidden="true" />地图</Link>
-    : <Link href={listUrl} className="office-control"><List size={15} aria-hidden="true" />列表</Link>;
+    ? <Link href={modeUrl} className="office-control"><Grid2X2 size={15} aria-hidden="true" /><T>地图</T></Link>
+    : <Link href={listUrl} className="office-control"><List size={15} aria-hidden="true" /><T>列表</T></Link>;
   const visibleTodos = listMode ? 4 : 2;
   const pending = (
     <section className="office-decisions" aria-labelledby="office-decisions-title">
       <div className="office-decisions-heading">
-        <h2 id="office-decisions-title">待我决定</h2>
+        <h2 id="office-decisions-title"><T>待我决定</T></h2>
         <span className="office-task-count">{todo.length}</span>
-        {todo.length > visibleTodos ? <Link href="#pending">查看全部 <ArrowDownLeft size={14} aria-hidden="true" /></Link> : null}
+        {todo.length > visibleTodos ? <Link href="#pending"><T>查看全部 </T><ArrowDownLeft size={14} aria-hidden="true" /></Link> : null}
       </div>
       {todo.length ? (
         <ul className="office-todos">
           {todo.slice(0, visibleTodos).map(({ id, title, action, href }) => (
             <li key={id}>
               <Link href={href}>
-                <span><strong>{action}</strong><small>{title}</small></span>
+                <span><strong><T>{action}</T></strong><small>{title}</small></span>
                 <ArrowUpRight size={15} aria-hidden="true" />
               </Link>
             </li>
           ))}
         </ul>
-      ) : <p className="office-no-todos">眼下没有待处理的审批。</p>}
+      ) : <p className="office-no-todos"><T>眼下没有待处理的审批。</T></p>}
       <div className="office-decision-links">
-        {waitingCount ? <Link href="#waiting" className="office-desk-link">等客户处理（{waitingCount}）<ArrowDownLeft size={15} aria-hidden="true" /></Link> : null}
-        {stalled.length ? <Link href={stalled[0].href} className="office-desk-link office-desk-alert"><span>{stalled[0].title} · {stalled[0].action}{stalled.length > 1 ? `，共 ${stalled.length} 项` : ""}</span><ArrowUpRight size={15} aria-hidden="true" /></Link> : null}
-        {overdueCount ? <Link href="#overdue" className="office-desk-link office-desk-alert">超时待办（{overdueCount}）<ArrowDownLeft size={15} aria-hidden="true" /></Link> : null}
+        {waitingCount ? <Link href="#waiting" className="office-desk-link"><T>等客户处理（</T>{waitingCount}）<ArrowDownLeft size={15} aria-hidden="true" /></Link> : null}
+        {stalled.length ? <Link href={stalled[0].href} className="office-desk-link office-desk-alert"><span><T>{stalled[0].title}</T> · <T>{stalled[0].action}</T><T>{stalled.length > 1 ? `，共 ${stalled.length} 项` : ""}</T></span><ArrowUpRight size={15} aria-hidden="true" /></Link> : null}
+        {overdueCount ? <Link href="#overdue" className="office-desk-link office-desk-alert"><T>超时待办（</T>{overdueCount}）<ArrowDownLeft size={15} aria-hidden="true" /></Link> : null}
       </div>
     </section>
   );
@@ -90,46 +91,46 @@ export function OfficeBoard({
     <section aria-labelledby="office-title" className="office-board">
       <div className="office-heading">
         <div>
-          <h1 id="office-title">首客办公室</h1>
+          <h1 id="office-title"><T>首客办公室</T></h1>
           <OfficeConnection revision={revision} updatedAt={new Date().toISOString()} />
         </div>
         <div className="office-toolbar">
           <form action="/admin" method="get" className="office-project-picker">
-            <label htmlFor="office-project">当前项目</label>
+            <label htmlFor="office-project"><T>当前项目</T></label>
             {listMode ? <input type="hidden" name="view" value="list" /> : null}
             <select id="office-project" name="project" defaultValue={project?.id ?? ""} disabled={!allProjects.length}>
               {allProjects.length ? allProjects.map((entry) => (
                 <option key={entry.id} value={entry.id}>{entry.productName}</option>
-              )) : <option value="">暂无项目</option>}
+              )) : <option value=""><T>暂无项目</T></option>}
             </select>
-            <button type="submit" disabled={!allProjects.length}>切换</button>
+            <button type="submit" disabled={!allProjects.length}><T>切换</T></button>
           </form>
-          {project ? <span className="office-project-status" data-status={project.status} data-paused={project.paused}>{project.paused ? "已暂停 · " : ""}{STATUS_LABELS[project.status as ProjectStatus]}</span> : null}
+          {project ? <span className="office-project-status" data-status={project.status} data-paused={project.paused}><T>{project.paused ? "已暂停 · " : ""}</T><T>{STATUS_LABELS[project.status as ProjectStatus]}</T></span> : null}
         </div>
       </div>
 
       <div className={`office-layout ${listMode ? "office-layout-list" : ""}`}>
         {listMode ? <div className="office-rooms-list">
           <div className="office-stage-bar">
-            <p className="office-transfer-summary">{transfer ? `最近交接 · ${roomName(transfer.from)} → ${roomName(transfer.to)}` : "部门与任务状态"}</p>
+            <p className="office-transfer-summary"><T>{transfer ? `最近交接 · ${roomName(transfer.from)} → ${roomName(transfer.to)}` : "部门与任务状态"}</T></p>
             {viewControl}
           </div>
-          {!project ? <p className="office-empty">新建项目后，就可以在各工位开始工作。</p> : null}
+          {!project ? <p className="office-empty"><T>新建项目后，就可以在各工位开始工作。</T></p> : null}
           {stations.map(({ key, state, detail, href }) => {
             const room = rooms[key];
             const content = (
               <>
                 <div className="office-room-scene" style={{ "--scene": room.scene } as CSSProperties}>
-                  <span className="office-state"><i aria-hidden="true" />{AGENT_STATE_LABELS[state]}</span>
+                  <span className="office-state"><i aria-hidden="true" /><T>{AGENT_STATE_LABELS[state]}</T></span>
                 </div>
                 <div className="office-room-caption">
                   <div>
-                    <h2>{roomName(key)}</h2>
-                    <p>{room.name}</p>
+                    <h2><T>{roomName(key)}</T></h2>
+                    <p><T>{room.name}</T></p>
                   </div>
                   {href ? <ArrowUpRight size={18} aria-hidden="true" /> : null}
                 </div>
-                <p className="office-room-detail">{detail}</p>
+                <p className="office-room-detail"><T>{detail}</T></p>
               </>
             );
             return href
@@ -148,26 +149,26 @@ export function OfficeBoard({
         <aside className="office-desk" aria-labelledby="office-desk-title">
           {listMode ? <div className="office-owner-scene" aria-hidden="true" /> : null}
           <div className="office-desk-heading">
-            <h2 id="office-desk-title">{OFFICE_CHARACTERS.owner.name} · 老板工位</h2>
-            <span>{characterDisplayName("coo")} · COO</span>
+            <h2 id="office-desk-title">{OFFICE_CHARACTERS.owner.name}<T> · 老板工位</T></h2>
+            <span><T>{characterDisplayName("coo")}</T> · COO</span>
           </div>
           <div className="office-milestones">
-            <div><span>首客首笔服务实收</span><strong>{firstPaymentAt ? formatDateTime(firstPaymentAt) : "待确认到账"}</strong></div>
-            <div><span>客户项目首条有效线索</span><strong>{firstLeadAt ? formatDateTime(firstLeadAt) : "等待有效留资"}</strong></div>
+            <div><span><T>首客首笔服务实收</T></span><strong><T>{firstPaymentAt ? formatDateTime(firstPaymentAt) : "待确认到账"}</T></strong></div>
+            <div><span><T>客户项目首条有效线索</T></span><strong><T>{firstLeadAt ? formatDateTime(firstLeadAt) : "等待有效留资"}</T></strong></div>
           </div>
           <div className="office-decision-links">
-            {project ? <Link href={`${base}#deliverables`} className="office-desk-link"><FolderOpen size={16} /> 交付清单 <ArrowDownRight size={15} /></Link> : null}
-            <Link href="#standup" className="office-desk-link">COO 每日站会 <ArrowDownLeft size={15} /></Link>
-            <Link id="metrics" href="/admin/metrics" className="office-desk-link">经营报表 <ArrowUpRight size={15} aria-hidden="true" /></Link>
-            <Link id="payment-code" href="/admin/payment" className="office-desk-link">收款设置 <ArrowUpRight size={15} aria-hidden="true" /></Link>
+            {project ? <Link href={`${base}#deliverables`} className="office-desk-link"><FolderOpen size={16} /><T> 交付清单 </T><ArrowDownRight size={15} /></Link> : null}
+            <Link href="#standup" className="office-desk-link"><T>COO 每日站会 </T><ArrowDownLeft size={15} /></Link>
+            <Link id="metrics" href="/admin/metrics" className="office-desk-link"><T>经营报表 </T><ArrowUpRight size={15} aria-hidden="true" /></Link>
+            <Link id="payment-code" href="/admin/payment" className="office-desk-link"><T>收款设置 </T><ArrowUpRight size={15} aria-hidden="true" /></Link>
           </div>
           {listMode ? pending : null}
         </aside>
       </div>
       {handoff ? (
         <Link href={`${base}#task-${handoff.id}`} className="office-handoff">
-          <strong>最近一次打回 · {roomName(handoff.key)} → {roomName(handoff.to)}</strong>
-          <span>{handoff.reason}</span>
+          <strong><T>最近一次打回 · </T><T>{roomName(handoff.key)}</T> → <T>{roomName(handoff.to)}</T></strong>
+          <span><T>{handoff.reason}</T></span>
           <ArrowUpRight size={16} aria-hidden="true" />
         </Link>
       ) : null}

@@ -1,5 +1,7 @@
 "use client";
 
+import { T, I18n } from "@/components/ui-text";
+
 import { createAuthClient } from "better-auth/react";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -52,29 +54,29 @@ export function CustomerAuthForm({ register }: { register: boolean }) {
   return (
     <form className="grid gap-4" method="post" onSubmit={submit}>
       {register && <div className="grid gap-2">
-        <Label htmlFor="name">称呼</Label>
+        <Label htmlFor="name"><T>称呼</T></Label>
         <Input className="h-11" id="name" name="name" autoComplete="name" required maxLength={60} />
       </div>}
       <div className="grid gap-2">
-        <Label htmlFor="email">邮箱</Label>
+        <Label htmlFor="email"><T>邮箱</T></Label>
         <Input className="h-11" id="email" name="email" type="email" autoComplete="email" required maxLength={254} />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="password">密码</Label>
+        <Label htmlFor="password"><T>密码</T></Label>
         <div className="relative">
           <Input className="h-11 pe-12" id="password" name="password" type={showPassword ? "text" : "password"}
             autoComplete={register ? "new-password" : "current-password"} required minLength={register ? 10 : undefined}
             maxLength={128} aria-describedby={register ? "password-hint" : undefined} />
-          <button className="absolute inset-y-0 end-0 grid w-11 cursor-pointer place-items-center rounded-e-lg text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" type="button"
+          <I18n><button className="absolute inset-y-0 end-0 grid w-11 cursor-pointer place-items-center rounded-e-lg text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" type="button"
             onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "隐藏密码" : "显示密码"}>
             {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-          </button>
+          </button></I18n>
         </div>
-        {register && <p className="text-xs text-muted-foreground" id="password-hint">至少 10 个字符。</p>}
+        {register && <p className="text-xs text-muted-foreground" id="password-hint"><T>至少 10 个字符。</T></p>}
       </div>
-      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+      {error && <p className="text-sm text-destructive" role="alert"><T>{error}</T></p>}
       <Button type="submit" size="lg" className="mt-1 h-11" disabled={pending}>
-        {pending ? (register ? "正在创建账号…" : "正在登录…") : (register ? "创建账号" : "登录")}
+        <T>{pending ? (register ? "正在创建账号…" : "正在登录…") : (register ? "创建账号" : "登录")}</T>
       </Button>
     </form>
   );

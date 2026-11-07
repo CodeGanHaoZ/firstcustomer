@@ -1,3 +1,5 @@
+import { LanguageSwitch } from "@/components/language-switch";
+import { T } from "@/components/ui-text";
 import type { PageContent } from "@/agents/schemas";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,11 +19,11 @@ export function LandingPreviewBar({ returnHref, version, published }: {
     <header className="border-b bg-secondary">
       <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3 text-sm">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <strong>发布预览</strong>
-          <span className="rounded border bg-card px-2 py-0.5">第 {version} 版 · {published ? "已公开" : "未公开"}</span>
+          <strong><T>发布预览</T></strong>
+          <span className="rounded border bg-card px-2 py-0.5"><T>第 </T>{version}<T> 版 · </T><T>{published ? "已公开" : "未公开"}</T></span>
         </div>
-        <Link href={returnHref} className="font-medium underline underline-offset-4">返回项目</Link>
-        <p className="w-full text-xs text-muted-foreground">预览中的表单不会提交。</p>
+        <LanguageSwitch /><Link href={returnHref} className="font-medium underline underline-offset-4"><T>返回项目</T></Link>
+        <p className="w-full text-xs text-muted-foreground"><T>预览中的表单不会提交。</T></p>
       </div>
     </header>
   );

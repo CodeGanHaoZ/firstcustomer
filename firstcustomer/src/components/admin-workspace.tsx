@@ -1,10 +1,15 @@
 "use client";
 
+import { LocalizedLink } from "@/components/localized-controls";
+import { T, I18n } from "@/components/ui-text";
+
 import { Archive, BookOpen, CalendarDays, ChartColumn, ClipboardList, FolderClosed, Grid2X2, Menu, Plus, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState, type ReactNode } from "react";
 import { OFFICE_CHARACTERS, characterDisplayName } from "@/lib/brand";
+import { LanguageSwitch } from "./language-switch";
+import { useLocale } from "./locale-provider";
 import { BrandMark } from "./brand-mark";
 
 const groups = [
@@ -29,6 +34,7 @@ const groups = [
 ];
 
 export function AdminWorkspace({ children, logout }: { children: ReactNode; logout: ReactNode }) {
+  const locale = useLocale();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
@@ -47,23 +53,24 @@ export function AdminWorkspace({ children, logout }: { children: ReactNode; logo
         }
       }}>
         <div className="admin-side-heading">
-          <Link href="/admin" onClick={close} className="admin-brand-link" aria-label="首客内部经营台">
+          <LocalizedLink href="/admin" onClick={close} className="admin-brand-link" aria-label="首客内部经营台">
             <BrandMark />
-            <span>内部经营台</span>
-          </Link>
-          <button type="button" className="admin-menu-toggle" aria-expanded={open} aria-controls="admin-menu"
+            <span><T>内部经营台</T></span>
+          </LocalizedLink>
+          <I18n><button type="button" className="admin-menu-toggle" aria-expanded={open} aria-controls="admin-menu"
             aria-label={open ? "收起经营台导航" : "展开经营台导航"} ref={toggle} onClick={() => setOpen(!open)}>
             {open ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
-          </button>
+          </button></I18n>
         </div>
+        <div className="admin-language"><LanguageSwitch /></div>
         <div className="admin-menu" id="admin-menu" data-open={open}>
           <Link href="/admin/projects/new" className="admin-new-project" onClick={close} aria-current={onNewProject ? "page" : undefined}>
-            <Plus size={18} aria-hidden="true" />新建项目
-          </Link>
-          <nav className="admin-nav" aria-label="经营台导航">
+            <Plus size={18} aria-hidden="true" /><T>新建项目
+          </T></Link>
+          <I18n><nav className="admin-nav" aria-label="经营台导航">
             {groups.map(({ title, links }) => (
               <div key={title} className="admin-nav-group">
-                <p>{title}</p>
+                <p><T>{title}</T></p>
                 <ul>
                   {links.map(({ label, href, icon: Icon }) => {
                     const inProject = href === "/admin#projects" && pathname.startsWith("/admin/projects/") && !onNewProject;
@@ -71,7 +78,7 @@ export function AdminWorkspace({ children, logout }: { children: ReactNode; logo
                       <li key={href}>
                         <Link href={onOffice && href.startsWith("/admin#") ? href.slice(6) : href}
                           onClick={close} aria-current={pathname === href || inProject ? "page" : undefined}>
-                          <Icon size={17} aria-hidden="true" />{label}
+                          <Icon size={17} aria-hidden="true" /><T>{label}</T>
                         </Link>
                       </li>
                     );
@@ -79,11 +86,11 @@ export function AdminWorkspace({ children, logout }: { children: ReactNode; logo
                 </ul>
               </div>
             ))}
-          </nav>
+          </nav></I18n>
           <div className="admin-sidebar-footer">
             <Link href={onOffice ? "#office-desk-title" : "/admin#office-desk-title"} className="admin-desk-shortcut" onClick={close}>
-              <span className="admin-avatar" aria-hidden="true">首</span>
-              <span><strong>{OFFICE_CHARACTERS.owner.name} · 老板</strong><small>{characterDisplayName("coo")} · COO</small></span>
+              <span className="admin-avatar" aria-hidden="true"><T>首</T></span>
+              <span><strong>{OFFICE_CHARACTERS.owner.name}<T> · 老板</T></strong><small>{characterDisplayName("coo", locale)} · COO</small></span>
             </Link>
             {logout}
           </div>

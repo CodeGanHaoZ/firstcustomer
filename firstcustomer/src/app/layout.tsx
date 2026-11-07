@@ -1,19 +1,26 @@
+import { translateUi } from "@/lib/ui-translation";
 import type { Metadata } from "next";
 import { BRAND } from "@/lib/brand";
 import { PageTransition } from "@/components/page-transition";
+import { LocaleProvider } from "@/components/locale-provider";
+import { getLocale } from "@/lib/locale-server";
+import { localeTag } from "@/lib/locale";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: `${BRAND.name} ${BRAND.englishName}`,
-  description: "帮中国创业者找到第一批真实海外客户的 AI 出海服务",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+  title: locale === "en" ? BRAND.englishName : `${BRAND.name} ${BRAND.englishName}`,
+  description: translateUi(locale, "帮中国创业者找到第一批真实海外客户的 AI 出海服务"),
+  };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getLocale();
   return (
-    <html lang="zh-CN" className="h-full antialiased">
+    <html lang={localeTag(locale)} data-scroll-behavior="smooth" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <PageTransition />
-        {children}
+        <LocaleProvider locale={locale}><PageTransition />{children}</LocaleProvider>
       </body>
     </html>
   );

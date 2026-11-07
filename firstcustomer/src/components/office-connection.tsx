@@ -1,5 +1,7 @@
 "use client";
 
+import { T } from "@/components/ui-text";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -61,7 +63,7 @@ export function OfficeConnection({ revision, updatedAt }: { revision: string; up
   return (
     <p role="status" className="office-connection" data-offline={!connection.online}>
       <span aria-hidden="true" />
-      {connection.online ? "经营台已连接" : "连接中断"} · 上次更新 {time.format(new Date(connection.at))}
+      <T>{connection.online ? "经营台已连接" : "连接中断"}</T><T> · 上次更新 </T>{time.format(new Date(connection.at))}
     </p>
   );
 }

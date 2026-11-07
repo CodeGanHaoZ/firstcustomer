@@ -1,10 +1,15 @@
-import type { Metadata } from "next";
+import { getLocale } from "@/lib/locale-server";
+import { translateUi } from "@/lib/ui-translation";
+import { T } from "@/components/ui-text";
 import { OperatingNumbers } from "@/components/operating-numbers";
 import { getDb } from "@/db";
 import { requireAdmin } from "@/lib/auth";
 import { operatingMetrics } from "@/workflow/operating-metrics";
 
-export const metadata: Metadata = { title: "首客内部经营报表", robots: { index: false, follow: false } };
+export async function generateMetadata() {
+  const locale = await getLocale();
+  return { title: translateUi(locale, "首客内部经营报表"), robots: { index: false, follow: false } };
+}
 
 export default async function MetricsPage() {
   await requireAdmin();
@@ -13,8 +18,8 @@ export default async function MetricsPage() {
     <main className="admin-section max-w-5xl">
       <header className="admin-section-heading">
         <div>
-          <h1>首客内部经营报表</h1>
-          <p>首客服务的实际收款和客户项目的获客成效分别统计。</p>
+          <h1><T>首客内部经营报表</T></h1>
+          <p><T>首客服务的实际收款和客户项目的获客成效分别统计。</T></p>
         </div>
       </header>
       <OperatingNumbers metrics={metrics} />

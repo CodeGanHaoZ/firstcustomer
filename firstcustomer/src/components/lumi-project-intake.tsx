@@ -1,5 +1,10 @@
 "use client";
 
+import { LocalizedImage } from "@/components/localized-controls";
+import { useLocale } from "@/components/locale-provider";
+import { translateUi } from "@/lib/ui-translation";
+import { T, I18n } from "@/components/ui-text";
+
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, Check, ClipboardList, LoaderCircle, Paperclip, Pencil } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -18,16 +23,18 @@ function IntakePending({ children }: { children: ReactNode }) {
   const { pending } = useFormStatus();
   return <fieldset disabled={pending} aria-busy={pending} className="lumi-intake-fields">
     {children}
-    {pending ? <p className="lumi-intake-pending" role="status"><LoaderCircle size={18} aria-hidden />正在创建项目，请稍候…</p> : null}
+    {pending ? <p className="lumi-intake-pending" role="status"><LoaderCircle size={18} aria-hidden /><T>正在创建项目，请稍候…</T></p> : null}
   </fieldset>;
 }
 
 export function LumiProjectIntake(props: { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string }) {
   const ready = useSyncExternalStore(subscribe, browserSnapshot, serverSnapshot);
-  return ready ? <IntakeConversation {...props} /> : <div className="lumi-intake-loading" role="status">Lumi 正在打开项目登记本…</div>;
+  return ready ? <IntakeConversation {...props} /> : <div className="lumi-intake-loading" role="status"><T>Lumi 正在打开项目登记本…</T></div>;
 }
 
 function IntakeConversation({ action, maxTotalBytes, serverError }: { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string }) {
+  const locale = useLocale();
+  const t = (text: string) => translateUi(locale, text);
   const [draft, setDraft] = useState(() => {
     try { return parseIntakeDraft(localStorage.getItem(PUBLIC_INTAKE_DRAFT_KEY)); }
     catch { return parseIntakeDraft(null); }
@@ -84,35 +91,36 @@ function IntakeConversation({ action, maxTotalBytes, serverError }: { action: (d
   function editAnswer(index: number) { goTo(index, review); }
   function answerText(index: number) {
     const field = INTAKE_STEPS[index].field;
-    if (field === "screenshots") return files.length ? files.map((file) => file.name).join("、") : "未上传";
-    return draft.answers[field].trim() || "暂未填写";
+    if (field === "screenshots") return files.length ? files.map((file) => file.name).join(locale === "en" ? ", " : "、") : t("未上传");
+    const value = draft.answers[field].trim();
+    return value ? (["stage", "goal"].includes(field) ? t(value) : value) : t("暂未填写");
   }
   function renderAnswers(full: boolean) {
     return <dl className="lumi-intake-answers">{INTAKE_STEPS.map((item, index) => {
       if (!full && index >= draft.reached) return null;
       return <div key={item.field}>
-        <dt>{item.label}</dt><dd>{answerText(index)}</dd>
-        <button type="button" onClick={() => editAnswer(index)} aria-label={`修改${item.label}`}><Pencil size={14} aria-hidden /><span>修改</span></button>
+        <dt><T>{item.label}</T></dt><dd>{answerText(index)}</dd>
+        <I18n><button type="button" onClick={() => editAnswer(index)} aria-label={`修改${item.label}`}><Pencil size={14} aria-hidden /><span><T>修改</T></span></button></I18n>
       </div>;
     })}</dl>;
   }
 
   return <div className="lumi-intake-layout">
     <aside className="lumi-intake-host">
-      <Image className="lumi-intake-rabbit" src={rabbit} alt="Lumi 露米，首客的前台兔兔" width={240} height={240} priority />
-      <div><h1>和 <span lang="en">lumi</span> 聊聊<br className="lumi-intake-desktop-break" />你的出海项目</h1>
-        <p>我来帮你把想法整理清楚。<br />我们一次聊一件事。</p></div>
-      <div className="lumi-intake-outcome"><ClipboardList size={20} aria-hidden /><p>确认提交后，自动开始免费初诊，整理候选人群和下一步待验证的问题。</p></div>
+      <LocalizedImage className="lumi-intake-rabbit" src={rabbit} alt="Lumi 露米，首客的前台兔兔" width={240} height={240} priority />
+      <div><h1>{locale === "en" ? <>Tell <span lang="en">lumi</span><br className="lumi-intake-desktop-break" /> about your project</> : <>和 <span lang="en">lumi</span> 聊聊<br className="lumi-intake-desktop-break" />你的出海项目</>}</h1>
+        <p><T>我来帮你把想法整理清楚。</T><br /><T>我们一次聊一件事。</T></p></div>
+      <div className="lumi-intake-outcome"><ClipboardList size={20} aria-hidden /><p><T>确认提交后，自动免费分析出海机会，整理候选人群和下一步待验证的问题。</T></p></div>
     </aside>
 
-    <section className="lumi-intake-desk" aria-label="Lumi 项目引导">
+    <I18n><section className="lumi-intake-desk" aria-label="Lumi 项目引导">
       <div className="lumi-intake-progress">
-        <span>{review ? "需求卡已整理好" : editing ? `修改${step.label}` : `项目登记 · ${Math.max(0, activeSteps.indexOf(draft.step)) + 1} / ${activeSteps.length}`}</span>
-        <span>{review ? "请核对后提交" : "选填项可以跳过"}</span>
-        <progress max={activeSteps.length} value={activeSteps.filter((index) => index < draft.reached).length} aria-label="项目登记进度" />
+        <span><T>{review ? "需求卡已整理好" : editing ? `修改${step.label}` : `项目登记 · ${Math.max(0, activeSteps.indexOf(draft.step)) + 1} / ${activeSteps.length}`}</T></span>
+        <span><T>{review ? "请核对后提交" : "选填项可以跳过"}</T></span>
+        <I18n><progress max={activeSteps.length} value={activeSteps.filter((index) => index < draft.reached).length} aria-label="项目登记进度" /></I18n>
       </div>
-      {serverError ? <p role="alert" className="lumi-intake-notice lumi-intake-error">{serverError}。文本资料已保留，请检查后重试。</p> : null}
-      {restored ? <p className="lumi-intake-notice">已接着上次的文本草稿继续。{lostImages ? "截图不会保存在浏览器中，请重新选择。" : ""}</p> : null}
+      {serverError ? <p role="alert" className="lumi-intake-notice lumi-intake-error"><T>{serverError}</T><T>。文本资料已保留，请检查后重试。</T></p> : null}
+      {restored ? <p className="lumi-intake-notice"><T>已接着上次的文本草稿继续。</T><T>{lostImages ? "截图不会保存在浏览器中，请重新选择。" : ""}</T></p> : null}
 
       <form action={action} noValidate onSubmit={(event) => {
         if (!review) { event.preventDefault(); advance(); return; }
@@ -126,58 +134,58 @@ function IntakeConversation({ action, maxTotalBytes, serverError }: { action: (d
         }
       }}>
         {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
-        <div hidden aria-hidden><label htmlFor="website">网站</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
+        <div hidden aria-hidden><label htmlFor="website"><T>网站</T></label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
         <IntakePending>
-          {!review && draft.step > 0 && !editing ? <div className="lumi-intake-last-answer"><span>上一项已记录</span><p>{answerText(previousStep)}</p><button type="button" onClick={() => goTo(previousStep)} aria-label={`修改${INTAKE_STEPS[previousStep].label}`}><Pencil size={14} aria-hidden />修改</button></div> : null}
+          {!review && draft.step > 0 && !editing ? <div className="lumi-intake-last-answer"><span><T>上一项已记录</T></span><p>{answerText(previousStep)}</p><I18n><button type="button" onClick={() => goTo(previousStep)} aria-label={`修改${INTAKE_STEPS[previousStep].label}`}><Pencil size={14} aria-hidden /><T>修改</T></button></I18n></div> : null}
           <div className="lumi-intake-question" key={draft.step}>
-            <div className="lumi-intake-speaker"><Image src={rabbit} alt="" width={40} height={40} /><span lang="en">lumi</span><span>露米</span></div>
-            <h2 ref={questionHeading} tabIndex={-1} id="intake-question">{review ? "收到，这是我们整理好的需求卡。" : intakeQuestion(step.field, step.question, draft.answers)}</h2>
-            <p id="intake-help">{review ? "看看有没有需要调整的地方，确认后我就帮你提交。" : step.help}</p>
+            <div className="lumi-intake-speaker"><Image src={rabbit} alt="" width={40} height={40} /><span lang="en">lumi</span><span>{locale === "en" ? "Front desk" : <T>露米</T>}</span></div>
+            <h2 ref={questionHeading} tabIndex={-1} id="intake-question"><T>{review ? "收到，这是我们整理好的需求卡。" : intakeQuestion(step.field, step.question, draft.answers)}</T></h2>
+            <p id="intake-help"><T>{review ? "看看有没有需要调整的地方，确认后我就帮你提交。" : step.help}</T></p>
           </div>
 
           {step && step.field !== "screenshots" ? <div className="lumi-intake-response">
             {"options" in step ? <fieldset className="lumi-intake-options" aria-labelledby="intake-question" aria-describedby={error ? "intake-error" : "intake-help"}>
-              <legend className="sr-only">{step.label}</legend>
+              <legend className="sr-only"><T>{step.label}</T></legend>
               {step.options.map((option) => <label key={option}>
                 <input type="radio" name={`choice-${step.field}`} value={option} checked={draft.answers[step.field] === option} onChange={() => update(step.field, option)} />
-                <span>{option}</span><Check size={18} aria-hidden />
+                <span><T>{option}</T></span><Check size={18} aria-hidden />
               </label>)}
             </fieldset> : <>
-              <label className="sr-only" htmlFor="intake-answer">{step.label}</label>
-              {["productName", "currentWorkflow", "successCriteria", "constraints"].includes(step.field) ? <textarea id="intake-answer" rows={4} value={draft.answers[step.field]} maxLength={step.max} placeholder={step.placeholder}
+              <label className="sr-only" htmlFor="intake-answer"><T>{step.label}</T></label>
+              {["productName", "currentWorkflow", "successCriteria", "constraints"].includes(step.field) ? <textarea id="intake-answer" rows={4} value={draft.answers[step.field]} maxLength={step.max} placeholder={t(step.placeholder)}
                 aria-invalid={Boolean(error)} aria-describedby={error ? "intake-help intake-error" : "intake-help"} onChange={(event) => update(step.field, event.target.value)} /> :
-                <input id="intake-answer" type={step.field === "productUrl" ? "url" : "text"} value={draft.answers[step.field]} maxLength={step.max} placeholder={step.placeholder}
+                <input id="intake-answer" type={step.field === "productUrl" ? "url" : "text"} value={draft.answers[step.field]} maxLength={step.max} placeholder={t(step.placeholder)}
                   autoComplete={step.field === "contact" ? "off" : undefined} aria-invalid={Boolean(error)} aria-describedby={error ? "intake-help intake-error" : "intake-help"}
                   onChange={(event) => update(step.field, event.target.value)} />}
-              <div className="lumi-intake-input-note"><span>{"optional" in step ? "选填" : "必填"}</span><span>{draft.answers[step.field].length} / {step.max}</span></div>
+              <div className="lumi-intake-input-note"><span><T>{"optional" in step ? "选填" : "必填"}</T></span><span>{draft.answers[step.field].length} / {step.max}</span></div>
             </>}
           </div> : null}
 
           {/* Keep the file input mounted so changing steps never discards selected files. */}
           <div hidden={step?.field !== "screenshots"} className="lumi-intake-response">
-            <label className="lumi-intake-upload" htmlFor="intake-screenshots"><Paperclip size={20} aria-hidden /><strong>选择产品截图</strong>
-              <span>PNG、JPG 或 WebP · 最多 3 张<br />{maxTotalBytes ? "合计不超过 4 MB" : "每张不超过 5 MB"}</span></label>
-            <input ref={fileInput} id="intake-screenshots" className="lumi-intake-file" type="file" name="screenshots" multiple accept="image/png,image/jpeg,image/webp" aria-label="选择产品截图"
+            <label className="lumi-intake-upload" htmlFor="intake-screenshots"><Paperclip size={20} aria-hidden /><strong><T>选择产品截图</T></strong>
+              <span><T>PNG、JPG 或 WebP · 最多 3 张</T><br /><T>{maxTotalBytes ? "合计不超过 4 MB" : "每张不超过 5 MB"}</T></span></label>
+            <I18n><input ref={fileInput} id="intake-screenshots" className="lumi-intake-file" type="file" name="screenshots" multiple accept="image/png,image/jpeg,image/webp" aria-label="选择产品截图"
               aria-invalid={Boolean(imageError)} aria-describedby={imageError ? "intake-error" : undefined} onChange={(event) => {
                 const selected = Array.from(event.target.files ?? []);
                 const message = selected.length > 3 ? "最多选择 3 张截图，请重新选择。" : selected.some((file) => file.size > 5 * 1024 * 1024) ? "每张截图不能超过 5 MB，请选择较小的图片。" : maxTotalBytes && selected.reduce((sum, file) => sum + file.size, 0) > maxTotalBytes ? "截图合计不能超过 4 MB，请选择较小的图片。" : selected.some((file) => !["image/png", "image/jpeg", "image/webp"].includes(file.type)) ? "请选择 PNG、JPG 或 WebP 图片。" : "";
                 setFiles(selected); setImageError(message); setError(message);
                 save({ ...draft, hadImages: selected.length > 0 });
-              }} />
+              }} /></I18n>
             {files.length ? <ul className="lumi-intake-files">{files.map((file, index) => <li key={index}><Paperclip size={14} aria-hidden /><span>{file.name}</span><small>{(file.size / 1024 / 1024).toFixed(2)} MB</small></li>)}</ul> : null}
           </div>
 
-          {review ? <div className="lumi-intake-review">{renderAnswers(true)}<p>确认后保存为需求第 1 版，并开始免费初诊。暂未填写的项目保留为未知；可在工作台补充，历史版本会保留。</p></div> : null}
-          {error ? <p className="lumi-intake-error" id="intake-error" role="alert">{error}</p> : null}
+          {review ? <div className="lumi-intake-review">{renderAnswers(true)}<p><T>确认后保存为需求第 1 版，并免费分析出海机会。暂未填写的项目保留为未知；可在工作台补充，历史版本会保留。</T></p></div> : null}
+          {error ? <p className="lumi-intake-error" id="intake-error" role="alert"><T>{error}</T></p> : null}
           <div className="lumi-intake-actions">
-            {editing ? <button type="button" className="lumi-intake-back" onClick={() => goTo(INTAKE_STEPS.length)}><ArrowLeft size={16} aria-hidden />返回核对</button> : draft.step > 0 ? <button type="button" className="lumi-intake-back" onClick={() => goTo(previousStep)}><ArrowLeft size={16} aria-hidden />上一步</button> : null}
-            <button type="submit" className="lumi-intake-next">{review ? "确认提交，开始免费初诊" : editing ? "保存修改" : "继续"}<ArrowRight size={17} aria-hidden /></button>
-            {step && "optional" in step ? <button type="button" className="lumi-intake-skip" onClick={() => advance(true)}>{step.skip}</button> : null}
+            {editing ? <button type="button" className="lumi-intake-back" onClick={() => goTo(INTAKE_STEPS.length)}><ArrowLeft size={16} aria-hidden /><T>返回核对</T></button> : draft.step > 0 ? <button type="button" className="lumi-intake-back" onClick={() => goTo(previousStep)}><ArrowLeft size={16} aria-hidden /><T>上一步</T></button> : null}
+            <button type="submit" className="lumi-intake-next"><T>{review ? "确认提交，免费分析出海机会" : editing ? "保存修改" : "继续"}</T><ArrowRight size={17} aria-hidden /></button>
+            {step && "optional" in step ? <button type="button" className="lumi-intake-skip" onClick={() => advance(true)}><T>{step.skip}</T></button> : null}
           </div>
-          {!review && draft.reached > 0 && !editing ? <details className="lumi-intake-record"><summary>查看已填资料</summary>{renderAnswers(false)}</details> : null}
+          {!review && draft.reached > 0 && !editing ? <details className="lumi-intake-record"><summary><T>查看已填资料</T></summary>{renderAnswers(false)}</details> : null}
         </IntakePending>
       </form>
-      <p className="lumi-intake-save" role="status">{storageFailed ? "当前浏览器无法保存草稿，请保持页面打开直至提交。" : "文本草稿自动保存在此浏览器，截图需在本次提交。"}</p>
-    </section>
+      <p className="lumi-intake-save" role="status"><T>{storageFailed ? "当前浏览器无法保存草稿，请保持页面打开直至提交。" : "文本草稿自动保存在此浏览器，截图需在本次提交。"}</T></p>
+    </section></I18n>
   </div>;
 }

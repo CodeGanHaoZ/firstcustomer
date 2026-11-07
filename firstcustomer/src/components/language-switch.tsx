@@ -2,9 +2,9 @@
 
 import { Globe2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
-import { useEffect } from "react";
 import { changeLanguage } from "@/app/language-actions";
-import { localeTag, type Locale } from "@/lib/locale";
+import type { Locale } from "@/lib/locale";
+import { useLocale } from "./locale-provider";
 
 function SwitchButton({ locale }: { locale: Locale }) {
   const { pending } = useFormStatus();
@@ -16,11 +16,8 @@ function SwitchButton({ locale }: { locale: Locale }) {
   </button>;
 }
 
-export function LanguageSwitch({ locale }: { locale: Locale }) {
-  useEffect(() => {
-    const previous = document.documentElement.lang;
-    document.documentElement.lang = localeTag(locale);
-    return () => { document.documentElement.lang = previous; };
-  }, [locale]);
-  return <form action={changeLanguage.bind(null, locale === "zh" ? "en" : "zh")} className="language-switch"><SwitchButton locale={locale} /></form>;
+export function LanguageSwitch({ locale }: { locale?: Locale }) {
+  const current = useLocale();
+  const selected = locale ?? current;
+  return <form action={changeLanguage.bind(null, selected === "zh" ? "en" : "zh")} className="language-switch"><SwitchButton locale={selected} /></form>;
 }
