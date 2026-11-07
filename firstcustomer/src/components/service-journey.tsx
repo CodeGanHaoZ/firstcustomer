@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { DepartmentKey } from "@/domain/office";
 import type { Locale } from "@/lib/locale";
 import { demoMember } from "@/lib/office-showcase";
@@ -20,7 +20,6 @@ export function ServiceJourney({ steps, locale }: { steps: readonly (readonly [s
         <span className="journey-milestone" aria-hidden="true">{String(index + 2).padStart(2, "0")}</span>
         <OfficePortrait person={proTeam[index]} locale={locale} />
         <div><span className="journey-agent">{demoMember(proTeam[index], locale).name}</span><h4>{title}</h4><p>{body}</p></div>
-        {index < steps.length - 2 ? <ArrowDown className="journey-next" size={15} aria-hidden="true" /> : null}
       </li>)}</ol>
     </div>
   </div>;
