@@ -92,8 +92,8 @@ export async function SiteFooter() {
         <div className="footer__col">
           <h4>{copy.footer.start}</h4>
           <ul>
-            <li><a href="/#service-flow">{copy.nav.flow}</a></li>
-            <li><a href="/#plans">{copy.nav.plans}</a></li>
+            <li><Link href="/#service-flow">{copy.nav.flow}</Link></li>
+            <li><Link href="/#plans">{copy.nav.plans}</Link></li>
             <li><Link href="/projects/new">{copy.footer.submit}</Link></li>
           </ul>
         </div>
