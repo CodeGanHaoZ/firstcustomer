@@ -320,7 +320,6 @@ function EvidenceCards({ items, empty }: { items: ProjectView["evidence"]; empty
     {hidden.length ? <details className="fold evidence-fold bg-background">
       <summary>
         <span className="evidence-fold__btn"><span className="evidence-fold__count">{hidden.length}</span><T>展开其余证据</T></span>
-        <span className="fold__hint"><T>已按时间倒序收起，避免一次看太多</T></span>
       </summary>
       <ul className="card-grid card-grid--wide fold__body mt-4">{hidden.map((e, i) => tile(e, i + EVIDENCE_VISIBLE))}</ul>
     </details> : null}
@@ -361,7 +360,6 @@ export function EvidenceSection({ view, token, cacheKey }: { view: ProjectView; 
           <details className="fold fold--counter-searches bg-background">
             <summary>
               <span className="fold__title counter-searches__title"><T>反向检索记录</T><span className="counter-searches__count">{counterSearches.length}</span></span>
-              <span className="fold__hint"><T>已按时间倒序收起，避免一次看太多</T></span>
             </summary>
             <ol className="fold__body counter-searches-list">
               {counterSearches.map((s, index) => (
