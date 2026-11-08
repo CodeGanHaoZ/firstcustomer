@@ -106,7 +106,8 @@ npm run dev
 | `npm run typecheck` | 类型检查 |
 | `npm run lint` | ESLint 检查 |
 | `npm run build` | 生成 Next.js 生产构建 |
-| `npm run db:migrate` | 对 `DATABASE_URL` 指向的数据库执行已生成的迁移 |
+| `npm run db:migrate` | 优先使用 `DATABASE_URL_UNPOOLED`，否则使用 `DATABASE_URL` 执行已生成的迁移 |
+| `npm run db:check -- --production` | 只读检查目标数据库是否已应用当前源码的全部迁移 |
 | `npm run knowledge:seed` | 载入 14 篇首客基础资料，重复执行不覆盖已有内容 |
 | `npm run db:generate` | 改完 `src/db/schema.ts` 后生成迁移 |
 | `npm run seed:evidence -- seeds/evidence.json` | 导入赛前种子证据，格式见 `seeds/evidence.example.json` |
@@ -154,7 +155,9 @@ Research、Strategy、Launch、Growth、接待报价员、项目客服、COO 和
 
 GitHub 仓库 `kongleiwork-art/firstcustomer` 的 `main` 分支已关联 Vercel 项目 `hifirst`，Root Directory 为 `firstcustomer`。每次推送或合并到 `main`，Vercel 会自动构建，成功后更新[正式站点](https://hifirst.vercel.app/)；构建失败时保留当前线上版本。日常代码发布直接推送 `main` 即可。
 
-Vercel 部署 Next.js，Neon 提供 PostgreSQL。首次部署及表结构变更时，使用指向目标数据库的 `DATABASE_URL` 独立执行 `npm run db:migrate`，再发布代码；构建过程不会自动执行迁移。
+Vercel 部署 Next.js，Neon 提供 PostgreSQL。首次部署及表结构变更时，先对目标数据库独立执行 `npm run db:migrate`，再发布代码；迁移优先使用直连 `DATABASE_URL_UNPOOLED`，否则使用 `DATABASE_URL`。注意本机环境文件可能覆盖命令行注入的同名变量，执行前应确认目标环境。
+
+Vercel 构建使用 `npm run build:vercel`：生产部署先只读检查迁移记录与源码是否一致，遗漏迁移或校验不一致时阻止新版本发布，避免客户登录后才出现缺表错误。构建不会自动修改数据库；预览构建跳过生产检查。
 
 在 Vercel 项目的生产环境配置：
 

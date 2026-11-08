@@ -2,7 +2,8 @@ import { rmSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
+import { databaseMigrationStatus } from "@/db/migrations";
 import EmbeddedPostgres from "embedded-postgres";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createStubSources, stubModel } from "@/ai/stub-model";
@@ -124,6 +125,35 @@ beforeEach(async () => {
   await db.delete(companySettings);
   await db.delete(decisions);
   await db.delete(knowledgeArticles);
+});
+
+describe("生产发布数据库迁移检查", () => {
+  it("已同步的数据库可在只读事务中通过检查", async () => {
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`set transaction read only`);
+      expect(await databaseMigrationStatus(tx)).toMatchObject({ ready: true, pending: 0, versionMatches: true });
+    });
+  });
+  it("遗漏支付迁移会阻止发布，而不是让客户登录后工作台报错", async () => {
+    const rollback = new Error("rollback fixture");
+    await expect(db.transaction(async (tx) => {
+      await tx.execute(sql`delete from drizzle.__drizzle_migrations where created_at = (select max(created_at) from drizzle.__drizzle_migrations)`);
+      expect(await databaseMigrationStatus(tx)).toMatchObject({ ready: false, pending: 1 });
+      throw rollback;
+    })).rejects.toBe(rollback);
+    expect((await databaseMigrationStatus(db)).ready).toBe(true);
+  });
+  it("迁移记录缺失时明确失败，且不会自行创建或修改数据库", async () => {
+    const rollback = new Error("rollback fixture");
+    await expect(db.transaction(async (tx) => {
+      await tx.execute(sql`drop table drizzle.__drizzle_migrations`);
+      const status = await databaseMigrationStatus(tx);
+      expect(status.ready).toBe(false);
+      expect(status.pending).toBeGreaterThan(0);
+      throw rollback;
+    })).rejects.toBe(rollback);
+    expect((await databaseMigrationStatus(db)).ready).toBe(true);
+  });
 });
 
 describe("免登录试用项目隔离", () => {
