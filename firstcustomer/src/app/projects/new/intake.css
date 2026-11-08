@@ -54,6 +54,12 @@
 .lumi-guide-attachments > span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 85%; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px; }
 .lumi-guide-attachments > button { display: grid; place-items: center; width: 36px; height: 36px; cursor: pointer; }
 .lumi-guide-sidebar { display: grid; align-content: start; gap: 18px; min-width: 0; overflow-y: auto; scrollbar-width: thin; padding-inline-end: 2px; }
+
+/* 桌面端把右侧项目内容接到标题旁的留白中，减少首屏上下断层。 */
+@media (min-width: 1000px) {
+  .lumi-guide-sidebar { position: relative; top: clamp(-116px, -7vw, -72px); }
+}
+
 .lumi-guide-brief { min-width: 0; }
 .lumi-guide-brief details { border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
 .lumi-guide-brief summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 18px; font-size: 14px; font-weight: 650; list-style: none; cursor: pointer; }
