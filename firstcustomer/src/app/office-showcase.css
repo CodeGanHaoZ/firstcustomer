@@ -125,6 +125,7 @@
   .showcase-member-name::after { transition: none; }
   .showcase-member:hover .showcase-member-name::after,
   .showcase-member[data-active="true"] .showcase-member-name::after { transform: scaleX(1); }
+  .showcase-steps button span, .showcase-steps button span::after { transition: none; transform: none; }
 }
 
 /* One narrated scene: task → handoff → next desk. This is explicitly a demo. */
@@ -174,7 +175,12 @@
 .showcase-scene:is([data-phase="2"],[data-phase="3"]) .showcase-hotspot[data-participant="receiver"] > .showcase-desk-title { bottom: 165%; }
 .showcase-steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .8rem; margin: 0 0 .9rem; }
 .showcase-steps button { display: flex; align-items: center; justify-content: center; gap: .5rem; min-width: 0; min-height: 44px; padding: .4rem; border: 0; border-bottom: 1px solid var(--demo-rule); background: transparent; color: var(--demo-muted); cursor: pointer; font: inherit; font-size: 13px; }
-.showcase-steps button span { font-size: 11px; font-variant-numeric: tabular-nums; }
+.showcase-steps button span { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid currentColor; background: #fdfaf3; color: inherit; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; transition: background .25s ease, color .25s ease, border-color .25s ease, transform .25s ease; }
+.showcase-steps button span::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1px dashed currentColor; opacity: .45; transition: opacity .25s ease, transform .3s ease; }
+.showcase-steps button:hover span { transform: rotate(-6deg); }
+.showcase-steps button:hover span::after { opacity: .8; }
+.showcase-steps button[aria-current="step"] span { background: var(--forest); border-color: var(--forest); color: #f6f1e7; box-shadow: 0 2px 6px #2f4a3340; transform: rotate(-4deg); }
+.showcase-steps button[aria-current="step"] span::after { opacity: .9; transform: rotate(10deg); }
 .showcase-steps button:last-child svg { visibility: hidden; }
 .showcase-steps button:hover, .showcase-steps button[aria-current="step"] { color: var(--forest); border-bottom-color: var(--forest); background: #4564470c; }
 @media (max-width: 600px) { .showcase-steps { gap: .3rem; } .showcase-steps button { gap: .3rem; font-size: 12px; } }
