@@ -13,7 +13,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { ConclusionStatus, ProvenanceSection } from "@/components/provenance-details";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Decide } from "@/components/decide";
 import { SceneFooter, SiteHeader } from "@/components/site-chrome";
@@ -148,7 +148,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         <ProjectHeader
           project={project}
           eyebrow={<><T>客户项目工作台</T>{showPlan ? <> · <T>{planLabel}</T></> : null}</>}
-          actions={<Link href="/account" className="btn btn--ghost btn--sm"><T>{isAccountProjectToken(token) ? "我的项目" : "试用工作台"}</T></Link>}
+          actions={<Link href="/account" className="btn btn--back"><ArrowLeft size={15} className="arw" aria-hidden="true" /><T>{isAccountProjectToken(token) ? "我的项目" : "试用工作台"}</T></Link>}
         />
         {error ? <p className="notice notice--fail" role="alert"><T>{String(error)}</T></p> : null}
         {notice ? <p className="notice notice--ok" role="status"><T>{String(notice)}</T></p> : null}

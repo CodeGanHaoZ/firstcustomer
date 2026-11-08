@@ -346,6 +346,20 @@ main .container,
 .btn--lg { height: 48px; padding: 0 26px; font-size: var(--fs-body); }
 .btn--sm { height: 32px; padding: 0 14px; font-size: 12px; }
 
+/* 返回链接：无框文字 + 左箭头，与标签胶囊区分开的「返回」动作 */
+.btn--back {
+  --btn-bd: transparent;
+  --btn-fg: var(--sage-deep);
+  height: 32px;
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.btn--back:hover { --btn-bg: transparent; --btn-fg: var(--forest); }
+.btn--back:hover .arw { transform: translateX(-3px); }
+.btn--back .arw { color: currentColor; }
+
 /* 圆形图标按钮：首屏右侧那个 ⊕ 的位置，用于"更多/滚动" */
 .btn--circle {
   width: 40px;
