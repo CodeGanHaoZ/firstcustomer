@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { PageLoading } from "@/components/page-loading";
+import { advanceLoadingAnimal, PageLoading } from "@/components/page-loading";
 
 /**
  * 全站路由过场：拦截站内 <a> 点击，先淡出当前页再跳转，新页淡入。
@@ -14,18 +14,21 @@ export function PageTransition() {
   const pathname = usePathname();
   const busy = useRef(false);
   const [loading, setLoading] = useState(false);
-  const [loadingKey, setLoadingKey] = useState(0);
+  const [animalIndex, setAnimalIndex] = useState(0);
 
   // 每次路由完成（含首次挂载）：移除淡出态，让新页以淡入动画出现
   useEffect(() => {
     busy.current = false;
-    window.setTimeout(() => setLoading(false), 0);
+    const hideTimer = window.setTimeout(() => setLoading(false), 0);
     document.documentElement.classList.remove("page-leaving");
     document.documentElement.classList.add("page-entering");
     const timer = window.setTimeout(() => {
       document.documentElement.classList.remove("page-entering");
     }, 420);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(hideTimer);
+      window.clearTimeout(timer);
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -55,17 +58,15 @@ export function PageTransition() {
 
       event.preventDefault();
       const destination = url.pathname + url.search + url.hash;
+      busy.current = true;
+      setAnimalIndex(advanceLoadingAnimal());
+      setLoading(true);
 
       if (reducedMotion.matches) {
-        setLoadingKey((value) => value + 1);
-        setLoading(true);
         router.push(destination);
         return;
       }
 
-      busy.current = true;
-      setLoadingKey((value) => value + 1);
-      setLoading(true);
       document.documentElement.classList.add("page-leaving");
       window.setTimeout(() => {
         router.push(destination);
@@ -76,5 +77,5 @@ export function PageTransition() {
     return () => document.removeEventListener("click", onClick, true);
   }, [router]);
 
-  return <PageLoading key={loadingKey} visible={loading} />;
+  return <PageLoading visible={loading} animalIndex={animalIndex} />;
 }
