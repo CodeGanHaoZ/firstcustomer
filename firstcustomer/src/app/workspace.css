@@ -79,6 +79,15 @@
 .evidence-summary { display: grid; gap: 8px; padding: 16px 18px; border: 1px dashed var(--line-strong); border-radius: 14px; background: var(--paper-2); }
 .evidence-summary__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; }
 .evidence-summary__badge { padding: 2px 10px; border-radius: var(--r-pill, 999px); background: var(--forest); color: var(--paper); font-size: 11px; font-weight: 600; letter-spacing: .06em; }
+
+/* 证据抽屉：醒目的居中胶囊按钮 + 收起提示 */
+details.evidence-fold { border-style: dashed; }
+details.evidence-fold > summary { justify-content: center; gap: 12px; }
+details.evidence-fold > summary::after { display: none; }
+.evidence-fold__btn { display: inline-flex; align-items: center; gap: 9px; padding: 9px 20px 9px 12px; border: 1.5px dashed var(--line-strong); border-radius: 999px; color: var(--ink-2, var(--ink)); font-size: 13px; font-weight: 600; transition: color var(--dur, .2s) var(--ease, ease), border-color var(--dur, .2s) var(--ease, ease), background var(--dur, .2s) var(--ease, ease); }
+.evidence-fold__count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding-inline: 6px; border-radius: 999px; background: var(--forest); color: #fff; font-size: 11px; font-weight: 700; }
+details.evidence-fold > summary:hover .evidence-fold__btn { border-color: var(--forest); color: var(--forest); background: rgba(69, 100, 71, .06); }
+details.evidence-fold[open] > summary { padding-bottom: 12px; }
 .evidence-summary__head > span:last-child { color: var(--muted); font-size: 12px; }
 .evidence-summary__text { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.85; }
 .evidence-summary__text button { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; color: var(--forest); font-size: 12px; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
