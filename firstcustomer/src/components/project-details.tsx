@@ -317,8 +317,11 @@ function EvidenceCards({ items, empty }: { items: ProjectView["evidence"]; empty
   const hidden = items.slice(EVIDENCE_VISIBLE);
   return <div className="grid gap-3">
     <ul className="card-grid card-grid--wide">{visible.map((e, i) => tile(e, i))}</ul>
-    {hidden.length ? <details className="fold bg-background">
-      <summary><span className="fold__title"><T>展开其余 </T>{hidden.length}<T> 条证据</T></span><span className="fold__hint"><T>已按时间倒序收起，避免一次看太多</T></span></summary>
+    {hidden.length ? <details className="fold evidence-fold bg-background">
+      <summary>
+        <span className="evidence-fold__btn"><span className="evidence-fold__count">{hidden.length}</span><T>展开其余证据</T></span>
+        <span className="fold__hint"><T>已按时间倒序收起，避免一次看太多</T></span>
+      </summary>
       <ul className="card-grid card-grid--wide fold__body mt-4">{hidden.map((e, i) => tile(e, i + EVIDENCE_VISIBLE))}</ul>
     </details> : null}
   </div>;
