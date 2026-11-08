@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowUp, Check, ChevronDown, ClipboardList, LoaderCircle, Paperclip, RotateCcw, Square, X } from "lucide-react";
+import { ArrowUp, Check, LoaderCircle, Paperclip, RotateCcw, Square, X } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useFormStatus } from "react-dom";
 import { useLocale } from "@/components/locale-provider";
@@ -70,7 +70,8 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
   const [storageFailed, setStorageFailed] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState("");
-  const [briefOpen, setBriefOpen] = useState(() => window.matchMedia("(min-width: 1000px)").matches);
+  const [workspaceView, setWorkspaceView] = useState<"conversation" | "content">("conversation");
+  const [contentTab, setContentTab] = useState<"brief" | "notes" | "report">("brief");
   const request = useRef<AbortController | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
@@ -99,12 +100,6 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
     const observer = new ResizeObserver(() => { if (followOutput.current) area.scrollTop = area.scrollHeight; });
     observer.observe(area);
     return () => observer.disconnect();
-  }, []);
-  useEffect(() => {
-    const desktop = window.matchMedia("(min-width: 1000px)");
-    const collapseBrief = () => { if (!desktop.matches) setBriefOpen(false); };
-    desktop.addEventListener("change", collapseBrief);
-    return () => desktop.removeEventListener("change", collapseBrief);
   }, []);
   useEffect(() => () => { request.current?.abort(); request.current = null; }, []);
 
@@ -168,7 +163,11 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
 
   return <div className="lumi-guide">
     <header className="lumi-guide-title"><h1>{copy.title}</h1><p>{copy.subtitle}</p></header>
-    <div className="lumi-guide-workspace">
+    <nav className="workspace-mobile-tabs" aria-label={locale === "en" ? "Workspace view" : "工作区视图"}>
+      <button type="button" aria-pressed={workspaceView === "conversation"} onClick={() => setWorkspaceView("conversation")}>{locale === "en" ? "Conversation" : "对话"}</button>
+      <button type="button" aria-pressed={workspaceView === "content"} onClick={() => setWorkspaceView("content")}>{locale === "en" ? "Project content" : "项目内容"}</button>
+    </nav>
+    <div className="lumi-guide-workspace" data-view={workspaceView}>
       <section className="lumi-guide-thread" aria-label={copy.speaker}>
         <div className="lumi-guide-scroll" ref={scroll} onScroll={(event) => { const area = event.currentTarget; followOutput.current = area.scrollHeight - area.scrollTop - area.clientHeight < 80; }}>
           <div className="lumi-guide-log" role="log" aria-live="polite" aria-relevant="additions">
@@ -187,11 +186,11 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
                 if (!ready || busy || error || fileError || creating || hasUnsentChanges) { event.preventDefault(); return; }
                 setCreating(true);
               }}>
-                <IntakeSummary answers={draft.answers} />
                 {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
                 <div hidden aria-hidden><label htmlFor="website">Website</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
                 {hasUnsentChanges ? <p className="lumi-guide-note" role="status">{copy.unsentChanges}</p> : null}
                 <div className="lumi-guide-review-actions">
+                  <button type="button" className="lumi-guide-revise" onClick={() => { setContentTab("brief"); setWorkspaceView("content"); window.requestAnimationFrame(() => document.getElementById("intake-content-panel")?.focus()); }}>{locale === "en" ? "Review project content" : "查看项目内容"}</button>
                   <ConfirmProject disabled={creating || Boolean(fileError) || hasUnsentChanges} />
                   <button className="lumi-guide-revise" type="button" disabled={creating} onClick={() => textarea.current?.focus()}>{copy.revise}</button>
                 </div>
@@ -250,18 +249,26 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
         </div>
       </section>
 
-      <aside className="lumi-guide-sidebar">
-        <div className="lumi-guide-brief">
-          <details open={briefOpen} onToggle={(event) => setBriefOpen(event.currentTarget.open)}>
-            <summary><span><ClipboardList size={18} aria-hidden />{copy.draft}</span>{ready ? <span className="lumi-guide-summary-status">{copy.organized}</span> : null}<ChevronDown size={17} aria-hidden /></summary>
-            <div className="lumi-guide-brief-content">
-              <p>{copy.summaryHint}</p>
-              <IntakeSummary answers={draft.answers} />
-              <p className="lumi-guide-readiness" data-ready={ready}>{ready ? <Check size={15} aria-hidden /> : null}{ready ? copy.ready : copy.incomplete}</p>
-            </div>
-          </details>
+      <aside className="lumi-guide-sidebar" aria-label={locale === "en" ? "Project content" : "项目内容"}>
+        <header className="workspace-content-head"><h2>{locale === "en" ? "Project content" : "项目内容"}</h2><span>{locale === "en" ? "Updated as you talk" : "随对话整理"}</span></header>
+        <div className="workspace-content-tabs" role="tablist" aria-label={locale === "en" ? "Project documents" : "项目资料"}
+          onKeyDown={(event) => {
+            const tabs = ["brief", "notes", "report"] as const;
+            const index = tabs.indexOf(contentTab);
+            const next = event.key === "ArrowRight" ? (index + 1) % 3 : event.key === "ArrowLeft" ? (index + 2) % 3 : event.key === "Home" ? 0 : event.key === "End" ? 2 : null;
+            if (next !== null) { event.preventDefault(); setContentTab(tabs[next]); (event.currentTarget.children[next] as HTMLButtonElement).focus(); }
+          }}>
+          {([ ["brief", "需求草稿", "Brief"], ["notes", "对话整理", "Notes"], ["report", "出海报告", "Report"] ] as const).map(([key, zh, en]) => <button key={key} type="button" role="tab" id={`intake-tab-${key}`} aria-selected={contentTab === key} aria-controls="intake-content-panel" tabIndex={contentTab === key ? 0 : -1} onClick={() => setContentTab(key)}>{locale === "en" ? en : zh}</button>)}
         </div>
-        <IntakeAgentRail messageCount={draft.messages.filter((message) => message.role === "user").length} busy={busy} ready={ready} attachmentTier={attachmentTier} />
+        <div id="intake-content-panel" className="workspace-content-body" role="tabpanel" aria-labelledby={`intake-tab-${contentTab}`} tabIndex={0}>
+          {contentTab === "brief" ? <><IntakeSummary answers={draft.answers} /><p className="lumi-guide-readiness" data-ready={ready}>{ready ? copy.ready : copy.incomplete}</p></> : null}
+          {contentTab === "notes" ? <>
+            {draft.messages.some((item) => item.role === "assistant") ? draft.messages.filter((item) => item.role === "assistant").map((item, index) => <article className="workspace-generated" key={index}><h3>Lumi · {locale === "en" ? `Note ${index + 1}` : `第 ${index + 1} 次整理`}</h3><p>{item.content}</p></article>) : <p className="workspace-empty">{locale === "en" ? "Lumi’s notes will appear here as your conversation progresses." : "Lumi 在对话中整理的分析和建议，会保留在这里。"}</p>}
+            {partial ? <article className="workspace-generated"><h3>Lumi</h3><p>{partial}</p></article> : null}
+          </> : null}
+          {contentTab === "report" ? <><h3>{locale === "en" ? "Market opportunity report" : "出海机会报告"}</h3><p className="workspace-empty">{locale === "en" ? "Confirm your project to start the research. Your project workspace will show the report in this content column." : "确认创建项目后，Nori 会开始研究。报告生成后，会在项目工作台的右侧内容栏展示。"}</p></> : null}
+        </div>
+        <IntakeAgentRail busy={busy} ready={ready} />
       </aside>
     </div>
   </div>;

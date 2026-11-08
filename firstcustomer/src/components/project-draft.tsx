@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { LUMI_INTAKE_DRAFT_KEY } from "@/lib/lumi-intake";
+import { projectNotesChanged, projectNotesKey } from "./project-conversation-notes";
 
 type Intake = "admin" | "public";
 const draftKey = (intake: Intake) => `fc:intake:${intake}`;
@@ -44,12 +45,19 @@ export function ProjectDraftForm({ action, intake, children }: {
   return <form ref={form} action={action} onChange={save} className="paper rise grid gap-5 sm:grid-cols-2">{children}</form>;
 }
 
-export function ClearProjectDraft({ intake }: { intake: Intake }) {
+export function ClearProjectDraft({ intake, projectId }: { intake: Intake; projectId?: string }) {
   useEffect(() => {
     try {
+      if (intake === "public" && projectId) {
+        const conversation = localStorage.getItem(LUMI_INTAKE_DRAFT_KEY);
+        if (conversation && !sessionStorage.getItem(projectNotesKey(projectId))) {
+          sessionStorage.setItem(projectNotesKey(projectId), conversation);
+          window.dispatchEvent(new Event(projectNotesChanged));
+        }
+      }
       localStorage.removeItem(draftKey(intake));
       if (intake === "public") localStorage.removeItem(LUMI_INTAKE_DRAFT_KEY);
     } catch { /* Storage is optional. */ }
-  }, [intake]);
+  }, [intake, projectId]);
   return null;
 }

@@ -2,7 +2,7 @@
 
 import { T, I18n } from "@/components/ui-text";
 
-import { ArrowRight, Pause, Play, RotateCcw } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { DepartmentKey, OfficeTransfer } from "@/domain/office";
 import { officeGuidance, type OfficeGuideInput } from "@/domain/office-guide";
@@ -14,7 +14,12 @@ import { desks, roomName, type Point } from "./office-map";
 
 const aisle = 52.1;
 const recentTransferMs = 20_000;
-const previewRoute = { from: "strategy", to: "launch" } as const;
+const ambientRoutes = [
+  { from: "frontdesk", to: "research" },
+  { from: "research", to: "strategy" },
+  { from: "strategy", to: "launch" },
+  { from: "launch", to: "growth" },
+] as const;
 const reducedMotionQuery = "(prefers-reduced-motion: reduce)";
 const reducedMotionSnapshot = () => window.matchMedia(reducedMotionQuery).matches;
 const reducedMotionServerSnapshot = () => false;
@@ -70,7 +75,7 @@ function reset(actor: HTMLElement) {
   delete actor.dataset.carrying;
 }
 
-export function OfficeStage({ transfer, viewControl, children, customerView = false, focusRoom, guidance, stations, guideHrefPrefix }: {
+export function OfficeStage({ transfer, viewControl, children, customerView = false, focusRoom, guidance, stations, guideHrefPrefix, ambientHandoffs = false }: {
   transfer: OfficeTransfer | null;
   viewControl?: ReactNode;
   children: ReactNode;
@@ -79,6 +84,7 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
   guidance?: OfficeGuideInput;
   stations?: OfficeStation[];
   guideHrefPrefix?: string;
+  ambientHandoffs?: boolean;
 }) {
   const locale = useLocale();
   const guide = guidance ? officeGuidance(guidance, locale) : null;
@@ -86,16 +92,14 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
   const inspected = selectedRoom && selectedRoom !== guide?.room ? getOfficeMembers(locale).find((member) => member.key === selectedRoom) : null;
   const inspectedStation = inspected ? stations?.find((item) => item.key === inspected.key) : null;
   const hintId = useId();
-  const motionHintId = useId();
   const viewport = useRef<HTMLDivElement>(null);
   const active = useRef<(() => void) | null>(null);
   const seen = useRef<string | null>(null);
   const follow = useRef(false);
   const [playing, setPlaying] = useState<"demo" | "handoff" | null>(null);
-  const [paused, setPaused] = useState(false);
   const [inView, setInView] = useState(false);
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, reducedMotionSnapshot, reducedMotionServerSnapshot);
-  const motionEnabled = inView && !paused && !reducedMotion;
+  const motionEnabled = inView && !reducedMotion;
   const focusDesk = (room: DepartmentKey) => {
     setSelectedRoom(room);
     follow.current = false;
@@ -193,6 +197,21 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
     });
     return () => window.cancelAnimationFrame(frame);
   }, [transfer, play, motionEnabled]);
+  // The reception's illustrative office runs on its own. Live project offices
+  // animate persisted handoffs only; this timer never creates project activity.
+  useEffect(() => {
+    if (!ambientHandoffs || transfer || !motionEnabled) return;
+    let index = 0;
+    const next = () => {
+      if (active.current || document.visibilityState !== "visible") return;
+      const step = ambientRoutes[index % ambientRoutes.length];
+      index += 1;
+      play(step.from, step.to, "demo");
+    };
+    const first = window.setTimeout(next, 1000);
+    const repeat = window.setInterval(next, 12_000);
+    return () => { window.clearTimeout(first); window.clearInterval(repeat); };
+  }, [ambientHandoffs, transfer, motionEnabled, play]);
   useEffect(() => () => active.current?.(), []);
 
   useEffect(() => {
@@ -238,28 +257,11 @@ export function OfficeStage({ transfer, viewControl, children, customerView = fa
         if (room && Object.hasOwn(desks, room)) focusDesk(room);
       }}>
       {guide ? <OfficeWorkGuide guide={guide} locale={locale} onFocus={focusDesk} hrefPrefix={guideHrefPrefix} /> : null}
-      <div className="office-stage-bar">
-        <p className="office-transfer-summary" role="status">
-          {playing === "demo" ? (
-            <><T>交接演示 </T><strong><T>{roomName(previewRoute.from)}</T></strong><ArrowRight size={14} aria-hidden="true" /><strong><T>{roomName(previewRoute.to)}</T></strong></>
-          ) : transfer ? (
-            <><T>最近交接 </T><strong><T>{roomName(transfer.from)}</T></strong><ArrowRight size={14} aria-hidden="true" /><strong><T>{roomName(transfer.to)}</T></strong></>
-          ) : <T>工位动作随任务状态更新。</T>}
-        </p>
-        <div className="office-stage-actions">
-          {viewControl}
-          <div className="office-motion-controls" aria-describedby={motionHintId}>
-            {reducedMotion ? <span className="office-motion-preference"><T>系统已减少动态</T></span> : <button className="office-control" type="button" aria-pressed={paused} onClick={() => {
-              active.current?.();
-              setPlaying(null);
-              setPaused((value) => !value);
-            }}>{paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}<T>{paused ? "恢复动效" : "暂停动效"}</T></button>}
-            {transfer ? <button className="office-control" type="button" disabled={!motionEnabled || playing !== null} onClick={() => play(transfer.from, transfer.to, "handoff", true)}><RotateCcw size={14} aria-hidden="true" /><T>重播上次交接</T></button> : null}
-            <button className="office-control office-control-primary" type="button" disabled={!motionEnabled || playing !== null} onClick={() => play(previewRoute.from, previewRoute.to, "demo", true)}><Play size={14} aria-hidden="true" /><T>演示交接</T></button>
-          </div>
-        </div>
-      </div>
-      <p className="office-motion-note" id={motionHintId}><T>{reducedMotion ? "已按系统设置减少动态，工位与交接信息仍可查看。" : paused ? "动效已暂停，恢复后继续显示工位状态。" : "待机时轻轻活动，工作时敲键盘。演示交接仅预览动作，不会推进项目。"}</T></p>
+      {transfer || viewControl || reducedMotion ? <div className="office-stage-bar">
+        {transfer ? <p className="office-transfer-summary" role="status"><T>最近交接 </T><strong><T>{roomName(transfer.from)}</T></strong><ArrowRight size={14} aria-hidden="true" /><strong><T>{roomName(transfer.to)}</T></strong></p> : null}
+        {viewControl ? <div className="office-stage-actions">{viewControl}</div> : null}
+        {reducedMotion ? <span className="office-motion-preference"><T>系统已减少动态</T></span> : null}
+      </div> : null}
       <p className="office-pan-hint" id={hintId}><T>左右滑动查看整间办公室</T></p>
       <I18n><div className="office-map-viewport" role="region" aria-label={customerView ? "当前项目的办公室地图" : "首客办公室地图"} aria-describedby={hintId} tabIndex={0} ref={viewport}
         onPointerDown={() => { follow.current = false; }} onWheel={() => { follow.current = false; }}>

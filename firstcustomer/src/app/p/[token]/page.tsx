@@ -18,10 +18,10 @@ import type { CSSProperties } from "react";
 import { Decide } from "@/components/decide";
 import { SceneFooter, SiteHeader } from "@/components/site-chrome";
 import { PaymentCodeImage, ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
-import { OfficeMap } from "@/components/office-map";
+import { ExpandableOffice } from "@/components/expandable-office";
 import { customerOfficeStations, officeGuidance, type OfficeGuideInput } from "@/domain/office-guide";
-import { OfficeStage } from "@/components/office-stage";
 import { ClearProjectDraft } from "@/components/project-draft";
+import { ProjectConversationNotes } from "@/components/project-conversation-notes";
 import { RequirementCard } from "@/components/requirement-card";
 import { WorkPackageList } from "@/components/work-package-list";
 import { ProKeyForm } from "@/components/pro-key-form";
@@ -54,6 +54,7 @@ import { projectSupport } from "@/workflow/support";
 import { customerAcceptanceAction, customerActivateProAction, customerAnswers, customerDecision, customerDeleteImage, customerProposalAction, customerReceiptAction, customerSupportAction, customerUploadImages } from "./actions";
 import { customerCompleteProjectAction, customerPayProAction, customerPurchaseProAction, customerStartFreeAction, customerStartReviewAction } from "./actions";
 import "../../admin/office.css";
+import "../../workspace.css";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
   const { token } = await params;
   await requireCustomerProjectSession(token);
   const { error, notice, intake } = await searchParams;
+  const locale = await getLocale();
   const db = getDb();
   const project = await findCustomerProject(db, token);
   if (!project) notFound();
@@ -139,8 +141,8 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
   return (
     <div className="site-shell">
       <SiteHeader current="project" />
-      <main className="site-main site-main--narrow">
-        {intake === "public" ? <ClearProjectDraft intake="public" /> : null}
+      <main className="site-main customer-workspace-main">
+        {intake === "public" ? <ClearProjectDraft intake="public" projectId={project.id} /> : null}
         {view.simulated ? <SimulatedBanner /> : null}
         <ProjectHeader
           project={project}
@@ -154,6 +156,8 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         {purchasedPro && proActive ? <nav className="mb-5 flex flex-wrap gap-2" aria-label="Pro 工作模块">{PRO_MODULES.map((module) => <a key={module.key} href={`#${module.anchor}`} className="btn btn--ghost btn--sm"><T>{module.zh}</T></a>)}</nav> : null}
 
         {refresh ? <AutoRefresh seconds={refresh} /> : null}
+        <div className="customer-project-layout">
+        <div className="customer-project-activity">
         <section className="paper paper--tan rise" style={{ "--i": 3 } as CSSProperties} aria-labelledby="customer-progress-title">
           <div className="paper__head">
             <div role="status">
@@ -168,15 +172,8 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
               ) : null}
             </div>
           </div>
-          <section aria-labelledby="customer-office-title" className="grid gap-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h3 id="customer-office-title" className="eyebrow m-0"><T>项目办公室</T></h3>
-              {refresh ? <p className="pill pill--live m-0"><T>自动更新当前项目进度</T></p> : null}
-            </div>
-            <OfficeStage transfer={transfer} customerView focusRoom={officeGuidance(officeInput).room ?? activeRoom} guidance={officeInput} stations={stations}>
-              <OfficeMap stations={stations} customerView />
-            </OfficeStage>
-          </section>
+          <ExpandableOffice stations={stations} transfer={transfer} focusRoom={officeGuidance(officeInput, locale).room ?? activeRoom}
+            title={translateUi(locale, progress.title)} detail={officeGuidance(officeInput, locale).output} />
         </section>
 
         {openGate ? (
@@ -209,30 +206,6 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
             {commercialOrder.status === "paid" ? (
               <div className="notice notice--ok mt-5">
                 <p className="m-0"><T>首客已确认到账，正式服务已开始。</T>{confirmedPayment ? <> <T>实际到账 </T>{formatYuan(confirmedPayment.amountFen)} · {formatDateTime(confirmedPayment.paidAt)}</> : null}</p>
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
-        {view.diagnosis ? (
-          <section id="diagnosis" className="paper scroll-mt-24 rise" aria-labelledby="diagnosis-title">
-            <p className="eyebrow m-0"><T>出海机会报告</T></p>
-            <h2 id="diagnosis-title" className="paper__title mt-1 max-w-[30em]">{view.diagnosis.summary}</h2>
-            <ConclusionStatus provenance={view.provenance} subjectId={view.diagnosisTaskId} recordKey="summary" />
-            <ul className="card-grid mt-5">
-              {view.diagnosis.candidates.map((candidate, index) => (
-                <li key={candidate.name} className="tile rise bg-background" style={{ "--i": index } as CSSProperties}>
-                  <p className="tile__meta"><T>候选人群</T> {String(index + 1).padStart(2, "0")}</p>
-                  <h3 className="tile__title">{candidate.name}</h3>
-                  <p className="m-0 text-sm leading-relaxed text-muted-foreground">{candidate.why}</p>
-                  <ConclusionStatus provenance={view.provenance} subjectId={view.diagnosisTaskId} recordKey={`candidate:${index}`} />
-                </li>
-              ))}
-            </ul>
-            {view.diagnosis.unknowns.length ? (
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className="eyebrow m-0"><T>待验证</T></span>
-                {view.diagnosis.unknowns.map((item) => <span key={item} className="pill pill--wait">{item}</span>)}
               </div>
             ) : null}
           </section>
@@ -293,26 +266,6 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         ) : null}
         {selfServicePro && proActive && ["published", "collecting"].includes(project.status) ? <section className="paper"><h2 className="paper__title"><T>开始本轮增长复盘</T></h2><p className="paper__lead"><T>核对当前访问和反馈后开始复盘，样本不足会在报告中说明。</T></p><form action={customerStartReviewAction.bind(null, token)}><Button type="submit" disabled={project.paused}><T>开始增长复盘</T></Button></form></section> : null}
         {selfServicePro && proActive && project.status === "reviewing" && view.report ? <section className="paper"><h2 className="paper__title"><T>完成本轮交付</T></h2><p className="paper__lead"><T>定位、页面、渠道方案和复盘通过核对后，即可进入交付验收。</T></p><form action={customerCompleteProjectAction.bind(null, token)}><input type="hidden" name="deliveryStamp" value={readiness.stamp} /><Button type="submit" disabled={!readiness.ready || project.paused}><T>完成交付，前往验收</T></Button></form></section> : null}
-        {advancedAvailable ? (
-          <>
-            <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#delivery" selfServicePro={selfServicePro} />
-            <div id="strategy"><PositioningSection view={view} /></div>
-            <div id="launch"><PageSection view={view} previewHref={`/p/${token}/preview`} /></div>
-            <div id="growth"><GrowthSection view={view} /></div>
-          </>
-        ) : null}
-        <RequirementCard project={project} history={requirements} action={customerRequirementsAction.bind(null, token)} />
-        <WorkPackageList readiness={readiness} />
-        <ScreenshotsSection
-          images={view.images}
-          hrefFor={(imageId) => `/p/${token}/images/${imageId}`}
-          editable={project.status !== "delivered" && project.status !== "cancelled"}
-          uploadAction={customerUploadImages.bind(null, token)}
-          deleteAction={customerDeleteImage.bind(null, token)}
-        />
-        <div id="research"><EvidenceSection view={view} /></div>
-        <ProvenanceSection provenance={view.provenance} />
-
         <details id="support" className="fold rise" open={support.length > 0 || undefined}>
           <summary>
             <span>
@@ -334,6 +287,62 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
             </form>
           </div>
         </details>
+
+        </div>
+        <aside className="customer-project-content" aria-label={locale === "en" ? "Project content and reports" : "项目内容与报告"}>
+          <header className="workspace-content-head"><h2>{locale === "en" ? "Project content" : "项目内容"}</h2><span>{locale === "en" ? "Saved project records" : "需求与成果，持续更新"}</span></header>
+          <nav className="workspace-report-links" aria-label={locale === "en" ? "Project documents" : "项目资料"}>
+            <a href="#requirements">{locale === "en" ? "Brief" : "需求"}</a><a href="#diagnosis">{locale === "en" ? "Opportunity report" : "出海报告"}</a>
+            {advancedAvailable ? <><a href="#strategy">{locale === "en" ? "Positioning" : "定位方案"}</a><a href="#launch">{locale === "en" ? "Page" : "英文页面"}</a><a href="#growth">{locale === "en" ? "Review" : "复盘"}</a></> : null}
+          </nav>
+        {view.diagnosis ? (
+          <section id="diagnosis" className="paper scroll-mt-24 rise" aria-labelledby="diagnosis-title">
+            <p className="eyebrow m-0"><T>出海机会报告</T></p>
+            <h2 id="diagnosis-title" className="paper__title mt-1 max-w-[30em]">{view.diagnosis.summary}</h2>
+            <ConclusionStatus provenance={view.provenance} subjectId={view.diagnosisTaskId} recordKey="summary" />
+            <ul className="card-grid mt-5">
+              {view.diagnosis.candidates.map((candidate, index) => (
+                <li key={candidate.name} className="tile rise bg-background" style={{ "--i": index } as CSSProperties}>
+                  <p className="tile__meta"><T>候选人群</T> {String(index + 1).padStart(2, "0")}</p>
+                  <h3 className="tile__title">{candidate.name}</h3>
+                  <p className="m-0 text-sm leading-relaxed text-muted-foreground">{candidate.why}</p>
+                  <ConclusionStatus provenance={view.provenance} subjectId={view.diagnosisTaskId} recordKey={`candidate:${index}`} />
+                </li>
+              ))}
+            </ul>
+            {view.diagnosis.unknowns.length ? (
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <span className="eyebrow m-0"><T>待验证</T></span>
+                {view.diagnosis.unknowns.map((item) => <span key={item} className="pill pill--wait">{item}</span>)}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+          {!view.diagnosis ? <section id="diagnosis" className="paper"><h3 className="paper__title">{locale === "en" ? "Market opportunity report" : "出海机会报告"}</h3><p className="paper__lead">{locale === "en" ? "Your report will appear here after the research is complete." : "研究完成后，候选人群、来源证据和待验证问题会在这里展示。"}</p></section> : null}
+        {advancedAvailable ? (
+          <>
+            <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#delivery" selfServicePro={selfServicePro} />
+            <div id="strategy"><PositioningSection view={view} /></div>
+            <div id="launch"><PageSection view={view} previewHref={`/p/${token}/preview`} /></div>
+            <div id="growth"><GrowthSection view={view} /></div>
+          </>
+        ) : null}
+        <ProjectConversationNotes projectId={project.id} />
+        <RequirementCard project={project} history={requirements} action={customerRequirementsAction.bind(null, token)} />
+        <WorkPackageList readiness={readiness} />
+        <ScreenshotsSection
+          images={view.images}
+          hrefFor={(imageId) => `/p/${token}/images/${imageId}`}
+          editable={project.status !== "delivered" && project.status !== "cancelled"}
+          uploadAction={customerUploadImages.bind(null, token)}
+          deleteAction={customerDeleteImage.bind(null, token)}
+        />
+        <div id="research"><EvidenceSection view={view} /></div>
+        <ProvenanceSection provenance={view.provenance} />
+
+        </aside>
+        </div>
 
         <p className="meta">
           {isAccountProjectToken(token) ? (

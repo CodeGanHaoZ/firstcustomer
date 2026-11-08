@@ -4,6 +4,7 @@ import { hostedUploadLimit } from "@/lib/uploads";
 import { createProjectAction } from "./actions";
 import "./intake.css";
 import "../../admin/office.css";
+import "../../workspace.css";
 
 export default async function NewProjectPage({ searchParams }: PageProps<"/projects/new">) {
   const { error, url, brand } = await searchParams;

@@ -77,32 +77,6 @@
 .lumi-guide-spinner { animation: lumi-guide-spin 1s linear infinite; }
 @keyframes lumi-guide-spin { to { transform: rotate(360deg); } }
 
-/* 右侧 Agent 协作预览：让 Lumi 对话、办公室动作和确认后的分析流程同时可见。 */
-.lumi-guide-agent-rail { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--paper-2); }
-.lumi-guide-agent-rail__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.lumi-guide-agent-rail__head .eyebrow { margin: 0 0 5px; font-size: 10px; }
-.lumi-guide-agent-rail__head h2 { margin: 0; font-family: var(--font-serif); font-size: 1.22rem; line-height: 1.3; font-weight: 400; color: var(--ink); }
-.lumi-guide-agent-live { display: inline-flex; align-items: center; gap: 5px; flex: none; color: var(--forest); font-size: 10px; font-weight: 700; white-space: nowrap; }
-.lumi-guide-agent-live i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: live-dot 1.6s ease-in-out infinite; }
-.lumi-guide-agent-rail__intro { margin: 10px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.7; }
-.lumi-guide-office { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #bea87e; }
-.lumi-guide-office .office-stage { padding: 0; background: transparent; }
-.lumi-guide-office .office-stage-bar, .lumi-guide-office .office-motion-note, .lumi-guide-office .office-pan-hint { display: none; }
-.lumi-guide-office .office-map-viewport { overflow: hidden; border-radius: 0; background: #bea87e; }
-.lumi-guide-office .office-map { min-width: 0; width: 100%; }
-.lumi-guide-office .office-map-label { padding: .2rem .28rem; border-radius: 5px; font-size: .52rem; }
-.lumi-guide-office .office-map-label small { font-size: .46rem; }
-.lumi-guide-office .office-map-label i { width: 5px; height: 5px; }
-.lumi-guide-agent-flow { display: grid; gap: 7px; margin: 14px 0 0; padding: 0; list-style: none; }
-.lumi-guide-agent-flow li { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--faint); }
-.lumi-guide-agent-flow li[data-active="true"] { color: var(--forest); }
-.lumi-guide-agent-flow li[data-done="true"] { color: var(--muted); }
-.lumi-guide-agent-flow__icon { display: grid; flex: none; place-items: center; width: 20px; height: 20px; border: 1px solid currentColor; border-radius: 50%; }
-.lumi-guide-agent-flow__copy { display: grid; min-width: 0; flex: 1; gap: 1px; }
-.lumi-guide-agent-flow__copy strong { overflow: hidden; color: inherit; font-size: 11px; font-weight: 650; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
-.lumi-guide-agent-flow__copy small { color: var(--faint); font-size: 10px; line-height: 1.3; }
-.lumi-guide-agent-flow li > svg { flex: none; color: var(--line-strong); }
-.lumi-guide-agent-tier { margin: 13px 0 0; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.65; }
 @media (max-width: 999px) {
   .lumi-intake-page { padding: 18px 20px 14px; }
   .lumi-guide-workspace { display: flex; flex-direction: column; gap: 14px; }
@@ -122,8 +96,6 @@
   .lumi-guide-review-actions .lumi-guide-confirm { width: 100%; }
   .lumi-guide-composer { padding: 10px; }
   .lumi-guide-footnote { font-size: 10px; }
-  .lumi-guide-agent-rail { padding: 14px; }
-  .lumi-guide-agent-rail__head h2 { font-size: 1.08rem; }
   .lumi-guide-starters button, .lumi-guide-choices button { font-size: 13px; padding: 10px 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .lumi-guide-spinner { animation: none; } }
