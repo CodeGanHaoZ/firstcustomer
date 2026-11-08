@@ -6,6 +6,7 @@ import { hasProAccess, isAccountPro, type ProjectStatus } from "@/domain/workflo
 import { enqueueAdvance } from "@/jobs/queue";
 import { projectOrder } from "./commerce";
 import { transition } from "./transitions";
+import { assertPurchasedProjectAccess } from "./purchases";
 
 export async function customerMembership(db: Db, customerId: string | null | undefined) {
   const [record] = customerId ? await db.select().from(customerMemberships).where(eq(customerMemberships.customerId, customerId)).limit(1) : [];
@@ -14,6 +15,7 @@ export async function customerMembership(db: Db, customerId: string | null | und
 
 export async function assertAccountProjectAccess(db: Db, project: typeof projects.$inferSelect) {
   if (isAccountPro(project) && (await customerMembership(db, project.customerId)).plan !== "pro") throw new Error("Pro 账号权益已失效，请在账号工作台查看版本。");
+  await assertPurchasedProjectAccess(db, project);
 }
 
 // The authenticated customer ID and membership are verified here. Neither a
@@ -28,6 +30,7 @@ export async function activateAccountPro(
     const [project] = await tx.select().from(projects).where(and(eq(projects.id, projectId), eq(projects.customerId, customerId))).for("update");
     if (!project || project.isOwnProduct) throw new Error("项目不属于当前客户账号。");
     const order = await projectOrder(tx, projectId);
+    if (order?.paymentMode === "simulated") return false;
     if (hasProAccess(project, order)) {
       const retry = project.status === "failed" && ["researching", "strategizing", "preparing_page", "reviewing"].includes(project.failedFrom ?? "");
       if (isAccountPro(project) && (project.status === "submitted" || retry) && !project.paused) {

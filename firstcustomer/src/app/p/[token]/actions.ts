@@ -15,9 +15,12 @@ import {
   answerClarifications,
   decide,
   deleteProjectImage,
+  startReview,
+  deliverProject,
 } from "@/workflow/actions";
 import { openSupportMessage } from "@/workflow/support";
-import { requestPro, startFreeDiagnosis } from "@/workflow/plans";
+import { startFreeDiagnosis } from "@/workflow/plans";
+import { completeProPurchase, createProPurchase } from "@/workflow/purchases";
 import { reviseRequirements } from "@/workflow/requirements";
 import { requirementFields } from "@/domain/requirements";
 import { activateProByKey } from "@/workflow/pro-access";
@@ -74,10 +77,32 @@ export async function customerStartFreeAction(token: string) {
   });
 }
 
-export async function customerRequestProAction(token: string) {
+export async function customerPurchaseProAction(token: string, formData: FormData) {
   await withProject(token, async (projectId) => {
-    await requestPro(getDb(), projectId);
-    return "已提交 Pro 升级申请。你可以在这里查看提案和报价。";
+    if (!(await withinLimit("pro-purchase", 12, 3600))) throw new Error("提交过于频繁，请稍后重试");
+    await createProPurchase(getDb(), projectId, z.string().regex(/^[a-f0-9]{64}$/).parse(formData.get("quoteFingerprint")));
+    return "报价已确认，请完成付款以开通本项目 Pro。";
+  });
+}
+
+export async function customerPayProAction(token: string, formData: FormData) {
+  await withProject(token, async (projectId) => {
+    if (!(await withinLimit("pro-payment", 12, 3600))) throw new Error("提交过于频繁，请稍后重试");
+    const activated = await completeProPurchase(getDb(), projectId, z.uuid().parse(formData.get("paymentId")),
+      z.string().regex(/^[a-f0-9]{64}$/).parse(formData.get("quoteFingerprint")));
+    for (const path of ["/admin", "/admin/owner", "/account", "/account/pro", `/admin/projects/${projectId}`]) revalidatePath(path);
+    return activated ? "付款成功，本项目 Pro 已开通，团队已开始执行。" : "本项目 Pro 已开通，无需重复付款。";
+  });
+}
+
+export async function customerStartReviewAction(token: string) {
+  await withProject(token, async (projectId) => { await startReview(getDb(), enqueueAdvance, projectId, "customer"); });
+}
+
+export async function customerCompleteProjectAction(token: string, formData: FormData) {
+  await withProject(token, async (projectId) => {
+    await deliverProject(getDb(), projectId, z.string().regex(/^[a-f0-9]{64}$/).parse(formData.get("deliveryStamp")), "customer");
+    return "本轮交付已完成，你可以核对交付清单并确认验收。";
   });
 }
 

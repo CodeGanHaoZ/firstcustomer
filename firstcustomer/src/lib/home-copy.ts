@@ -1,13 +1,13 @@
 export const HOME_COPY = {
   zh: {
-    nav: { home: "首客首页", homeLink: "首页", label: "官网导航", office: "办公室", plans: "订阅", flow: "服务流程", start: "出海分析", account: "我的项目", trial: "试用工作台", auth: "登录 / 注册", signout: "退出登录", menu: "打开菜单" },
+    nav: { home: "首客首页", homeLink: "首页", label: "官网导航", office: "办公室", plans: "服务方案", flow: "服务流程", start: "出海分析", account: "我的项目", trial: "试用工作台", auth: "登录 / 注册", signout: "退出登录", menu: "打开菜单" },
     hero: { eyebrow: "HIFIRST · MiMo AI 出海办公室", title: "你的产品，第一批海外客户在哪里？", description: "告诉首客你在做什么。MiMo AI 出海团队帮你研究市场、找到细分用户、准备英文发布和增长实验，用真实反馈决定下一步。", cta: "免费分析出海机会", office: "看看办公室" },
     statsLabel: "首客数字", stats: [{ value: 6, unit: "位", label: "MiMo AI 员工同班" }, { value: 6, unit: "步", label: "完整服务流程" }, { value: 2, unit: "档", label: "Free 与 Pro" }, { value: 1, unit: "次", label: "免费出海机会分析" }],
     office: { title: "首客办公室 · 工作场景", description: "从一次接待到一轮复盘，看看六位 Agent 同事怎样一起工作。" },
-    plans: { title: "Free 与 Pro", description: "适合已有可演示产品或 MVP、但还没有稳定海外用户的中国独立开发者和小团队。", freeTitle: "Free · 出海机会分析", freeDescription: "提交项目，查看候选人群、出海机会报告和待验证项。", freeCta: "免费分析出海机会", proTitle: "Pro · 出海验证", proDescription: "完整定位、英文验证页、渠道行动和增长复盘。已开通的 Pro 账号可直接进入高级工作模块。", proCta: "把机会变成验证方案" },
+    plans: { title: "Free 与 Pro", description: "适合已有可演示产品或 MVP、但还没有稳定海外用户的中国独立开发者和小团队。", freeTitle: "Free · 出海机会分析", freeDescription: "提交项目，查看候选人群、出海机会报告和待验证项。", freeCta: "免费分析出海机会", proTitle: "Pro · 出海验证", proDescription: "按项目购买完整定位、英文验证页、渠道行动方案和一轮增长复盘。付款后自动开通对应项目。", proCta: "把机会变成验证方案" },
     flow: { title: "服务流程", steps: [
       ["免费出海机会分析", "提交后自动开始，整理候选人群和待验证项。"],
-      ["选择 Pro", "了解高级工作模块。Pro 账号登录后即可使用，价格尚未公布。"],
+      ["选择 Pro", "在项目页确认服务范围与报价，完成付款后自动开通并执行。"],
       ["确认方向", "MiMo AI 提出定位方案，你来确认先卖给谁、验证什么。"],
       ["英文页面", "生成真实可访问的英文验证页。事实声明没有证据，程序不让送审。"],
       ["真实发布", "你确认后执行一项推广实验，记录发布链接。"],
@@ -15,17 +15,17 @@ export const HOME_COPY = {
     ] },
     boundaries: { title: "服务边界", description: "先说清楚不做什么，再谈做什么。", items: ["不保证带来付费用户或收入", "不做群发私信、刷量或冒充用户", "没有数据就显示零，报名不算收入", "对外发布和预算支出都要你确认"] },
     cta: { firstLine: "让第一批客户", secondLine: "找到你", description: "从一次免费的出海机会分析开始，找到值得验证的人群与方向。升级 Pro 后，继续制作英文验证页、开展渠道实验。", register: "注册账号" },
-    footer: { privacy: "Pro 定价尚未公布，暂未开放在线购买。我们只把你提交的信息用于交付和必要联系。", contact: "联系方式", noContact: "建立项目后可通过专属链接联系首客客服。", start: "开始", submit: "提交项目", account: "账号", login: "登录", register: "注册" },
+    footer: { privacy: "Pro 按项目报价和开通。我们只把你提交的信息用于交付和必要联系。", contact: "联系方式", noContact: "建立项目后可通过专属链接联系首客客服。", start: "开始", submit: "提交项目", account: "账号", login: "登录", register: "注册" },
   },
   en: {
-    nav: { home: "HiFirst home", homeLink: "Home", label: "Main navigation", office: "Our office", plans: "Subscription", flow: "How it works", start: "Overseas analysis", account: "My projects", trial: "Trial workspace", auth: "Log in / Sign up", signout: "Sign out", menu: "Open menu" },
+    nav: { home: "HiFirst home", homeLink: "Home", label: "Main navigation", office: "Our office", plans: "Plans", flow: "How it works", start: "Overseas analysis", account: "My projects", trial: "Trial workspace", auth: "Log in / Sign up", signout: "Sign out", menu: "Open menu" },
     hero: { eyebrow: "HIFIRST · YOUR MiMo AI GO-TO-MARKET TEAM", title: "Who will be your first overseas customers?", description: "Tell us what you’re building. Our MiMo AI team helps you research markets, find a focused audience, and prepare English pages and growth experiments. Real feedback guides the next step.", cta: "Analyze your market opportunity for free", office: "Meet the team" },
     statsLabel: "HiFirst at a glance", stats: [{ value: 6, unit: "", label: "MiMo AI teammates" }, { value: 6, unit: "", label: "Steps from idea to feedback" }, { value: 2, unit: "", label: "Plans: Free & Pro" }, { value: 1, unit: "", label: "Free market opportunity analysis" }],
     office: { title: "Inside the HiFirst office", description: "From your first conversation to a growth review, see how six Agent teammates work together." },
-    plans: { title: "Free & Pro", description: "For independent developers and small teams in China with a demo or MVP, looking for their first consistent overseas users.", freeTitle: "Free · Opportunity analysis", freeDescription: "Submit your project to explore potential audiences, an opportunity report, and what still needs testing.", freeCta: "Analyze your opportunity for free", proTitle: "Pro · Market validation", proDescription: "Positioning, an English validation page, channel actions, and a growth review. Active Pro accounts can enter the advanced work modules directly.", proCta: "Turn opportunities into a validation plan" },
+    plans: { title: "Free & Pro", description: "For independent developers and small teams in China with a demo or MVP, looking for their first consistent overseas users.", freeTitle: "Free · Opportunity analysis", freeDescription: "Submit your project to explore potential audiences, an opportunity report, and what still needs testing.", freeCta: "Analyze your opportunity for free", proTitle: "Pro · Market validation", proDescription: "Purchase positioning, an English validation page, a channel action plan and one growth review per project. Access starts automatically after payment.", proCta: "Turn opportunities into a validation plan" },
     flow: { title: "How it works", steps: [
       ["Free opportunity analysis", "Starts after submission, with potential audiences and questions to validate."],
-      ["Choose Pro", "Explore the advanced modules. Active Pro accounts can use them after login. Pricing is not published yet."],
+      ["Choose Pro", "Review the scope and quote on your project page. Payment automatically activates the project and starts work."],
       ["Confirm a direction", "MiMo AI proposes positioning options. You confirm who to reach first and what to test."],
       ["Build an English page", "Get a real, accessible validation page. Factual claims need supporting evidence before approval."],
       ["Run an experiment", "Approve a promotion experiment, carry it out, and record the published link."],
@@ -33,7 +33,7 @@ export const HOME_COPY = {
     ] },
     boundaries: { title: "Clear expectations", description: "Know the limits before we get to work.", items: ["No guarantee of paying customers or revenue", "No mass DMs, fake traffic, or impersonation", "No data means zero. Sign-ups are not revenue.", "Publishing and spending require your approval"] },
     cta: { firstLine: "Help your first", secondLine: "customers find you", description: "Start with a free opportunity analysis of potential audiences and questions to test. With Pro, build an English validation page grounded in traceable evidence.", register: "Create an account" },
-    footer: { privacy: "Pro pricing is not published yet, and online purchase is not available. We use your submitted information only for delivery and necessary contact.", contact: "Contact:", noContact: "Once you create a project, contact support through your private project link.", start: "Get started", submit: "Submit a project", account: "Account", login: "Log in", register: "Sign up" },
+    footer: { privacy: "Pro is quoted and activated per project. We use your submitted information only for delivery and necessary contact.", contact: "Contact:", noContact: "Once you create a project, contact support through your private project link.", start: "Get started", submit: "Submit a project", account: "Account", login: "Log in", register: "Sign up" },
   },
 } as const;
 

@@ -10,6 +10,7 @@ export type OfficeGuideInput = {
   openGate?: Gate | null; reportReady?: boolean; receiptUploaded?: boolean;
   deliveryStatus?: string; canStartFree?: boolean; failedFrom?: string | null;
   audience?: "customer" | "operator"; operatorTurn?: boolean; selfServicePro?: boolean; proInactive?: boolean;
+  projectCheckout?: boolean;
 };
 export type OfficeGuide = {
   room: DepartmentKey | null;
@@ -79,7 +80,7 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
       guide.yourAction = input.selfServicePro ? t("从 Pro 工作台选择模块启动，任务会在这里显示进度。", "Start a module from your Pro workspace to see its progress here.") : input.canStartFree ? t("确认启动免费分析后，Nori 才会开始。", "Nori starts after you confirm the free assessment.") : t("项目登记已保存，等待首客确认启动。", "Your brief is saved and waiting for HiFirst to start the work.");
       break;
     case "researching":
-      if (input.plan === "free") next("customer", ["先查看免费的出海机会报告", "Review your free opportunity report"], ["研究完成后，是否申请 Pro 由你决定", "After research, you decide whether to request Pro"]);
+      if (input.plan === "free") next("customer", ["先查看免费的出海机会报告", "Review your free opportunity report"], ["研究完成后，是否购买 Pro 由你决定", "After research, you decide whether to purchase Pro"]);
       else if (input.quoteRequired && !input.quotePaid) next("frontdesk", ["Lumi 整理 Pro 服务提案", "Lumi prepares the Pro service proposal"], ["研究完成并保留来源后", "After research is complete with sources saved"]);
       else next("strategy", ["Fino 比较人群并制定定位", "Fino compares audiences and develops positioning"], ["研究材料核对通过后", "After the research material passes its checks"]);
       break;
@@ -87,7 +88,7 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
       guide.state = "complete"; guide.title = t("Nori 已完成免费出海机会报告", "Nori has completed your free opportunity report");
       guide.task = t("先看候选人群、证据与待验证的问题。Free 在这里交付结果。", "Review the audiences, evidence and open questions. This is the Free deliverable.");
       guide.output = c(WORK.researching.output); next("customer", ["了解 Pro 的高级工作模块", "Explore the advanced Pro modules"], ["仅在账号开通 Pro 后继续", "Continue only after your account has Pro access"]);
-      guide.yourAction = t("先读报告，再了解 Pro 高级模块；价格尚未公布。", "Read the report, then explore Pro modules. Pricing is not published yet."); action("#diagnosis", ["查看出海机会报告", "View opportunity report"]); break;
+      guide.yourAction = t("先读报告，再确认 Pro 的服务范围与报价。", "Read the report, then review the Pro service scope and quote."); action("#diagnosis", ["查看出海机会报告", "View opportunity report"]); break;
     case "drafting_quote": next("owner", ["首客经营者核定服务范围与价格", "The operator reviews the scope and price"], ["Lumi 完成提案草稿后", "After Lumi finishes the draft proposal"]); break;
     case "awaiting_quote":
       guide.state = operator ? "action" : "waiting"; guide.title = t("等待经营者核定 Pro 提案", "Waiting for operator review of the Pro proposal");
@@ -102,6 +103,16 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
       guide.yourAction = operator ? t("客户接受报价后，等待付款凭证。", "Wait for payment proof after customer acceptance.") : t("核对范围、价格和条款，接受报价或退回修改。", "Check the scope, price and terms, then accept or request changes.");
       if (!operator) action("#proposal", ["查看并确认报价", "Review the quote"]); break;
     case "awaiting_payment":
+      if (input.projectCheckout) {
+        guide.state = operator ? "waiting" : "action";
+        guide.title = t("等待完成项目付款", "Waiting for project payment");
+        guide.task = t("Milo 将校验订单与付款结果，通过后自动开通本项目。", "Milo checks the order and payment result, then activates this project automatically.");
+        guide.output = t("项目付款与权益记录", "Project payment and access records");
+        next("strategy", ["Fino 开始制定定位与验证计划", "Fino starts the positioning and validation plan"], ["付款校验通过后", "After payment verification"]);
+        guide.yourAction = operator ? t("等待客户付款，无需逐单核款或开通。", "Wait for payment; verification and activation are automatic.") : t("核对项目范围和金额，完成付款即可开始。", "Review the project scope and amount, then pay to begin.");
+        if (!operator) action("#payment", ["前往付款", "Go to payment"]);
+        break;
+      }
       guide.state = input.receiptUploaded ? (operator ? "action" : "waiting") : (operator ? "waiting" : "action");
       guide.title = input.receiptUploaded ? t("等待经营者核对实际到账", "Waiting for payment verification") : t("等待付款凭证", "Waiting for payment proof");
       guide.task = t("付款凭证与真实到账分别核对，不会用动画代替收款确认。", "Payment proof and actual receipt are checked separately. Animation does not confirm payment."); guide.output = c(WORK.reading_receipt.output);

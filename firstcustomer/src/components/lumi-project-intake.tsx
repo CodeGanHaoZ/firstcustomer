@@ -7,7 +7,7 @@ import { useFormStatus } from "react-dom";
 import { useLocale } from "@/components/locale-provider";
 import { translateUi } from "@/lib/ui-translation";
 import { BRAND } from "@/lib/brand";
-import { INTAKE_STEPS, PUBLIC_INTAKE_DRAFT_KEY } from "@/lib/project-intake";
+import { INTAKE_STEPS, PUBLIC_INTAKE_DRAFT_KEY, type IntakeAnswers } from "@/lib/project-intake";
 import {
   applyIntakeUpdates, INTAKE_HISTORY_LIMIT, INTAKE_MESSAGE_LIMIT, intakeReady, intakeResponseSchema,
   LUMI_INTAKE_COPY, LUMI_INTAKE_DRAFT_KEY, parseConversationDraft, readIntakeStream,
@@ -24,6 +24,16 @@ function ConfirmProject({ disabled }: { disabled: boolean }) {
     {pending ? <LoaderCircle size={17} aria-hidden className="lumi-guide-spinner" /> : <Check size={17} aria-hidden />}
     {pending ? copy.submitting : copy.confirm}
   </button>;
+}
+
+function IntakeSummary({ answers }: { answers: IntakeAnswers }) {
+  const locale = useLocale(); const copy = LUMI_INTAKE_COPY[locale];
+  return <dl>{INTAKE_STEPS.map((step) => {
+    if (step.field === "screenshots") return null;
+    const value = answers[step.field];
+    if (!value && !["productName", "stage", "goal", "contact"].includes(step.field)) return null;
+    return <div key={step.field}><dt>{translateUi(locale, step.label)}</dt><dd data-empty={!value}>{value ? ["stage", "goal"].includes(step.field) ? translateUi(locale, value) : value : copy.unknown}</dd></div>;
+  })}</dl>;
 }
 
 export function LumiProjectIntake(props: Props) {
@@ -65,6 +75,8 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
   const followOutput = useRef(true);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const ready = intakeReady(draft.answers);
+  const showConfirmation = ready && !busy && !error && draft.messages.at(-1)?.role !== "user";
+  const hasUnsentChanges = Boolean(draft.input.trim());
   const t = (text: string) => translateUi(locale, text);
 
   useEffect(() => {
@@ -84,6 +96,12 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
     const observer = new ResizeObserver(() => { if (followOutput.current) area.scrollTop = area.scrollHeight; });
     observer.observe(area);
     return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1000px)");
+    const collapseBrief = () => { if (!desktop.matches) setBriefOpen(false); };
+    desktop.addEventListener("change", collapseBrief);
+    return () => desktop.removeEventListener("change", collapseBrief);
   }, []);
   useEffect(() => () => { request.current?.abort(); request.current = null; }, []);
 
@@ -106,7 +124,6 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
         if (event === "result") {
           const result = intakeResponseSchema.parse(data);
           const answers = applyIntakeUpdates(draft.answers, result.updates);
-          if (intakeReady(answers) && !intakeReady(draft.answers) && window.matchMedia("(min-width: 1000px)").matches) setBriefOpen(true);
           setDraft((previous) => ({ ...previous, messages: [...history, { role: "assistant" as const, content: result.reply }].slice(-80), answers, choices: result.choices }));
           completed = true; setPartial("");
         }
@@ -132,7 +149,6 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
     setDraft((previous) => ({ ...previous, hadImages: false }));
   }
 
-  const rows = INTAKE_STEPS.filter((step) => step.field !== "screenshots" && (draft.answers[step.field] || ["productName", "stage", "goal", "contact"].includes(step.field)));
   const canRetry = error && draft.messages.at(-1)?.role === "user";
 
   return <div className="lumi-guide">
@@ -149,6 +165,23 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
               <div className="lumi-guide-author">{message.role === "assistant" ? <><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></> : <span>{copy.you}</span>}</div>
               <p>{message.content}</p>
             </article>)}
+            {showConfirmation ? <article className="lumi-guide-message lumi-guide-review" data-role="assistant">
+              <div className="lumi-guide-author"><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></div>
+              <p>{copy.confirmPrompt}</p>
+              <form id="lumi-project-submit" aria-label={copy.review} action={action} onSubmit={(event) => {
+                if (!ready || busy || error || fileError || creating || hasUnsentChanges) { event.preventDefault(); return; }
+                setCreating(true);
+              }}>
+                <IntakeSummary answers={draft.answers} />
+                {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
+                <div hidden aria-hidden><label htmlFor="website">Website</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
+                {hasUnsentChanges ? <p className="lumi-guide-note" role="status">{copy.unsentChanges}</p> : null}
+                <div className="lumi-guide-review-actions">
+                  <ConfirmProject disabled={creating || Boolean(fileError) || hasUnsentChanges} />
+                  <button className="lumi-guide-revise" type="button" disabled={creating} onClick={() => textarea.current?.focus()}>{copy.revise}</button>
+                </div>
+              </form>
+            </article> : null}
           </div>
           {busy || partial ? <article className="lumi-guide-message" data-role="assistant" aria-busy={busy}>
             <div className="lumi-guide-author"><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></div>
@@ -178,7 +211,7 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
                 : <button type="submit" className="lumi-guide-send" aria-label={copy.send} disabled={!draft.input.trim() || creating || Boolean(fileError)}><ArrowUp size={20} aria-hidden /></button>}
             </div>
           </form>
-          <input ref={fileInput} className="sr-only" type="file" name="screenshots" form="lumi-project-submit" multiple accept="image/png,image/jpeg,image/webp" aria-label={copy.attach} disabled={busy} tabIndex={-1}
+          <input ref={fileInput} className="sr-only" type="file" name="screenshots" form="lumi-project-submit" multiple accept="image/png,image/jpeg,image/webp" aria-label={copy.attach} disabled={busy || creating} tabIndex={-1}
             onChange={(event) => {
               const selected = Array.from(event.target.files ?? []);
               const invalid = selected.length > 3 || selected.some((file) => file.size === 0 || file.size > 5 * 1024 * 1024 || !["image/png", "image/jpeg", "image/webp"].includes(file.type));
@@ -192,23 +225,11 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
 
       <aside className="lumi-guide-brief">
         <details open={briefOpen} onToggle={(event) => setBriefOpen(event.currentTarget.open)}>
-          <summary><span><ClipboardList size={18} aria-hidden />{copy.draft}</span>{ready ? <span className="lumi-guide-summary-status">{locale === "en" ? "Ready to confirm" : "可确认"}</span> : null}<ChevronDown size={17} aria-hidden /></summary>
+          <summary><span><ClipboardList size={18} aria-hidden />{copy.draft}</span>{ready ? <span className="lumi-guide-summary-status">{copy.organized}</span> : null}<ChevronDown size={17} aria-hidden /></summary>
           <div className="lumi-guide-brief-content">
             <p>{copy.summaryHint}</p>
-            <dl>{rows.map((step) => {
-              if (step.field === "screenshots") return null;
-              const value = draft.answers[step.field];
-              return <div key={step.field}><dt>{t(step.label)}</dt><dd data-empty={!value}>{value ? ["stage", "goal"].includes(step.field) ? t(value) : value : copy.unknown}</dd></div>;
-            })}</dl>
-            <form id="lumi-project-submit" action={action} onSubmit={(event) => {
-              if (!ready || busy || fileError || creating) { event.preventDefault(); return; }
-              setCreating(true);
-            }}>
-              {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
-              <div hidden aria-hidden><label htmlFor="website">Website</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
-              <p className="lumi-guide-readiness" data-ready={ready}>{ready ? <Check size={15} aria-hidden /> : null}{ready ? copy.ready : copy.incomplete}</p>
-              <ConfirmProject disabled={!ready || busy || creating || Boolean(fileError)} />
-            </form>
+            <IntakeSummary answers={draft.answers} />
+            <p className="lumi-guide-readiness" data-ready={ready}>{ready ? <Check size={15} aria-hidden /> : null}{ready ? copy.ready : copy.incomplete}</p>
           </div>
         </details>
       </aside>

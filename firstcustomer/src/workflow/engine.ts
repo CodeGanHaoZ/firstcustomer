@@ -71,12 +71,14 @@ import {
   STATUS_LABELS,
   usesQuoteFlow,
   isAccountPro,
+  isPurchasedPro,
   isKeyActivatedPro,
   type ProjectStatus,
   type SendBackRoute,
 } from "@/domain/workflow";
 
 import { ConflictError, transition } from "./transitions";
+import { assertPurchasedProjectAccess } from "./purchases";
 import { latestReceipt, loadReceiptImage, projectOrder, quoteFeedback, saveDraftProposal } from "./commerce";
 import { recordClaimCheck } from "./landing-edits";
 import { needsFounder } from "./support";
@@ -1233,11 +1235,12 @@ async function runSupportInbox(deps: EngineDeps, project: Project) {
         ? (positioning.options as PositioningOption[])[positioning.chosenOption] : null,
       evidence: evidence.filter((item) => item.status === "verified").slice(0, 12).map(evidenceView),
       page: page?.status === "published" ? "已公开" : "尚未公开",
-      payment: order?.status === "paid" ? "老板已确认到账" : "尚未记录到账；不用于判断账号 Pro 权益",
+      payment: order?.status === "simulation_active" ? "当前项目付款校验已通过，Pro 项目服务已开通" : order?.status === "paid" ? "老板已确认到账" : "尚未记录到账；不用于判断账号 Pro 权益",
       pro_access: isAccountPro(project)
         ? (await customerMembership(deps.db, project.customerId)).plan === "pro"
           ? "账号 Pro 权益有效，直接使用模块，无需报价、付款截图或老板开通审核；不代表实际到账"
           : "账号 Pro 权益已失效，需恢复权益后继续高级任务"
+        : isPurchasedPro(project) ? order?.status === "simulation_active" ? "当前项目 Pro 已开通；定位与发布由客户确认；其他项目需单独购买" : "当前项目报价已确认，等待客户完成付款"
         : isKeyActivatedPro(project) && order?.status === "key_activated" ? "密钥已开通 Pro，无需付款截图；不代表实际到账" : null,
       brand: settings?.brand ?? null,
       service: settings?.service ?? null,
@@ -1272,6 +1275,9 @@ export async function advanceProject(deps: EngineDeps, projectId: string) {
   if (await runSupportInbox(deps, project)) [project] = await load();
   if (!project || project.paused) return;
   if (isAccountPro(project) && (await customerMembership(deps.db, project.customerId)).plan !== "pro") return;
+  if (isPurchasedPro(project)) {
+    try { await assertPurchasedProjectAccess(deps.db, project); } catch { return; }
+  }
   const step = STEPS[project.status as ProjectStatus];
   if (!step) return;
   try {

@@ -9,6 +9,7 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import { getLocale } from "@/lib/locale-server";
 import { customerMembership } from "@/workflow/membership";
 import { enterProModuleAction } from "../actions";
+import { customerPurchasedProjects } from "@/workflow/purchases";
 
 export const metadata = { title: "Pro 工作台 · 首客 HiFirst", robots: { index: false, follow: false } };
 
@@ -16,15 +17,16 @@ export default async function ProWorkspace({ searchParams }: PageProps<"/account
   const session = await getCustomerSession();
   if (!session) redirect("/login?next=%2Faccount%2Fpro");
   const db = getDb(); const membership = await customerMembership(db, session.user.id);
-  if (membership.plan !== "pro") redirect("/account/upgrade");
+  const purchased = await customerPurchasedProjects(db, session.user.id);
+  if (membership.plan !== "pro" && !purchased.length) redirect("/account/upgrade");
   const [locale, query, owned] = await Promise.all([getLocale(), searchParams,
-    db.select({ id: projects.id, productName: projects.productName, status: projects.status }).from(projects).where(eq(projects.customerId, session.user.id)).orderBy(desc(projects.updatedAt))]);
+    membership.plan === "pro" ? db.select({ id: projects.id, productName: projects.productName, status: projects.status }).from(projects).where(eq(projects.customerId, session.user.id)).orderBy(desc(projects.updatedAt)) : purchased]);
   const en = locale === "en";
   const selected = owned.find((project) => project.id === query.project) ?? owned.find((project) => !["cancelled", "delivered"].includes(project.status)) ?? owned[0];
   return <div className="site-shell"><SiteHeader current="account" /><main className="site-main">
     <PageHead title={en ? "Pro workspace" : "Pro 工作台"} eyebrow={`Pro${membership.testAccount ? en ? " · Test account" : " · 测试账号" : ""}`}
-      lead={en ? "Your Pro access is active. Enter your project modules without a preliminary quote or owner activation review." : "Pro 账号权益已开通，直接进入项目工作模块，无需初步报价和老板开通审核。"}
-      actions={<Link href="/projects/new" className="btn btn--primary btn--lg">{en ? "Create a Pro project" : "新建 Pro 项目"}</Link>} />
+      lead={membership.plan === "pro" ? en ? "Your Pro access is active. Enter your project modules without an owner activation review." : "Pro 账号权益已开通，可直接进入项目工作模块。" : en ? "Pro is active for your purchased projects. Select a project to continue." : "已购买的项目已开通 Pro，选择对应项目即可继续执行。"}
+      actions={<Link href="/projects/new" className="btn btn--primary btn--lg">{en ? "Create a project" : "新建出海项目"}</Link>} />
     {membership.testAccount ? <p className="notice">{en ? "Test access only. This is not a payment or revenue record. Sample projects start only when you enter a module." : "此账号使用测试权益，不代表实际付款或收入。示例项目在你进入模块后才启动任务。"}</p> : null}
     {selected ? <>
       <section className="paper"><h2 className="paper__title">{en ? "Select a project" : "选择项目"}</h2><div className="mt-4 flex flex-wrap gap-2">{owned.map((project) => <Link key={project.id} href={`/account/pro?project=${project.id}#modules`} className={`btn btn--sm ${project.id === selected.id ? "btn--primary" : "btn--ghost"}`} aria-current={project.id === selected.id ? "true" : undefined}>{project.productName}</Link>)}</div></section>

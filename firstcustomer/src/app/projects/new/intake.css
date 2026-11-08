@@ -10,6 +10,15 @@
 .lumi-guide-thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .lumi-guide-scroll { overflow-y: auto; min-height: 0; flex: 1; padding: 8px 20px 24px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; overscroll-behavior: contain; }
 .lumi-guide-log { display: grid; gap: 26px; }
+.lumi-guide-review form { margin-top: 18px; }
+.lumi-guide-review dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin-bottom: 20px; }
+.lumi-guide-review dl > div { min-width: 0; border-top: 1px solid var(--line); padding-top: 12px; }
+.lumi-guide-review dt { margin-bottom: 5px; color: var(--muted); font-size: 12px; }
+.lumi-guide-review dd { color: var(--ink); font-size: 14px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lumi-guide-review-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.lumi-guide-review-actions .lumi-guide-confirm { width: auto; padding-inline: 20px; }
+.lumi-guide-revise { min-height: 44px; padding: 8px 4px; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.lumi-guide-revise:hover:not(:disabled) { color: var(--ink); }
 .lumi-guide-message { max-width: 70ch; min-width: 0; }
 .lumi-guide-message > p { font-size: 15px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
 .lumi-guide-author { display: flex; align-items: center; gap: 8px; min-height: 28px; margin-bottom: 8px; font-size: 13px; }
@@ -70,7 +79,7 @@
   .lumi-intake-page { padding: 18px 20px 14px; }
   .lumi-guide-workspace { display: flex; flex-direction: column; gap: 14px; }
   .lumi-guide-thread { flex: 1; }
-  .lumi-guide-brief { flex: none; max-height: 40dvh; }
+  .lumi-guide-brief { flex: none; max-height: min(24dvh, 200px); }
   .lumi-guide-scroll { padding-inline-end: 6px; }
   .lumi-guide-title h1 { font-size: 1.75rem; }
   .lumi-guide-brief summary { padding: 12px 16px; }
@@ -81,6 +90,8 @@
   .lumi-guide-title h1 { font-size: 1.6rem; }
   .lumi-guide-title > p { font-size: 12px; line-height: 1.7; }
   .lumi-guide-message > p { font-size: 14px; line-height: 1.85; }
+  .lumi-guide-review dl { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .lumi-guide-review-actions .lumi-guide-confirm { width: 100%; }
   .lumi-guide-composer { padding: 10px; }
   .lumi-guide-footnote { font-size: 10px; }
   .lumi-guide-starters button, .lumi-guide-choices button { font-size: 13px; padding: 10px 12px; }

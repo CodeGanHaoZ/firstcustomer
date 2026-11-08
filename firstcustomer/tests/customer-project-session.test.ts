@@ -38,4 +38,15 @@ describe("客户项目会话连续性", () => {
     getSession.mockResolvedValue({ user: { id: "customer-a" } });
     expect(await findCustomerProject({} as Db, "a".repeat(43))).toEqual(project);
   });
+  it("已归属账号的购买项目要求本人登录，未归属的访客购买仍用专属凭据", async () => {
+    const project = { customerId: "customer-a", productPlan: "pro", requiresPayment: false, proAccessSource: "simulation" };
+    findByToken.mockResolvedValue(project);
+    getSession.mockResolvedValue({ user: { id: "customer-b" } });
+    expect(await findCustomerProject({} as Db, "a".repeat(43))).toBeNull();
+    getSession.mockResolvedValue({ user: { id: "customer-a" } });
+    expect(await findCustomerProject({} as Db, "a".repeat(43))).toEqual(project);
+    findByToken.mockResolvedValue({ ...project, customerId: null });
+    getSession.mockResolvedValue(null);
+    expect(await findCustomerProject({} as Db, "a".repeat(43))).toEqual({ ...project, customerId: null });
+  });
 });

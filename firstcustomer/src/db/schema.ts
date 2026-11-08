@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { ProposalOutput, ReceiptOutput } from "@/agents/schemas";
 import type { ProjectPlan } from "@/domain/workflow";
+import type { ProQuote } from "@/domain/pro-pricing";
 import type { CustomerPlan, MembershipSource } from "@/domain/membership";
 import type { KnowledgeContent, PublishedKnowledge } from "@/knowledge/types";
 import type { RequirementSnapshot } from "@/domain/requirements";
@@ -78,7 +79,7 @@ export const projects = pgTable("projects", {
   isOwnProduct: boolean("is_own_product").notNull().default(false),
   requiresPayment: boolean("requires_payment").notNull().default(false),
   productPlan: text("product_plan").$type<ProjectPlan>().notNull().default("legacy"),
-  proAccessSource: text("pro_access_source").$type<"key" | "account">(),
+  proAccessSource: text("pro_access_source").$type<"key" | "account" | "simulation">(),
   paused: boolean("paused").notNull().default(false),
   status: text("status").notNull().default("submitted"),
   failedFrom: text("failed_from"),
@@ -168,11 +169,26 @@ export const orders = pgTable("orders", {
   quoteFen: integer("quote_fen"),
   quoteVersion: integer("quote_version").notNull().default(0),
   proposal: jsonb("proposal").$type<ProposalOutput>(),
+  pricingSnapshot: jsonb("pricing_snapshot").$type<ProQuote>(),
+  paymentMode: text("payment_mode").$type<"simulated">(),
   status: text("status").notNull().default("inquiry"),
   deliveryStatus: text("delivery_status").notNull().default("not_started"),
   founderMinutes: integer("founder_minutes").notNull().default(0),
   createdAt: createdAt(),
 });
+
+// Provider verification records are deliberately separate from real receipts
+// in payments. A simulated success grants this project, never cash or membership.
+export const purchasePayments = pgTable("purchase_payments", {
+  id: id(),
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  provider: text("provider").$type<"simulated">().notNull(),
+  amountFen: integer("amount_fen").notNull(),
+  status: text("status").$type<"pending" | "succeeded">().notNull().default("pending"),
+  reference: text("reference").unique(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (table) => [uniqueIndex("purchase_payments_order_idx").on(table.orderId)]);
 
 export const payments = pgTable("payments", {
   id: id(),

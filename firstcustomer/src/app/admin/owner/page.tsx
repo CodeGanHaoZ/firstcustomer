@@ -138,7 +138,7 @@ export default async function OwnerPage({ searchParams }: PageProps<"/admin/owne
             <p className="meta"><T>{project.testAccount ? "测试账号" : project.isOwnProduct ? "自有产品" : "外部客户"}</T> · <T>{project.productPlan === "legacy" ? "项目服务" : project.productPlan.toUpperCase()}</T> · {formatDateTime(project.updatedAt)}</p></div>
           <StatusPill status={project.status} paused={project.paused} label={project.paused ? "已暂停" : STATUS_LABELS[project.status as ProjectStatus] ?? project.status} />
           <div className="owner-project-money"><span><T>报价</T> {project.quoteFen === null ? "—" : formatYuan(project.quoteFen)}</span>
-            <span className="meta"><T>{project.orderStatus === "key_activated" ? "密钥开通 · 无实收" : "实收"}</T>{project.orderStatus === "key_activated" ? "" : ` ${formatYuan(project.receivedFen)}`}</span></div>
+            <span className="meta"><T>{project.paymentMode === "simulated" ? "模拟支付 · 不计实收" : project.orderStatus === "key_activated" ? "密钥开通 · 无实收" : "实收"}</T>{project.paymentMode === "simulated" || project.orderStatus === "key_activated" ? "" : ` ${formatYuan(project.receivedFen)}`}</span></div>
           <Link href={`/admin/audit?project=${project.id}`} className="owner-record-link"><T>决策记录</T></Link>
         </li>)}
       </ul>

@@ -46,7 +46,15 @@ export function isAccountPro(project: { productPlan: ProjectPlan; requiresPaymen
 }
 
 export function isKeyActivatedPro(project: { productPlan: ProjectPlan; requiresPayment: boolean; proAccessSource?: string | null }) {
-  return project.productPlan === "pro" && !project.requiresPayment && !isAccountPro(project);
+  return project.productPlan === "pro" && !project.requiresPayment && (project.proAccessSource === "key" || !project.proAccessSource);
+}
+
+export function isPurchasedPro(project: { productPlan: ProjectPlan; requiresPayment: boolean; proAccessSource?: string | null }) {
+  return project.productPlan === "pro" && !project.requiresPayment && project.proAccessSource === "simulation";
+}
+
+export function isSelfServicePro(project: { productPlan: ProjectPlan; requiresPayment: boolean; proAccessSource?: string | null }) {
+  return isAccountPro(project) || isPurchasedPro(project);
 }
 
 export function hasProAccess(
@@ -55,7 +63,8 @@ export function hasProAccess(
 ) {
   return project.productPlan === "pro" && (order?.status === "paid" ||
     (isKeyActivatedPro(project) && order?.status === "key_activated") ||
-    (isAccountPro(project) && order?.status === "account_active"));
+    (isAccountPro(project) && order?.status === "account_active") ||
+    (isPurchasedPro(project) && order?.status === "simulation_active"));
 }
 
 export function canActivateProByKey(project: {
@@ -85,7 +94,7 @@ const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   submitted: ["researching"],
   needs_info: ["researching"],
   researching: ["free_ready", "drafting_quote", "strategizing", "needs_info", "awaiting_founder", "failed"],
-  free_ready: ["drafting_quote", "strategizing"],
+  free_ready: ["drafting_quote", "awaiting_payment", "strategizing"],
   drafting_quote: ["awaiting_quote", "failed"],
   awaiting_quote: ["awaiting_quote_acceptance", "drafting_quote", "strategizing"],
   awaiting_quote_acceptance: ["awaiting_payment", "drafting_quote", "strategizing"],

@@ -3,7 +3,7 @@ import type { Db } from "@/db";
 import { hasModelListPrice } from "@/ai/call-model";
 import { agentTasks, companyReports, customerMemberships, events, landingPages, leads, orders, payments, projects } from "@/db/schema";
 
-const externalCustomerProject = () => and(eq(projects.isOwnProduct, false), sql`not exists (
+const externalCustomerProject = () => and(eq(projects.isOwnProduct, false), sql`${projects.proAccessSource} is distinct from 'simulation'`, sql`not exists (
   select 1 from ${customerMemberships}
   where ${customerMemberships.customerId} = ${projects.customerId} and ${customerMemberships.testAccount} = true
 )`);

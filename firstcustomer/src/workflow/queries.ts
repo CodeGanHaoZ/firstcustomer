@@ -1,4 +1,4 @@
-import { isAccountPro } from "@/domain/workflow";
+import { isSelfServicePro } from "@/domain/workflow";
 import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import type { ResearchOutput } from "@/agents/schemas";
 import type { Db } from "@/db";
@@ -136,7 +136,7 @@ export async function loadProjectView(db: Db, project: Project) {
   const report = await reportFor(db, project);
 
   const allDecisions = await db.select().from(decisions).where(eq(decisions.projectId, project.id));
-  const gateFor = (gate: Gate, version: number) => gateState(allDecisions, gate, version, !isAccountPro(project));
+  const gateFor = (gate: Gate, version: number) => gateState(allDecisions, gate, version, !isSelfServicePro(project));
 
   const questions = await db
     .select()

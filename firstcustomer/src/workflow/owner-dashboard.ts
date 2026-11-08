@@ -80,6 +80,7 @@ export async function loadOwnerDashboard(db: Db) {
       return { id: project.id, productName: project.productName, productPlan: project.productPlan, status: project.status,
         paused: project.paused, isOwnProduct: project.isOwnProduct, testAccount: testCustomers.has(project.customerId ?? ""), updatedAt: project.updatedAt,
         orderStatus: order?.status ?? null, quoteFen: order?.quoteFen ?? null,
+        paymentMode: order?.paymentMode ?? null,
         receivedFen: order ? cashByOrder.get(order.id) ?? 0 : 0 };
     }),
   };

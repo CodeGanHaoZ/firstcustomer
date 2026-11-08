@@ -57,7 +57,7 @@ export function gateState(
 export const founderReady = (state: GateState) => state.founderRequired === false || state.founder === "approved";
 
 export function decisionError(state: GateState, actor: ActorRole) {
-  if (actor === "founder" && state.founderRequired === false) return "Pro 账号项目由客户直接确认，无需老板审核";
+  if (actor === "founder" && state.founderRequired === false) return "Pro 项目由客户直接确认，无需老板审核";
   if (actor === "founder" && state.founder === "approved") {
     return "老板已经把关过这个版本";
   }

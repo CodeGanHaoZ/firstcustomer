@@ -58,7 +58,7 @@ export function customerProgress(input: {
       : input.canStartFree
       ? { title: "可以免费分析出海机会", detail: "提交的资料已保存。点击下方按钮即可排队开始。", refreshSeconds: 3 }
       : { title: "已提交", detail: "项目已提交，等待首客老板确认后开始研究。", refreshSeconds: 12 };
-    case "free_ready": return { title: "你的出海机会报告已生成", detail: "你可以查看候选人群和待验证事项，或申请 Pro 继续做定位与发布。", action: { href: "#diagnosis", label: "查看出海机会报告" } };
+    case "free_ready": return { title: "你的出海机会报告已生成", detail: "你可以查看候选人群和待验证事项，或购买 Pro 继续做定位与发布。", action: { href: "#diagnosis", label: "查看出海机会报告" } };
     case "needs_info": return { title: "待你补充资料", detail: "研究员需要你补充信息，可以先保存已填的回答。", action: { href: "#clarifications", label: "回答追问" } };
     case "awaiting_quote": return { title: "首客正在核对报价", detail: "服务范围和价格确认后会在这里显示。", refreshSeconds: 12 };
     case "awaiting_quote_acceptance": return input.quoteVisible

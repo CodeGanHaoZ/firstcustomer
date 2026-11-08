@@ -97,7 +97,7 @@ function GateForm(props: {
   previewHref?: string;
 }) {
   const { projectId, gate, state } = props;
-  if (state.founderRequired === false) return <p className="notice"><T>账号 Pro 项目由客户直接确认，无需老板审核。</T></p>;
+  if (state.founderRequired === false) return <p className="notice"><T>Pro 项目由客户直接确认，无需老板审核。</T></p>;
   if (state.founder === "approved") {
     return (
       <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -172,6 +172,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   return (
     <main className="admin-section">
       {view.simulated ? <SimulatedBanner /> : null}
+      {order?.paymentMode === "simulated" ? <p className="notice">模拟支付订单 · {order.status === "simulation_active" ? "已校验并开通" : "待客户付款"} · 不计入实际收款与真实客户经营指标。计价版本：{order.pricingSnapshot?.version}，报价 {formatYuan(order.quoteFen ?? 0)}。</p> : null}
       <ProjectHeader project={project}
         eyebrow={<Link className="link-u" href="/admin"><T>返回经营台</T></Link>}
         actions={<a className="btn btn--ghost btn--sm" href="#deliverables"><T>查看交付清单</T></a>} />
@@ -199,7 +200,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           ) : null}
           {project.productPlan === "free" && ["submitted", "free_ready"].includes(project.status) ? (
             <p className="text-sm text-muted-foreground">
-              <T>{project.status === "submitted" ? "客户可以从专属链接自助启动出海机会分析。" : "出海机会报告已生成，客户可以从专属链接查看结果并申请 Pro。"}</T>
+              <T>{project.status === "submitted" ? "客户可以从专属链接自助启动出海机会分析。" : "出海机会报告已生成，客户可以从专属链接查看结果并购买 Pro。"}</T>
             </p>
           ) : null}
           {project.status === "needs_info" ? (
@@ -227,7 +228,8 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               <ProposalDetails proposal={order.proposal} version={order.quoteVersion} quoteFen={order.quoteFen} />
             </>
           ) : null}
-          {project.status === "awaiting_payment" && order ? (
+          {project.status === "awaiting_payment" && order?.paymentMode === "simulated" ? <p className="notice"><T>等待客户完成付款，系统自动校验并开通，无需人工核款。</T></p> : null}
+          {project.status === "awaiting_payment" && order && order.paymentMode !== "simulated" ? (
             <>
               <ReceiptUpload action={bind(founderReceiptUploadAction)} />
               {receipt && receipt.analysisStatus !== "pending" ? (

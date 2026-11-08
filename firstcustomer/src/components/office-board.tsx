@@ -21,7 +21,7 @@ const rooms: Record<DepartmentKey, { scene: string; name: string }> = {
   growth: { scene: "100% 100%", name: AGENT_LABELS.growth },
 };
 
-type ProjectBrief = { id: string; productName: string; status: string; paused: boolean; productPlan?: ProjectPlan; requiresPayment?: boolean; isOwnProduct?: boolean; failedFrom?: string | null };
+type ProjectBrief = { id: string; productName: string; status: string; paused: boolean; productPlan?: ProjectPlan; requiresPayment?: boolean; isOwnProduct?: boolean; failedFrom?: string | null; proAccessSource?: string | null };
 export type DeskItem = { id: string; title: string; action: string; href: string };
 
 const activeRoom: Partial<Record<ProjectStatus, DepartmentKey>> = {
@@ -65,6 +65,8 @@ export function OfficeBoard({
     runningAgents: departments.filter((item) => item.state === "running").map((item) => roomAgent[item.key]),
     quoteRequired: usesQuoteFlow({ requiresPayment: project.requiresPayment ?? false, isOwnProduct: project.isOwnProduct ?? false, productPlan: project.productPlan }), quotePaid,
     audience: "operator", operatorTurn: todo.some((item) => item.id === project.id),
+    selfServicePro: project.proAccessSource === "account" || project.proAccessSource === "simulation",
+    projectCheckout: project.proAccessSource === "simulation" && project.status === "awaiting_payment",
     reportReady: project.status === "reviewing" && departments.some((item) => item.key === "growth" && item.state === "awaiting_approval"),
     receiptUploaded: project.status === "awaiting_payment" && todo.some((item) => item.id === project.id), failedFrom: project.failedFrom } : undefined;
   const viewControl = listMode

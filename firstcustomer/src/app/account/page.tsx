@@ -20,6 +20,7 @@ import { formatDateTime } from "@/lib/format";
 import { listTrialProjects, trialProjectTokens } from "@/lib/trial-projects";
 import { saveTrialProjectsAndReturnAction } from "./actions";
 import { customerMembership } from "@/workflow/membership";
+import { customerPurchasedProjects } from "@/workflow/purchases";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [locale, session] = await Promise.all([getLocale(), getCustomerSession()]);
@@ -31,11 +32,11 @@ export default async function AccountPage() {
   const db = getDb();
   const membership = await customerMembership(db, session?.user.id);
   if (membership.plan === "pro") redirect("/account/pro");
-  const [owned, trial] = await Promise.all([session ? db.select({
+  const [owned, trial, purchased] = await Promise.all([session ? db.select({
     id: projects.id, productName: projects.productName, status: projects.status,
     paused: projects.paused, updatedAt: projects.updatedAt,
   }).from(projects).where(eq(projects.customerId, session.user.id)).orderBy(desc(projects.updatedAt)) : Promise.resolve([]),
-  listTrialProjects(db, tokens)]);
+  listTrialProjects(db, tokens), session ? customerPurchasedProjects(db, session.user.id) : Promise.resolve([])]);
   const visible = [...owned.map((project) => ({ ...project, token: accountProjectToken(project.id) })), ...trial]
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
@@ -49,8 +50,8 @@ export default async function AccountPage() {
           actions={visible.length ? <Link href="/projects/new" className="btn btn--primary btn--lg"><Plus size={16} aria-hidden="true" /><T>新建出海项目</T></Link> : undefined}
         />
         {session ? <section className="notice flex-wrap items-center justify-between">
-          <div><strong>Free{membership.testAccount ? <> · <T>测试账号</T></> : null}</strong><p className="m-0"><T>免费分析出海机会。升级 Pro 后可使用定位、英文页面与增长复盘模块。</T></p></div>
-          <Link href="/account/upgrade" className="btn btn--primary btn--sm"><T>了解 Pro</T></Link>
+          <div><strong><T>{purchased.length ? "Pro · 项目权益" : "Free"}</T></strong><p className="m-0"><T>{purchased.length ? "已购买的项目可使用 Pro 模块，新项目可先免费分析出海机会。" : "免费分析出海机会。升级 Pro 后可使用定位、英文页面与增长复盘模块。"}</T></p></div>
+          <Link href={purchased.length ? "/account/pro" : "/account/upgrade"} className="btn btn--primary btn--sm"><T>{purchased.length ? "进入 Pro 工作台" : "了解 Pro"}</T></Link>
         </section> : null}
         {!session ? (
           <details className="notice notice--fold rise" style={{ "--i": 1 } as CSSProperties}>

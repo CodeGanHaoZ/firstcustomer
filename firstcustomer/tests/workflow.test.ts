@@ -26,6 +26,7 @@ import {
   landingPages,
   leads,
   payments,
+  purchasePayments,
   orders,
   projectImages,
   projects,
@@ -77,6 +78,9 @@ import { hasProAccess } from "@/domain/workflow";
 import { operatingMetrics } from "@/workflow/operating-metrics";
 import { activateAccountPro, customerMembership } from "@/workflow/membership";
 import { loadOwnerDashboard } from "@/workflow/owner-dashboard";
+import { proQuote } from "@/domain/pro-pricing";
+import { assertPurchasedProjectAccess, completeProPurchase, createProPurchase, customerPurchasedProjects, projectPurchasePayment } from "@/workflow/purchases";
+import { paymentProvider, type PaymentProvider } from "@/payments/provider";
 
 let pg: EmbeddedPostgres;
 let db: Db;
@@ -1626,5 +1630,126 @@ describe("账号级 Pro 全链路", () => {
     const dashboard = await loadOwnerDashboard(db);
     expect(dashboard.pendingPaymentFen).toBe(0);
     expect(dashboard.projects.find((item) => item.id === project.id)?.testAccount).toBe(true);
+  });
+});
+
+// Real database transactions and workflow execution; no payment or model network calls.
+describe("项目 Pro 自助购买与付款校验", () => {
+  beforeEach(() => vi.stubEnv("PAYMENT_MODE", "simulated"));
+  afterEach(() => vi.unstubAllEnvs());
+  async function readyPurchase() {
+    const customerId = crypto.randomUUID();
+    await db.insert(authUsers).values({ id: customerId, email: `${customerId}@purchase.test`, name: "Project buyer" });
+    const { project } = await newProject({ customerId, productPlan: "free", isOwnProduct: false });
+    const h = harness();
+    await startResearch(db, h.enqueue, project.id); await h.drain();
+    const [ready] = await db.select().from(projects).where(eq(projects.id, project.id));
+    expect(ready.status).toBe("free_ready");
+    const quote = proQuote(ready);
+    const order = await createProPurchase(db, ready.id, quote.fingerprint);
+    const payment = (await projectPurchasePayment(db, order.id))!;
+    return { h, customerId, project: ready, order, payment, quote };
+  }
+  it("报价→付款→策略→客户确认→页面发布→复盘→交付验收全程无需老板审批", async () => {
+    const { h, project, order, payment, quote, customerId } = await readyPurchase();
+    const { project: other } = await newProject({ customerId, productPlan: "free", isOwnProduct: false });
+    expect(await statusOf(project.id)).toBe("awaiting_payment");
+    expect(order).toMatchObject({ status: "simulation_pending", quoteFen: 29900, quoteVersion: 1 });
+    expect(await completeProPurchase(db, project.id, payment.id, quote.fingerprint, h.enqueue)).toBe(true);
+    await h.drain(); expect(await statusOf(project.id)).toBe("awaiting_positioning");
+    let [current] = await db.select().from(projects).where(eq(projects.id, project.id));
+    expect((await loadProjectView(db, current)).gates.positioning.founderRequired).toBe(false);
+    expect((await customerMembership(db, customerId)).plan).toBe("free");
+    expect(await statusOf(other.id)).toBe("submitted");
+    expect((await customerPurchasedProjects(db, customerId)).map((item) => item.id)).toEqual([project.id]);
+    expect(await customerPurchasedProjects(db, crypto.randomUUID())).toEqual([]);
+    await decide(db, h.enqueue, { projectId: project.id, gate: "positioning", actor: "customer", verdict: "approve" });
+    await h.drain(); expect(await statusOf(project.id)).toBe("awaiting_publish");
+    await decide(db, h.enqueue, { projectId: project.id, gate: "publish", actor: "customer", verdict: "approve" });
+    expect(await statusOf(project.id)).toBe("collecting");
+    await startReview(db, h.enqueue, project.id, "customer"); await h.drain();
+    [current] = await db.select().from(projects).where(eq(projects.id, project.id));
+    const readiness = await workPackageReadiness(db, current);
+    expect(readiness.ready).toBe(true);
+    await deliverProject(db, project.id, readiness.stamp, "customer");
+    await acceptDelivery(db, { projectId: project.id, verdict: "approve", stamp: readiness.stamp });
+    expect(await statusOf(project.id)).toBe("delivered");
+    expect(await projectOrder(db, project.id)).toMatchObject({ status: "simulation_active", deliveryStatus: "accepted" });
+    expect(await db.select().from(decisions).where(and(eq(decisions.projectId, project.id), eq(decisions.actorRole, "founder")))).toHaveLength(0);
+    expect((await tasksOf(project.id)).some(({ agent }) => ["quote", "receipt"].includes(agent))).toBe(false);
+    expect(await db.select().from(payments)).toHaveLength(0);
+    const [page] = await db.select().from(landingPages).where(eq(landingPages.projectId, project.id));
+    await db.insert(events).values({ landingPageId: page.id, type: "visit", visitorHash: "purchase-probe" });
+    await db.insert(leads).values({ landingPageId: page.id, email: "probe@example.test" });
+    await db.insert(agentTasks).values({ projectId: project.id, agent: "research", status: "succeeded", listCostYuan: 0.2 });
+    expect(await operatingMetrics(db)).toMatchObject({ orders: 0, paid: 0, revenueFen: 0, modelCost: 0.2, growth: { visits: 0, leads: 0 } });
+  });
+  it("重复确认与并发付款只保留一个订单、一次开通和一次入队", async () => {
+    const { project, order, payment, quote } = await readyPurchase();
+    expect((await createProPurchase(db, project.id, quote.fingerprint)).id).toBe(order.id);
+    const enqueue = vi.fn(async () => {});
+    expect((await Promise.all([1, 2, 3].map(() => completeProPurchase(db, project.id, payment.id, quote.fingerprint, enqueue)))).sort()).toEqual([false, false, true]);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(await db.select().from(purchasePayments)).toHaveLength(1);
+    expect(await db.select().from(decisions).where(eq(decisions.gate, "pro_access"))).toHaveLength(1);
+  });
+  it("入队失败回滚付款校验与开通，客户可原单重试", async () => {
+    const { project, order, payment, quote, h } = await readyPurchase();
+    await expect(completeProPurchase(db, project.id, payment.id, quote.fingerprint, async () => { throw new Error("queue down"); })).rejects.toThrow("queue down");
+    expect(await statusOf(project.id)).toBe("awaiting_payment");
+    expect(await projectPurchasePayment(db, order.id)).toMatchObject({ status: "pending", reference: null, completedAt: null });
+    expect(await projectOrder(db, project.id)).toMatchObject({ status: "simulation_pending" });
+    expect(await db.select().from(decisions).where(eq(decisions.gate, "pro_access"))).toHaveLength(0);
+    expect(await completeProPurchase(db, project.id, payment.id, quote.fingerprint, h.enqueue)).toBe(true);
+  });
+  it.each(["amount", "order", "currency", "status", "payment"])("拒绝不匹配的支付结果：%s", async (mismatch) => {
+    const { project, payment, quote } = await readyPurchase();
+    const valid = paymentProvider();
+    const provider: PaymentProvider = { name: "simulated", verify: async (request) => {
+      const result = await valid.verify(request);
+      if (mismatch === "amount") return { ...result, amountFen: 1 };
+      if (mismatch === "order") return { ...result, orderId: crypto.randomUUID() };
+      if (mismatch === "payment") return { ...result, paymentId: crypto.randomUUID() };
+      if (mismatch === "status") return { ...result, status: "failed" };
+      return { ...result, currency: "USD" as "CNY" };
+    } };
+    const enqueue = vi.fn();
+    await expect(completeProPurchase(db, project.id, payment.id, quote.fingerprint, enqueue, provider)).rejects.toThrow("尚未通过校验");
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(await statusOf(project.id)).toBe("awaiting_payment");
+  });
+  it("旧报价、跨项目支付凭据、暂停状态和范围变化不能开通", async () => {
+    const { project, payment, quote } = await readyPurchase(); const enqueue = vi.fn();
+    await expect(completeProPurchase(db, project.id, crypto.randomUUID(), quote.fingerprint, enqueue)).rejects.toThrow("校验失败");
+    await expect(completeProPurchase(db, project.id, payment.id, "a".repeat(64), enqueue)).rejects.toThrow("订单已更新");
+    await db.update(projects).set({ paused: true }).where(eq(projects.id, project.id));
+    await expect(completeProPurchase(db, project.id, payment.id, quote.fingerprint, enqueue)).rejects.toThrow("暂不能");
+    await db.update(projects).set({ paused: false, requirementVersion: 2, scopeVersion: 2 }).where(eq(projects.id, project.id));
+    await expect(completeProPurchase(db, project.id, payment.id, quote.fingerprint, enqueue)).rejects.toThrow("需求版本已更新");
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+  it("未付款不执行高级任务，账号权益不能覆盖项目支付订单，关闭通道不能继续收单", async () => {
+    const { project, payment, quote, customerId } = await readyPurchase();
+    let [current] = await db.select().from(projects).where(eq(projects.id, project.id));
+    await expect(assertPurchasedProjectAccess(db, current)).rejects.toThrow("先完成");
+    await db.insert(customerMemberships).values({ customerId, plan: "pro", source: "manual" });
+    expect(await activateAccountPro(db, project.id, customerId, vi.fn())).toBe(false);
+    const model = vi.fn(stubModel); const h = harness(model);
+    await db.update(projects).set({ status: "strategizing" }).where(eq(projects.id, project.id));
+    await h.enqueue(project.id); await h.drain(); expect(model).not.toHaveBeenCalled();
+    await db.update(projects).set({ status: "awaiting_payment" }).where(eq(projects.id, project.id));
+    vi.stubEnv("PAYMENT_MODE", "disabled");
+    await expect(completeProPurchase(db, project.id, payment.id, quote.fingerprint, vi.fn())).rejects.toThrow("暂不可用");
+    [current] = await db.select().from(projects).where(eq(projects.id, project.id));
+    expect(hasProAccess(current, await projectOrder(db, project.id))).toBe(false);
+  });
+  it("只接受当前需求和当前定价的报价确认", async () => {
+    const { project } = await newProject({ productPlan: "free", isOwnProduct: false });
+    const h = harness(); await startResearch(db, h.enqueue, project.id); await h.drain();
+    const [ready] = await db.select().from(projects).where(eq(projects.id, project.id));
+    const quote = proQuote(ready);
+    vi.stubEnv("PRO_MIN_PRICE_FEN", "49900");
+    await expect(createProPurchase(db, project.id, quote.fingerprint)).rejects.toThrow("报价或需求版本已更新");
+    expect(await projectOrder(db, project.id)).toBeNull();
   });
 });

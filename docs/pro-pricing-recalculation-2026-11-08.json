@@ -1,0 +1,137 @@
+{
+  "attachment_routing": {
+    "stages": [
+      {
+        "stage": "资料解析",
+        "model": "flash",
+        "mode": "batch",
+        "token_cost_yuan": "0.0180",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.0180"
+      },
+      {
+        "stage": "市场研究",
+        "model": "flash",
+        "mode": "realtime",
+        "token_cost_yuan": "0.324",
+        "search_cost_yuan": "0.8875",
+        "subtotal_yuan": "1.2115"
+      },
+      {
+        "stage": "定位战略",
+        "model": "pro",
+        "mode": "realtime",
+        "token_cost_yuan": "0.903",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.9030"
+      },
+      {
+        "stage": "英文页面",
+        "model": "flash",
+        "mode": "realtime",
+        "token_cost_yuan": "0.301",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.3010"
+      },
+      {
+        "stage": "渠道行动",
+        "model": "flash",
+        "mode": "batch",
+        "token_cost_yuan": "0.140",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.1400"
+      },
+      {
+        "stage": "增长复盘",
+        "model": "pro",
+        "mode": "batch",
+        "token_cost_yuan": "0.3150",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.3150"
+      },
+      {
+        "stage": "报价客服",
+        "model": "flash",
+        "mode": "realtime",
+        "token_cost_yuan": "0.09648",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.09648"
+      }
+    ],
+    "subtotal_yuan": "2.98498",
+    "retry_factor": "1.25",
+    "ai_budget_yuan": "3.7312250",
+    "with_infra_5_yuan": "8.7312250"
+  },
+  "all_realtime": {
+    "stages": [
+      {
+        "stage": "资料解析",
+        "model": "flash",
+        "mode": "realtime",
+        "token_cost_yuan": "0.036",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.0360"
+      },
+      {
+        "stage": "市场研究",
+        "model": "flash",
+        "mode": "realtime",
+        "token_cost_yuan": "0.324",
+        "search_cost_yuan": "0.8875",
+        "subtotal_yuan": "1.2115"
+      },
+      {
+        "stage": "定位战略",
+        "model": "pro",
+        "mode": "realtime",
+        "token_cost_yuan": "0.903",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.9030"
+      },
+      {
+        "stage": "英文页面",
+        "model": "flash",
+        "mode": "realtime",
+        "token_cost_yuan": "0.301",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.3010"
+      },
+      {
+        "stage": "渠道行动",
+        "model": "flash",
+        "mode": "realtime",
+        "token_cost_yuan": "0.28",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.2800"
+      },
+      {
+        "stage": "增长复盘",
+        "model": "pro",
+        "mode": "realtime",
+        "token_cost_yuan": "0.630",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.6300"
+      },
+      {
+        "stage": "报价客服",
+        "model": "flash",
+        "mode": "realtime",
+        "token_cost_yuan": "0.09648",
+        "search_cost_yuan": "0.0000",
+        "subtotal_yuan": "0.09648"
+      }
+    ],
+    "subtotal_yuan": "3.45798",
+    "retry_factor": "1.25",
+    "ai_budget_yuan": "4.3224750",
+    "with_infra_5_yuan": "9.3224750"
+  },
+  "free_example": {
+    "attachment_batch_input_96k_yuan": "0.048",
+    "realtime_input_96k_yuan": "0.096",
+    "illustrative_realtime_96k_in_8k_out_3_overseas_searches_with_1_25_buffer_yuan": "0.273125",
+    "illustrative_realtime_196k_in_8k_out_3_overseas_searches_with_1_25_buffer_yuan": "0.398125"
+  },
+  "scope": "Recalculation from user attachments; estimate only, not live model usage. Search conversion assumes USD/CNY=7.1 and the attachment overseas rate, not a verified live bill."
+}
