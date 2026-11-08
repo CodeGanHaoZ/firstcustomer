@@ -10,7 +10,7 @@ export function ConclusionStatus({ provenance, subjectId, recordKey }: {
   provenance: ProjectProvenance; subjectId?: string | null; recordKey: string;
 }) {
   const conclusion = provenance.conclusions.find((row) => row.subjectId === subjectId && row.key === recordKey);
-  return <div className="flex flex-wrap items-center gap-2 text-xs">
+  return <div className="conclusion-status flex flex-wrap items-center gap-2 text-xs">
     <span className="pill pill--line"><T>结论支持程度</T>：<T>{SUPPORT_LABELS[conclusion?.support ?? "not_assessed"]}</T></span>
     {conclusion ? <a className="underline" href={`#conclusion-${conclusion.id}`}><T>查看溯源与评价理由</T></a>
       : <span className="text-muted-foreground"><T>历史结果缺少完整溯源记录</T></span>}

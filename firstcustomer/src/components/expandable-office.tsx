@@ -24,9 +24,11 @@ export function ExpandableOffice({ stations, transfer = null, focusRoom = "front
     const modal = dialog.current;
     const triggerButton = trigger.current;
     const previous = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
     modal.showModal();
-    return () => { modal.close(); document.body.style.overflow = previous; triggerButton?.focus(); };
+    return () => { modal.close(); document.body.style.overflow = previous; document.documentElement.style.overflow = previousRootOverflow; triggerButton?.focus(); };
   }, [expanded]);
   return <>
     <section className="office-peek" aria-label={en ? "Office status" : "办公室状态"}>

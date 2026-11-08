@@ -19,6 +19,6 @@ export async function ProTrial({ state, action, loginHref, guest = false, disabl
       ? en ? "Your trial is bound to this project. Return from this browser's trial workspace, or save the private project link." : "免费试用已绑定此项目。可从本浏览器的试用工作台继续，也可保存项目专属链接。"
       : en ? "This trial is saved to your account. Review the results before deciding whether to buy Pro." : "本账号试用已绑定此项目，看完结果后再决定是否购买。"}</p>
       {guest ? <Link className="btn btn--ghost btn--sm mt-4" href={loginHref}>{en ? "Save to an account and continue on other devices" : "注册保存项目，跨设备继续"}</Link> : null}</>
-      : <form action={action}><PurchaseSubmit disabled={disabled} label="领取 1 轮免费试用并开始" pendingLabel="正在开通免费试用…" /></form>}
+      : <form action={action} className="pro-trial__action"><PurchaseSubmit disabled={disabled} label="领取 1 轮免费试用并开始" pendingLabel="正在开通免费试用…" /></form>}
   </section>;
 }
