@@ -86,8 +86,8 @@ export default async function Home() {
               {copy.hero.title}
             </h1>
             <form className="hero-intake" method="get" action="/projects/new" data-reveal data-reveal-group="hero">
-              <input className="hero-intake__field" type="text" name="url" placeholder="项目链接，例如：example.com" maxLength={2048} autoComplete="url" aria-label="项目链接" />
-              <input className="hero-intake__field" type="text" name="brand" placeholder="项目名称" maxLength={500} aria-label="项目名称" />
+              <input className="hero-intake__field" type="text" name="url" placeholder={copy.hero.urlPlaceholder} maxLength={2048} autoComplete="url" aria-label={copy.hero.urlLabel} />
+              <input className="hero-intake__field" type="text" name="brand" placeholder={copy.hero.namePlaceholder} maxLength={500} aria-label={copy.hero.nameLabel} />
               <button type="submit" className="btn btn--primary btn--lg">
                 {copy.hero.cta} <ArrowRight size={16} className="arw" aria-hidden="true" />
               </button>

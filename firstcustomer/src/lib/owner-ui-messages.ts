@@ -64,4 +64,10 @@ export const OWNER_UI_MESSAGES: Readonly<Record<string, string>> = {
   "请重试；若仍失败，请检查数据库连接与迁移状态。": "Try again. If this persists, check the database connection and migrations.",
   "重新加载": "Reload", "正在读取经营数据…": "Loading business data…",
   "查看建议并记录经营决定": "Review recommendations and record a decision", "确认业务范围与服务红线": "Confirm business scope and service boundaries",
+  // 英文界面漏翻补齐（属性文案 + 可见标签）
+  "老板审核不代替外部客户确认购买服务、确认发布或验收。客户账号与项目链接不能取得内部权限。": "Owner review does not replace customer approval of purchases, publishing or acceptance. Customer accounts and project links never gain internal permissions.",
+  "等待客户完成付款，系统自动校验并开通，无需人工核款。": "Payment is verified automatically once the customer pays; no manual reconciliation is needed.",
+  "项目": "Project", "系统": "System", "等客户处理": "Awaiting customer", "报价": "Quote",
+  "待办分类": "Task categories", "待办分页": "Task pages", "项目分页": "Project pages",
+  "操作记录分页": "Audit log pages", "记录列表": "Records", "正在读取经营数据": "Loading business data",
 };

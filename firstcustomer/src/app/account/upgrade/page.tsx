@@ -12,7 +12,10 @@ import { desc, eq } from "drizzle-orm";
 import { projects } from "@/db/schema";
 import { accountProjectToken } from "@/lib/customer-project";
 
-export const metadata = { title: "Free 与 Pro · 首客 HiFirst", robots: { index: false, follow: false } };
+export async function generateMetadata() {
+  const en = (await getLocale()) === "en";
+  return { title: en ? "Free and Pro · HiFirst" : "Free 与 Pro · 首客 HiFirst", robots: { index: false, follow: false } };
+}
 
 type ComparisonRow = { label: string; free: string; pro: string };
 
@@ -47,7 +50,7 @@ export default async function UpgradePage() {
 
   return <div className="site-shell"><SiteHeader current="account" /><main className="site-main site-main--upgrade">
     <PageHead
-      eyebrow={<span className="upgrade-eyebrow"><Sparkles size={15} aria-hidden="true" /> Free / Pro 工作台选择</span>}
+      eyebrow={<span className="upgrade-eyebrow"><Sparkles size={15} aria-hidden="true" /> {en ? "Choose your Free / Pro workspace" : "Free / Pro 工作台选择"}</span>}
       title={en ? "Choose the depth of your validation" : "选择适合你的验证深度"}
       lead={en ? "Start with a free opportunity scan and try one full Pro round without signing in. Afterwards, buy three additional rounds for ¥99." : "先用 Free 找到机会，无需登录即可体验一轮完整 Pro 验证。试用后可自愿购买 ¥99 三轮套餐，不会自动收费。"}
     />

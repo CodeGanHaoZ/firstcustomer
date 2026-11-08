@@ -120,8 +120,10 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
       if (textAttachments.length) {
         const attachmentText = await Promise.all(textAttachments.map(async (file) => {
           const text = (await file.text()).slice(0, 16_000);
-          const note = /\.docx?$/i.test(file.name) ? "（Word 文件已附上，后续 Pro 资料解析会继续处理）" : "";
-          return `\n\n[附件：${file.name}]${note}\n${text}`;
+          const note = /\.docx?$/i.test(file.name)
+            ? (locale === "en" ? " (Word file attached; Pro document parsing continues later)" : "（Word 文件已附上，后续 Pro 资料解析会继续处理）") : "";
+          const label = locale === "en" ? `[Attachment: ${file.name}]` : `[附件：${file.name}]`;
+          return `\n\n${label}${note}\n${text}`;
         }));
         const last = history.at(-1);
         if (last?.role === "user") {
@@ -242,9 +244,9 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
               const totalLimit = maxTotalBytes ?? uploadPolicy.maxTotalBytes;
               const tooLarge = totalLimit > 0 && selected.reduce((sum, file) => sum + file.size, 0) > totalLimit;
               const errorMessage = invalidType || invalidSize
-                ? (attachmentTier === "pro" ? "Pro 资料支持图片、Markdown、HTML 和 Word 文件，请检查类型与大小。" : copy.imageError)
-                : tooManyImages ? (attachmentTier === "pro" ? "Pro 最多上传 50 张图片。" : copy.imageError)
-                : tooLarge ? (attachmentTier === "pro" ? "Pro 本次资料总大小不能超过 20 MB。" : copy.imageTotal) : "";
+                ? (attachmentTier === "pro" ? (locale === "en" ? "Pro materials support images, Markdown, HTML and Word files. Check the file type and size." : "Pro 资料支持图片、Markdown、HTML 和 Word 文件，请检查类型与大小。") : copy.imageError)
+                : tooManyImages ? (attachmentTier === "pro" ? (locale === "en" ? "Pro allows up to 50 images per upload." : "Pro 最多上传 50 张图片。") : copy.imageError)
+                : tooLarge ? (attachmentTier === "pro" ? (locale === "en" ? "Pro materials cannot exceed 20 MB in total for this upload." : "Pro 本次资料总大小不能超过 20 MB。") : copy.imageTotal) : "";
               // The project creation action stores image attachments in project_images. Keep document files in the chat payload only.
               const transfer = new DataTransfer();
               images.forEach((file) => transfer.items.add(file));

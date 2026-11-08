@@ -11,7 +11,10 @@ import { customerMembership } from "@/workflow/membership";
 import { enterProModuleAction } from "../actions";
 import { customerProProjects } from "@/workflow/purchases";
 
-export const metadata = { title: "Pro 工作台 · 首客 HiFirst", robots: { index: false, follow: false } };
+export async function generateMetadata() {
+  const en = (await getLocale()) === "en";
+  return { title: en ? "Pro workspace · HiFirst" : "Pro 工作台 · 首客 HiFirst", robots: { index: false, follow: false } };
+}
 
 export default async function ProWorkspace({ searchParams }: PageProps<"/account/pro">) {
   const session = await getCustomerSession();
