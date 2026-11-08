@@ -539,7 +539,12 @@ details[open] > *:not(summary) { animation: details-content-in .32s var(--ease-o
 .upgrade-plan__kicker { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .upgrade-plan__head h2 { margin: 0; color: var(--ink); font-family: var(--font-serif); font-size: clamp(2rem, 3.6vw, 2.8rem); font-weight: 400; line-height: 1; }
 .upgrade-plan__head p:not(.upgrade-plan__kicker) { max-width: 30em; margin: 12px 0 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.65; }
-.upgrade-plan__price { flex: none; color: var(--forest); font-family: var(--font-serif); font-size: 1.25rem; white-space: nowrap; }
+.upgrade-plan__price { flex: none; display: inline-flex; align-items: baseline; gap: 7px; padding: 9px 18px; border: 1px solid var(--line); border-radius: 999px; background: rgb(255 255 255 / .75); box-shadow: 0 6px 18px -12px rgb(56 59 44 / .4); white-space: nowrap; }
+.upgrade-plan__amount { font-family: var(--font-serif); font-size: 2rem; font-weight: 700; line-height: 1; letter-spacing: -.01em; color: var(--forest); }
+.upgrade-plan__unit { font-style: normal; font-size: 12.5px; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
+.upgrade-plan--pro .upgrade-plan__price { border-color: #d9c08a; background: #fdf6e7; box-shadow: 0 8px 22px -12px rgb(133 95 40 / .5); }
+.upgrade-plan--pro .upgrade-plan__amount { color: #8a5d1e; }
+.upgrade-plan--pro .upgrade-plan__unit { color: #a07a3c; }
 .upgrade-plan--pro .upgrade-plan__price { color: #8a6432; }
 .upgrade-plan__signal { display: flex; align-items: center; gap: 9px; margin-top: 22px; color: var(--forest); font-size: var(--fs-meta); font-weight: 700; }
 .upgrade-plan--pro .upgrade-plan__signal { color: #8a6432; }
@@ -598,7 +603,8 @@ details[open] > *:not(summary) { animation: details-content-in .32s var(--ease-o
 @media (max-width: 420px) {
   .upgrade-plan { padding: 22px 18px; border-radius: 18px; }
   .upgrade-plan__head { gap: 10px; }
-  .upgrade-plan__price { font-size: 1.05rem; }
+  .upgrade-plan__price { padding: 7px 14px; }
+  .upgrade-plan__amount { font-size: 1.65rem; }
   .upgrade-plan__ribbon { top: 14px; right: 14px; font-size: 10px; }
   .upgrade-comparison { padding: 18px 14px; border-radius: 18px; }
 }

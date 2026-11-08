@@ -62,7 +62,7 @@ export default async function UpgradePage() {
       <article className="upgrade-plan upgrade-plan--free rise" style={{ "--i": 1 } as React.CSSProperties}>
         <div className="upgrade-plan__head">
           <div><p className="upgrade-plan__kicker">01 · {en ? "Explore" : "探索阶段"}</p><h2>Free</h2><p>{en ? "Find the first credible opportunity before committing to delivery." : "先把机会看清楚，再决定是否进入交付。"}</p></div>
-          <span className="upgrade-plan__price">¥0</span>
+          <span className="upgrade-plan__price"><b className="upgrade-plan__amount">¥0</b><i className="upgrade-plan__unit">{en ? "free to start" : "免费开始"}</i></span>
         </div>
         <div className="upgrade-plan__signal"><Search size={17} aria-hidden="true" /><span>{en ? "Best for opportunity discovery" : "适合先做机会判断"}</span></div>
         <ul className="upgrade-feature-list">{freeFeatures.map((feature) => <li key={feature}><Check size={16} aria-hidden="true" /><span>{feature}</span></li>)}</ul>
@@ -73,7 +73,7 @@ export default async function UpgradePage() {
         <div className="upgrade-plan__ribbon">{en ? "For real validation" : "面向真实验证"}</div>
         <div className="upgrade-plan__head">
           <div><p className="upgrade-plan__kicker">02 · {en ? "Execute" : "执行阶段"}</p><h2>Pro</h2><p>{en ? "Turn a promising opportunity into a validation package your team can act on." : "把有潜力的机会推进成团队可以执行的验证方案。"}</p></div>
-          <span className="upgrade-plan__price">{en ? "¥99 / 3 rounds" : "¥99 / 3 轮"}</span>
+          <span className="upgrade-plan__price"><b className="upgrade-plan__amount">¥99</b><i className="upgrade-plan__unit">{en ? "/ 3 rounds" : "/ 3 轮"}</i></span>
         </div>
         <div className="upgrade-plan__signal"><Layers3 size={17} aria-hidden="true" /><span>{en ? "Deeper reasoning and more deliverables" : "更深推理与完整交付链路"}</span></div>
         <ul className="upgrade-feature-list">{proFeatures.map((feature) => <li key={feature}><Check size={16} aria-hidden="true" /><span>{feature}</span></li>)}</ul>
