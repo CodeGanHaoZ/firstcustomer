@@ -12,9 +12,10 @@ export function LumiWelcome({ paused, locale = "zh" }: { paused: boolean; locale
   return (
     <div className="brand-welcome-shell" data-open={paused ? "" : undefined}>
       <Dialog.Trigger className="brand-welcome">
-        <span className="brand-welcome-kicker"><i aria-hidden="true" />LUMI / FRONT DESK</span>
         <span className="brand-welcome-orbit brand-welcome-orbit--one" aria-hidden="true" />
         <span className="brand-welcome-orbit brand-welcome-orbit--two" aria-hidden="true" />
+        <span className="brand-welcome-chip brand-welcome-chip--left" aria-hidden="true">MI MO AI <b>·</b> 6 AGENTS</span>
+        <span className="brand-welcome-chip brand-welcome-chip--right" aria-hidden="true">FIRST CUSTOMER LAB</span>
         <Image className="brand-welcome-rabbit" src={rabbit} alt="" width={640} height={640} unoptimized />
         <span className="brand-welcome-caption">
           <strong lang="en">{BRAND.mascotName}</strong><span>{locale === "en" ? "HiFirst office · Front desk" : "首客办公室 · 前台"}</span>
