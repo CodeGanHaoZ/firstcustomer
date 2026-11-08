@@ -1,12 +1,14 @@
 import { translateUi } from "@/lib/ui-translation";
 import type { Metadata } from "next";
 import { BRAND } from "@/lib/brand";
+import { AmbientMotion } from "@/components/ambient-motion";
 import { PageTransition } from "@/components/page-transition";
 import { LocaleProvider } from "@/components/locale-provider";
 import { getLocale } from "@/lib/locale-server";
 import { localeTag } from "@/lib/locale";
 import "./globals.css";
 import "./editorial.css";
+import "./ambient.css";
 import "./site.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,7 +24,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang={localeTag(locale)} data-scroll-behavior="smooth" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <LocaleProvider locale={locale}><PageTransition />{children}</LocaleProvider>
+        <LocaleProvider locale={locale}><AmbientMotion /><PageTransition />{children}</LocaleProvider>
       </body>
     </html>
   );

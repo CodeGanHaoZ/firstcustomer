@@ -43,7 +43,7 @@ export default async function AccountPage() {
   return (
     <div className="site-shell">
       <SiteHeader current="account" />
-      <main className="site-main">
+      <main className="site-main site-main--workspace">
         <PageHead
           eyebrow={session ? <span className="normal-case tracking-normal">{session.user.email}</span> : undefined}
           title={<T>{session ? "我的项目" : "试用工作台"}</T>}

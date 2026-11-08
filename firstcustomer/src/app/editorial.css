@@ -941,7 +941,7 @@ main .container,
 
 [data-reveal] {
   opacity: 0;
-  transform: translateY(22px);
+  transform: translateY(22px) scale(0.988);
   filter: blur(3px);
   transition: opacity var(--dur-slow) var(--ease-out),
     transform var(--dur-slow) var(--ease-out), filter var(--dur-slow) var(--ease-out);
@@ -1155,6 +1155,7 @@ main .container,
 }
 .brand-welcome-shell[data-open] .brand-welcome-rabbit {
   backface-visibility: hidden;
+  animation: none !important;
   will-change: auto;
 }
 

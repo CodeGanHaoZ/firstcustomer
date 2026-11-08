@@ -6,7 +6,7 @@
 .lumi-guide-title { flex: none; margin-bottom: 24px; }
 .lumi-guide-title h1 { font-size: 28px; font-weight: 700; line-height: 1.3; letter-spacing: -.025em; }
 .lumi-guide-title > p { color: var(--muted-foreground); max-width: 68ch; font-size: 14px; line-height: 1.8; margin-top: 8px; }
-.lumi-guide-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 40px; flex: 1; min-height: 0; }
+.lumi-guide-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 350px); gap: clamp(24px, 4vw, 48px); flex: 1; min-height: 0; }
 .lumi-guide-thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .lumi-guide-scroll { overflow-y: auto; min-height: 0; flex: 1; padding: 8px 20px 24px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; overscroll-behavior: contain; }
 .lumi-guide-log { display: grid; gap: 26px; }
@@ -53,7 +53,8 @@
 .lumi-guide-attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
 .lumi-guide-attachments > span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 85%; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px; }
 .lumi-guide-attachments > button { display: grid; place-items: center; width: 36px; height: 36px; cursor: pointer; }
-.lumi-guide-brief { min-width: 0; overflow-y: auto; scrollbar-width: thin; }
+.lumi-guide-sidebar { display: grid; align-content: start; gap: 18px; min-width: 0; overflow-y: auto; scrollbar-width: thin; padding-inline-end: 2px; }
+.lumi-guide-brief { min-width: 0; }
 .lumi-guide-brief details { border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
 .lumi-guide-brief summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 18px; font-size: 14px; font-weight: 650; list-style: none; cursor: pointer; }
 .lumi-guide-brief summary::-webkit-details-marker { display: none; }
@@ -75,11 +76,38 @@
 .lumi-intake-page :is(a,button,summary,input):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .lumi-guide-spinner { animation: lumi-guide-spin 1s linear infinite; }
 @keyframes lumi-guide-spin { to { transform: rotate(360deg); } }
+
+/* 右侧 Agent 协作预览：让 Lumi 对话、办公室动作和确认后的分析流程同时可见。 */
+.lumi-guide-agent-rail { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--paper-2); }
+.lumi-guide-agent-rail__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.lumi-guide-agent-rail__head .eyebrow { margin: 0 0 5px; font-size: 10px; }
+.lumi-guide-agent-rail__head h2 { margin: 0; font-family: var(--font-serif); font-size: 1.22rem; line-height: 1.3; font-weight: 400; color: var(--ink); }
+.lumi-guide-agent-live { display: inline-flex; align-items: center; gap: 5px; flex: none; color: var(--forest); font-size: 10px; font-weight: 700; white-space: nowrap; }
+.lumi-guide-agent-live i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: live-dot 1.6s ease-in-out infinite; }
+.lumi-guide-agent-rail__intro { margin: 10px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.lumi-guide-office { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #bea87e; }
+.lumi-guide-office .office-stage { padding: 0; background: transparent; }
+.lumi-guide-office .office-stage-bar, .lumi-guide-office .office-motion-note, .lumi-guide-office .office-pan-hint { display: none; }
+.lumi-guide-office .office-map-viewport { overflow: hidden; border-radius: 0; background: #bea87e; }
+.lumi-guide-office .office-map { min-width: 0; width: 100%; }
+.lumi-guide-office .office-map-label { padding: .2rem .28rem; border-radius: 5px; font-size: .52rem; }
+.lumi-guide-office .office-map-label small { font-size: .46rem; }
+.lumi-guide-office .office-map-label i { width: 5px; height: 5px; }
+.lumi-guide-agent-flow { display: grid; gap: 7px; margin: 14px 0 0; padding: 0; list-style: none; }
+.lumi-guide-agent-flow li { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--faint); }
+.lumi-guide-agent-flow li[data-active="true"] { color: var(--forest); }
+.lumi-guide-agent-flow li[data-done="true"] { color: var(--muted); }
+.lumi-guide-agent-flow__icon { display: grid; flex: none; place-items: center; width: 20px; height: 20px; border: 1px solid currentColor; border-radius: 50%; }
+.lumi-guide-agent-flow__copy { display: grid; min-width: 0; flex: 1; gap: 1px; }
+.lumi-guide-agent-flow__copy strong { overflow: hidden; color: inherit; font-size: 11px; font-weight: 650; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.lumi-guide-agent-flow__copy small { color: var(--faint); font-size: 10px; line-height: 1.3; }
+.lumi-guide-agent-flow li > svg { flex: none; color: var(--line-strong); }
+.lumi-guide-agent-tier { margin: 13px 0 0; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.65; }
 @media (max-width: 999px) {
   .lumi-intake-page { padding: 18px 20px 14px; }
   .lumi-guide-workspace { display: flex; flex-direction: column; gap: 14px; }
   .lumi-guide-thread { flex: 1; }
-  .lumi-guide-brief { flex: none; max-height: min(24dvh, 200px); }
+  .lumi-guide-sidebar { flex: none; max-height: min(24dvh, 200px); overflow-y: auto; }
   .lumi-guide-scroll { padding-inline-end: 6px; }
   .lumi-guide-title h1 { font-size: 1.75rem; }
   .lumi-guide-brief summary { padding: 12px 16px; }
@@ -94,6 +122,8 @@
   .lumi-guide-review-actions .lumi-guide-confirm { width: 100%; }
   .lumi-guide-composer { padding: 10px; }
   .lumi-guide-footnote { font-size: 10px; }
+  .lumi-guide-agent-rail { padding: 14px; }
+  .lumi-guide-agent-rail__head h2 { font-size: 1.08rem; }
   .lumi-guide-starters button, .lumi-guide-choices button { font-size: 13px; padding: 10px 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .lumi-guide-spinner { animation: none; } }

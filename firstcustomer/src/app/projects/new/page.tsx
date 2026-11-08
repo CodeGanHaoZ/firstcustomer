@@ -3,6 +3,7 @@ import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { hostedUploadLimit } from "@/lib/uploads";
 import { createProjectAction } from "./actions";
 import "./intake.css";
+import "../../admin/office.css";
 
 export default async function NewProjectPage({ searchParams }: PageProps<"/projects/new">) {
   const { error, url, brand } = await searchParams;
@@ -12,7 +13,7 @@ export default async function NewProjectPage({ searchParams }: PageProps<"/proje
     <div className="lumi-intake-shell">
       <SiteHeader current="new" />
       <main className="lumi-intake-page">
-        <LumiProjectIntake action={createProjectAction} maxTotalBytes={hostedUploadLimit} serverError={error ? String(error) : undefined} initialUrl={initialUrl} initialBrand={initialBrand} />
+        <LumiProjectIntake action={createProjectAction} maxTotalBytes={hostedUploadLimit} serverError={error ? String(error) : undefined} initialUrl={initialUrl} initialBrand={initialBrand} attachmentTier="free" />
       </main>
       <SiteFooter />
     </div>
