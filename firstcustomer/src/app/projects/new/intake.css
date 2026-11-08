@@ -178,10 +178,21 @@
 .lumi-guide-parade { position: relative; display: grid; gap: 6px; padding: 16px 16px 12px; border: 1px dashed var(--line-strong); border-radius: 16px; background: var(--paper-2); animation: rise 0.72s var(--ease-out) 90ms both; }
 .lumi-guide-parade-row { position: relative; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 8px; }
 .lumi-guide-parade-row::before { content: ""; position: absolute; left: 6px; right: 6px; bottom: 6px; border-bottom: 1px dashed var(--line-strong); }
-.lumi-guide-parade-figure { position: relative; width: 36px; aspect-ratio: 3 / 4; background: url("/office/map-staff.webp") var(--portrait-x) 0 / 800% 200% no-repeat; transform: rotate(var(--rot, 0deg)) translateY(var(--lift, 0px)); transition: transform var(--dur) var(--ease); }
+.lumi-guide-parade-figure { position: relative; width: 36px; aspect-ratio: 3 / 4; background: url("/office/map-staff.webp") var(--portrait-x) 0 / 800% 200% no-repeat; transform: rotate(var(--rot, 0deg)) translateY(var(--lift, 0px)); }
 .lumi-guide-parade-figure[data-person="growth"] { clip-path: inset(0 8% 0 0); }
 .lumi-guide-parade-figure:nth-child(odd) { --rot: -3deg; --lift: -3px; }
 .lumi-guide-parade-figure:nth-child(even) { --rot: 2.5deg; }
-.lumi-guide-parade-figure:hover { transform: translateY(-6px) rotate(0deg); }
+/* 待机动画：像踮脚张望一样循环起伏，每只错开节奏避免整齐划一 */
+@keyframes parade-idle {
+  0%, 100% { transform: rotate(var(--rot, 0deg)) translateY(var(--lift, 0px)); }
+  50% { transform: rotate(calc(var(--rot, 0deg) * -0.6)) translateY(calc(var(--lift, 0px) - 5px)); }
+}
+.lumi-guide-parade-figure { animation: parade-idle 2.4s ease-in-out infinite; }
+.lumi-guide-parade-figure:nth-child(2) { animation-delay: .25s; }
+.lumi-guide-parade-figure:nth-child(3) { animation-delay: .5s; }
+.lumi-guide-parade-figure:nth-child(4) { animation-delay: .75s; }
+.lumi-guide-parade-figure:nth-child(5) { animation-delay: 1s; }
+.lumi-guide-parade-figure:nth-child(6) { animation-delay: 1.25s; }
+.lumi-guide-parade-figure:hover { animation-duration: 1.1s; }
 .lumi-guide-parade > p { color: var(--faint); font-size: 11px; line-height: 1.7; }
 @media (max-width: 999px) { .lumi-guide-parade { display: none; } }
