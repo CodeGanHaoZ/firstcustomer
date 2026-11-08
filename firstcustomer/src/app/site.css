@@ -21,24 +21,7 @@
   flex-direction: column;
   gap: clamp(20px, 2.4vw, 28px);
 }
-.site-main--workspace { position: relative; isolation: isolate; overflow: hidden; }
-.site-main--workspace::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  left: 50%;
-  right: 50%;
-  bottom: -4rem;
-  width: 100vw;
-  height: clamp(220px, 30vw, 390px);
-  transform: translateX(-50%);
-  background: url("/home/hero-landscape.webp") center bottom / cover no-repeat;
-  opacity: .34;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28%, #000 82%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 28%, #000 82%, transparent 100%);
-  pointer-events: none;
-}
-.site-main--workspace > * { position: relative; z-index: 1; }
+.site-main--workspace { position: relative; }
 .site-main--narrow { max-width: 960px; }
 
 /* 客户侧顶栏：沿用首页 .nav，补一个当前页高亮与紧凑操作区 */
