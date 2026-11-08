@@ -40,17 +40,19 @@
 .relay-chapter-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .4rem 1rem; margin: 1.9rem 0 1rem; }
 .relay-chapter-heading h4 { margin: 0; color: var(--pine); font-size: 17px; font-weight: 650; }
 .relay-chapter-heading > span { font-size: 13px; color: var(--demo-muted); line-height: 1.7; }
-.relay-chapters { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: .7rem; }
-.relay-chapters button { position: relative; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: .6rem .25rem .8rem; border: 0; border-radius: 8px; background: transparent; color: var(--pine); cursor: pointer; font: inherit; transition: background 180ms ease-out; }
+.relay-chapters { --animal-paper: #f1e4cc; --animal-paper-hover: #ead8b7; display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: .7rem; }
+.relay-chapters button { position: relative; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: .75rem .4rem .9rem; border: 1px solid transparent; border-radius: 14px; background: color-mix(in srgb, var(--animal-paper) 36%, transparent); color: var(--pine); cursor: pointer; font: inherit; transition: background 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out, transform 180ms ease-out; }
 .relay-chapters button::before { content: ""; position: absolute; z-index: 0; top: 49px; left: 55%; width: calc(100% + .7rem); height: 1px; background: var(--line-strong); }
 .relay-chapters button:last-child::before { display: none; }
-.relay-chapter-node { position: relative; width: 66px; height: 86px; background: var(--paper-2); }
+.relay-chapters button > * { position: relative; z-index: 1; }
+.relay-chapter-node { position: relative; width: 66px; height: 86px; overflow: hidden; border-radius: 10px; background: var(--animal-paper); box-shadow: 0 8px 16px -14px rgba(90,65,35,.65); }
 .relay-chapter-node .office-mini-portrait { width: 64px; transition: transform 250ms cubic-bezier(.16,1,.3,1); }
 .relay-chapter-node > span:last-child { position: absolute; right: -3px; bottom: 2px; padding: .17rem .3rem; border-radius: 3px; background: var(--pine); color: #fff8e3; font-size: 10px; font-variant-numeric: tabular-nums; }
 .relay-chapters button > strong { font-size: 15px; font-weight: 650; line-height: 1.5; margin-top: .6rem; }
 .relay-chapter-cast { display: inline-flex; align-items: center; gap: .25rem; margin: .35rem 0 .2rem; font-size: 12px; }
 .relay-chapter-artifact { color: var(--demo-muted); font-size: 12px; line-height: 1.6; text-align: center; }
-.relay-chapters button:hover, .relay-chapters button[aria-current="step"] { background: #4564470c; }
+.relay-chapters button:hover { background: var(--animal-paper-hover); border-color: rgba(183,143,83,.42); box-shadow: 0 12px 22px -18px rgba(90,65,35,.7); transform: translateY(-2px); }
+.relay-chapters button[aria-current="step"] { background: var(--animal-paper); border-color: rgba(183,143,83,.58); box-shadow: 0 14px 24px -18px rgba(90,65,35,.72); }
 .relay-chapters button[aria-current="step"] > strong { text-decoration: underline; text-underline-offset: 6px; text-decoration-color: var(--forest); }
 .relay-chapters button:hover .office-mini-portrait { transform: translateY(-3px); }
 .showcase-title-name { display: inline-flex; align-items: center; gap: .45rem; }
