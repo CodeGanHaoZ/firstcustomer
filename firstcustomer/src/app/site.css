@@ -477,6 +477,7 @@ a.tile:hover .tile__arrow { transform: translate(3px, 0); color: var(--forest); 
 .upgrade-plan--free { background: linear-gradient(160deg, #fffefb 0%, #f7f4eb 100%); }
 .upgrade-plan--pro { border-color: #d8c59d; background: linear-gradient(160deg, #f8f0df 0%, #eee4cd 100%); box-shadow: 0 24px 60px -38px rgba(133, 95, 40, .5); }
 .upgrade-plan__ribbon { position: absolute; top: 18px; right: 18px; padding: 5px 10px; border: 1px solid rgba(136, 101, 48, .2); border-radius: 999px; background: rgba(255, 251, 240, .72); color: #886530; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.upgrade-plan--pro .upgrade-plan__head { padding-top: 30px; }
 .upgrade-plan__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 24px; border-bottom: 1px solid rgba(121, 105, 72, .16); }
 .upgrade-plan__kicker { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .upgrade-plan__head h2 { margin: 0; color: var(--ink); font-family: var(--font-serif); font-size: clamp(2rem, 3.6vw, 2.8rem); font-weight: 400; line-height: 1; }
