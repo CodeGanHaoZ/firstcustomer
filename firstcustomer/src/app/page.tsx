@@ -224,7 +224,6 @@ export default async function Home() {
 
       {/* ---------- 交互层 + 悬浮回到顶部 ---------- */}
       <EditorialMotion key={locale} />
-      <BackToTop variant="float" locale={locale} />
     </div>
   );
 }

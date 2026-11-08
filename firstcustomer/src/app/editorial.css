@@ -1155,7 +1155,6 @@ main .container,
 }
 .brand-welcome-shell[data-open] .brand-welcome-rabbit {
   backface-visibility: hidden;
-  animation: none !important;
   will-change: auto;
 }
 
@@ -1381,6 +1380,10 @@ main .container,
 .backtop-float:hover { background: var(--forest); transform: translateY(-2px); }
 .backtop-float.is-show { opacity: 1; visibility: visible; transform: none; }
 .backtop-float.is-show:hover { transform: translateY(-2px); }
+/* 移动端浮钮贴近拇指热区，避开底部安全区 */
+@media (max-width: 640px) {
+  .backtop-float { width: 44px; height: 44px; inset-inline-end: 12px; inset-block-end: calc(18px + env(safe-area-inset-bottom, 0px)); }
+}
 
 .backtop-pill { color: var(--muted); }
 .backtop-pill:hover { color: var(--ink); }
