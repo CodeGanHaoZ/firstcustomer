@@ -335,6 +335,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         <ProjectConversationNotes projectId={project.id} />
         <RequirementCard project={project} history={requirements} action={customerRequirementsAction.bind(null, token)} />
         <WorkPackageList readiness={readiness} />
+        {/* TODO: 产品和竞品截图上传区暂时下线，需要时恢复这段
         <ScreenshotsSection
           images={view.images}
           hrefFor={(imageId) => `/p/${token}/images/${imageId}`}
@@ -342,6 +343,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           uploadAction={customerUploadImages.bind(null, token)}
           deleteAction={customerDeleteImage.bind(null, token)}
         />
+        */}
         <div id="research"><EvidenceSection view={view} token={token} cacheKey={`${project.id}:${project.scopeVersion}:${view.evidence.length}:${view.evidence[0]?.collectedAt instanceof Date ? view.evidence[0].collectedAt.toISOString() : ""}`} /></div>
         <ProvenanceSection provenance={view.provenance} />
 
