@@ -417,6 +417,34 @@ a.tile:hover .tile__arrow { transform: translate(3px, 0); color: var(--forest); 
 .fold__title { margin: 0; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 400; color: var(--ink); transition: color var(--dur) var(--ease); }
 .fold__hint { margin: 2px 0 0; color: var(--muted); font-size: var(--fs-meta); }
 .fold__body { padding: 0 clamp(18px, 2.4vw, 28px) clamp(18px, 2.4vw, 26px); animation: rise 0.42s var(--ease-out) both; }
+details[open] > *:not(summary) { animation: details-content-in .32s var(--ease-out) both; transform-origin: top center; }
+@keyframes details-content-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@supports selector(details::details-content) {
+  details { interpolate-size: allow-keywords; }
+  details::details-content { block-size: 0; opacity: 0; overflow: clip; transition: block-size .34s var(--ease-out), opacity .24s var(--ease-out), content-visibility .34s allow-discrete; }
+  details[open]::details-content { block-size: auto; opacity: 1; }
+}
+
+/* 报告阅读层级：核心结论和候选人群更醒目，证据说明保留较轻的次级层级。 */
+#diagnosis > #diagnosis-title { margin-top: 12px; color: var(--ink); font-size: clamp(1.45rem, 2.2vw, 1.85rem); font-weight: 600; line-height: 1.55; letter-spacing: -0.01em; }
+#diagnosis > .conclusion-status { margin-top: 16px; }
+#diagnosis > .card-grid { gap: 20px; }
+#diagnosis .tile { gap: 14px; padding: clamp(20px, 2.2vw, 26px); }
+#diagnosis .tile__meta { color: var(--forest); font-size: var(--fs-meta); font-weight: 700; letter-spacing: .04em; }
+#diagnosis .tile__title { color: var(--ink); font-size: clamp(1.2rem, 1.8vw, 1.45rem); font-weight: 600; line-height: 1.45; }
+#diagnosis .tile > p.text-muted-foreground { color: var(--ink-2); font-size: var(--fs-body); line-height: 1.9; }
+#diagnosis .tile > .conclusion-status { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
+
+/* 结论状态与正文拉开距离，避免胶囊和链接黏在一起。 */
+.conclusion-status { align-items: center; column-gap: 12px; row-gap: 8px; min-height: 30px; line-height: 1.5; }
+.conclusion-status .pill { min-height: 30px; padding-inline: 11px; }
+.conclusion-status a { color: var(--muted); line-height: 1.5; text-underline-offset: 4px; }
+.conclusion-status a:hover { color: var(--forest); }
+
+/* 新用户试用卡：说明和操作按钮分层，按钮独立居中。 */
+.paper#pro-trial .meta { margin-top: 14px; line-height: 1.8; }
+.paper#pro-trial .pro-trial__action { display: flex; justify-content: center; margin-top: 20px; }
+.paper#pro-trial .pro-trial__action .btn { min-width: 220px; justify-content: center; }
 .counter-searches__title { display: inline-flex; align-items: center; gap: 9px; }
 .counter-searches__count { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding-inline: 6px; border-radius: var(--r-pill); background: var(--wait-bg); color: #8a6328; font-family: var(--font-sans); font-size: 11px; font-weight: 700; }
 .counter-searches-list { display: grid; gap: 10px; margin: 0; list-style: none; }
@@ -434,6 +462,9 @@ a.tile:hover .tile__arrow { transform: translate(3px, 0); color: var(--forest); 
 @media (max-width: 640px) {
   .counter-search-item { grid-template-columns: 30px minmax(0, 1fr); align-items: start; }
   .counter-search-item__result { grid-column: 2; justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  details[open] > *:not(summary) { animation: none; }
 }
 
 /* ---------- 提示条 ---------- */
@@ -453,6 +484,9 @@ a.tile:hover .tile__arrow { transform: translate(3px, 0); color: var(--forest); 
 .notice--fail { background: var(--fail-bg); border-color: transparent; color: var(--fail); }
 .notice--ok { background: var(--ok-bg); border-color: transparent; color: #335a36; }
 .notice svg { flex: none; margin-top: 3px; }
+/* 带操作按钮的提示条：文字与按钮水平居中对齐（不依赖 Tailwind 工具类覆盖） */
+.notice--row { flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.notice--row svg { margin-top: 0; }
 /* 可收起的提示条：默认折叠，一行摘要 + 展开正文 */
 .notice--fold { display: block; padding: 0; }
 .notice--fold > summary {

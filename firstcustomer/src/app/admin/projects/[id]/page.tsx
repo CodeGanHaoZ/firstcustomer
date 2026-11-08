@@ -175,7 +175,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         eyebrow={<Link className="link-u" href="/admin"><T>返回经营台</T></Link>}
         actions={<a className="btn btn--ghost btn--sm" href="#deliverables"><T>查看交付清单</T></a>} />
       {customerHref ? (
-        <div className="notice notice--ok flex-wrap items-center justify-between">
+        <div className="notice notice--ok notice--row">
           <ClearProjectDraft intake="admin" />
           <p className="m-0"><T>项目已创建。请将专属链接发给客户，链接将在此处显示 10 分钟。</T></p>
           <Link prefetch={false} href={customerHref} className="btn btn--primary btn--sm"><T>打开客户专属链接</T></Link>
