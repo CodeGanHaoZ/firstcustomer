@@ -4,12 +4,13 @@ import { T } from "@/components/ui-text";
 import type { PositioningOption, VisionOutput } from "@/agents/schemas";
 import { ImageUploadInput } from "@/components/image-upload-input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { GRADE_LABELS, type Grade } from "@/domain/evidence";
 import { QUOTE_STATUS_LABELS } from "@/domain/provenance";
 import { ConclusionStatus } from "@/components/provenance-details";
+import { AgentByline } from "@/components/agent-byline";
 import { STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { safeHref } from "@/lib/request";
@@ -317,6 +318,7 @@ export function EvidenceSection({ view }: { view: ProjectView }) {
     <Card>
       <CardHeader>
         <CardTitle><T>市场证据</T></CardTitle>
+        <CardAction><AgentByline person="research" /></CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         <h3 className="eyebrow m-0"><T>支持证据</T> · {support.length}</h3>
@@ -355,6 +357,7 @@ export function PositioningSection({ view }: { view: ProjectView }) {
     <Card>
       <CardHeader>
         <CardTitle><T>定位方案（第 </T>{positioning.version}<T> 版）</T></CardTitle>
+        <CardAction><AgentByline person="strategy" /></CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 text-sm">
         <p>{positioning.rationale}</p>
@@ -410,6 +413,7 @@ export function PageSection({ view, previewHref }: { view: ProjectView; previewH
     <Card>
       <CardHeader>
         <CardTitle><T>英文页面和渠道（第 </T>{page.version}<T> 版）</T></CardTitle>
+        <CardAction><AgentByline person="launch" /></CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 text-sm">
         <p>
@@ -491,6 +495,7 @@ export function GrowthSection({ view }: { view: ProjectView }) {
     <Card>
       <CardHeader>
         <CardTitle><T>增长数据和复盘</T></CardTitle>
+        <CardAction><AgentByline person="growth" /></CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 text-sm">
         {report?.feedback.length ? (

@@ -40,17 +40,26 @@
 .office-fullscreen__scene .office-stage { padding: 0; }
 .office-fullscreen__scene .office-map { min-width: 680px; }
 .customer-workspace-main { max-width: 1400px; }
-.customer-project-layout { display: grid; grid-template-columns: minmax(320px, .85fr) minmax(0, 1.15fr); gap: 36px; align-items: start; }
+.customer-project-layout { display: grid; grid-template-columns: minmax(320px, .85fr) minmax(0, 1.15fr); gap: clamp(32px, 4vw, 56px); align-items: start; }
 .customer-project-activity, .customer-project-content { min-width: 0; }
-.customer-project-content { border-inline-start: 1px solid var(--line); padding-inline-start: 32px; }
-.customer-project-content > .workspace-content-head { margin-bottom: 24px; }
-.workspace-report-links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+/* 模块呼吸感：左右两栏各自成网格，纸卡之间留出明确间隔 */
+.customer-project-activity { display: grid; gap: 28px; align-content: start; }
+.customer-project-content { display: grid; gap: 44px; align-content: start; border-inline-start: 1px solid var(--line); padding-inline-start: 32px; }
+.customer-project-content > .workspace-content-head { margin-bottom: 0; }
+.workspace-report-links { display: flex; flex-wrap: wrap; gap: 8px 20px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .workspace-report-links a { display: inline-flex; align-items: center; min-height: 36px; color: var(--forest); font-size: 14px; text-underline-offset: 5px; }
 .workspace-report-links a:hover { text-decoration: underline; }
-.customer-project-content .card-grid { grid-template-columns: minmax(0, 1fr); }
-.customer-project-content .paper { padding: 24px; }
+.customer-project-content .card-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.customer-project-content .paper { padding: 28px; }
 .customer-project-activity .office-peek { border-top: 0; padding-top: 0; }
 .customer-project-activity .paper__head { flex-wrap: wrap; }
+
+/* 经手 Agent 署名：小肖像 + 名字 + 职责，纸感虚线胶囊 */
+.agent-byline { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 4px 12px 4px 7px; border: 1px dashed var(--line-strong); border-radius: 999px; background: var(--paper-2); }
+.agent-byline__portrait { width: 22px; aspect-ratio: 3 / 4; background: url("/office/staff.webp") var(--portrait-x) var(--portrait-y) / 400% 200% no-repeat; }
+.agent-byline__portrait[data-person="growth"] { clip-path: inset(0 8% 0 0); }
+.agent-byline__name { color: var(--ink-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.agent-byline__role { color: var(--faint); font-size: 11px; white-space: nowrap; }
 @media (max-width: 999px) {
   .lumi-guide-workspace { gap: 0; }
   .workspace-mobile-tabs { display: flex; flex: none; gap: 24px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
@@ -58,8 +67,9 @@
   .workspace-mobile-tabs button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--forest); }
   .lumi-guide-workspace[data-view="conversation"] .lumi-guide-sidebar, .lumi-guide-workspace[data-view="content"] .lumi-guide-thread { display: none; }
   .lumi-guide-sidebar { flex: 1; min-height: 0; max-height: none; border: 0; padding: 0; }
-  .customer-project-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .customer-project-content { border: 0; padding: 0; }
+  .customer-project-layout { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .customer-project-content { display: grid; gap: 28px; border: 0; padding: 0; }
+  .customer-project-content .paper { padding: 22px; }
   .office-fullscreen { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); padding: 16px; }
   .office-fullscreen__header { align-items: start; gap: 12px; }
   .office-fullscreen__header h2 { font-size: 24px; }

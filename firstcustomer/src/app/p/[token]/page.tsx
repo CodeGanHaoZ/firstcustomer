@@ -19,6 +19,7 @@ import { Decide } from "@/components/decide";
 import { SceneFooter, SiteHeader } from "@/components/site-chrome";
 import { PaymentCodeImage, ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
 import { ExpandableOffice } from "@/components/expandable-office";
+import { AgentByline } from "@/components/agent-byline";
 import { customerOfficeStations, officeGuidance, type OfficeGuideInput } from "@/domain/office-guide";
 import { ClearProjectDraft } from "@/components/project-draft";
 import { ProjectConversationNotes } from "@/components/project-conversation-notes";
@@ -297,7 +298,10 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           </nav>
         {view.diagnosis ? (
           <section id="diagnosis" className="paper scroll-mt-24 rise" aria-labelledby="diagnosis-title">
-            <p className="eyebrow m-0"><T>出海机会报告</T></p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="eyebrow m-0"><T>出海机会报告</T></p>
+              <AgentByline person="research" />
+            </div>
             <h2 id="diagnosis-title" className="paper__title mt-1 max-w-[30em]">{view.diagnosis.summary}</h2>
             <ConclusionStatus provenance={view.provenance} subjectId={view.diagnosisTaskId} recordKey="summary" />
             <ul className="card-grid mt-5">

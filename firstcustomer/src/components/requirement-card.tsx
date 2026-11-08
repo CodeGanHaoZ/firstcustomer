@@ -1,4 +1,5 @@
 import { T } from "@/components/ui-text";
+import { AgentByline } from "@/components/agent-byline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +18,7 @@ export function RequirementCard({ project, history, action }: { project: Project
   const rows = [ ["产品", current.productName], ["本次分析重点", REQUIREMENT_ROUTES[current.route]], ["现行做法", current.currentWorkflow],
     ["希望验证的结果", current.successCriteria], ["限制条件", current.constraints], ["预算和时间", current.budgetNote] ];
   return <section id="requirements" className="paper rise">
-    <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="paper__title"><T>项目需求卡</T></h2><p className="text-xs text-muted-foreground"><T>{`需求第 ${project.requirementVersion} 版 · 范围第 ${project.scopeVersion} 版`}</T></p></div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="paper__title"><T>项目需求卡</T></h2><p className="text-xs text-muted-foreground"><T>{`需求第 ${project.requirementVersion} 版 · 范围第 ${project.scopeVersion} 版`}</T></p><AgentByline person="frontdesk" /></div>
     <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">{rows.map(([label,value]) => <div key={label} className="grid content-start gap-1 rounded-xl border bg-background px-4 py-3"><dt className="eyebrow m-0"><T>{label}</T></dt><dd className="m-0 whitespace-pre-wrap break-words text-foreground"><T>{value ? label === "本次分析重点" ? <T>{value}</T> : value : <T>待确认</T>}</T></dd></div>)}</dl>
     <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{current.unknowns.length ? <><T>待明确：</T>{current.unknowns.map((item, index) => <span key={item}>{index ? ", " : ""}<T>{item}</T></span>)}. </> : <T>{keyActivated ? "关键资料已填写，密钥授权适用于当前需求范围。" : "关键资料已填写，实际范围以确认的提案为准。"}</T>}<T>补充回答会形成新版本，每个范围最多补充 3 轮。</T></p>
     {action && canReviseRequirements(project) ? <details className="fold mt-5 bg-background"><summary><span><span className="fold__title block"><T>修订需求并重新分析出海机会</T></span><span className="fold__hint block"><T>只在需要调整方向时展开</T></span></span></summary>
