@@ -70,7 +70,6 @@ export default async function UpgradePage() {
       </article>
 
       <article className="upgrade-plan upgrade-plan--pro rise" style={{ "--i": 2 } as React.CSSProperties}>
-        <div className="upgrade-plan__ribbon">{en ? "For real validation" : "面向真实验证"}</div>
         <div className="upgrade-plan__head">
           <div><p className="upgrade-plan__kicker">02 · {en ? "Execute" : "执行阶段"}</p><h2>Pro</h2><p>{en ? "Turn a promising opportunity into a validation package your team can act on." : "把有潜力的机会推进成团队可以执行的验证方案。"}</p></div>
           <span className="upgrade-plan__price"><b className="upgrade-plan__amount">¥99</b><i className="upgrade-plan__unit">{en ? "/ 3 rounds" : "/ 3 轮"}</i></span>
