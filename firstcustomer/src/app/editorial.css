@@ -1321,33 +1321,58 @@ main .container,
 .dept[open] summary .h4 { color: var(--forest); }
 .dept p { margin: 0 0 var(--sp-4); padding-right: var(--sp-6); }
 
-/* ---------- 服务边界：两栏栏线表 ---------- */
+/* ---------- 服务边界：动物发言气泡 ---------- */
 .boundaries {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-block: 1px solid var(--line);
+  gap: clamp(18px, 2.4vw, 30px) clamp(20px, 3vw, 44px);
 }
 .boundaries li {
-  padding: 20px clamp(16px, 2vw, 28px);
-  border-top: 1px solid var(--line);
+  display: grid;
+  justify-items: center;
+  gap: .1rem;
+  text-align: center;
+}
+.boundary-avatar {
+  display: block;
+  width: 54px;
+  margin-bottom: .45rem;
+  filter: drop-shadow(0 4px 8px rgba(40, 52, 38, 0.18));
+  transition: transform 250ms cubic-bezier(.16, 1, .3, 1);
+}
+.boundary-avatar .office-mini-portrait { width: 54px; }
+.boundaries li:hover .boundary-avatar { transform: translateY(-4px) rotate(-3deg); }
+.boundaries li p {
+  position: relative;
+  max-width: 34ch;
+  margin: 0;
+  padding: 14px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper-2);
   font-size: clamp(1rem, 1.15vw, 1.125rem);
-  line-height: 1.65;
+  line-height: 1.7;
   color: var(--ink-2);
 }
-.boundaries li:nth-child(-n + 2) { border-top: 0; }
-.boundaries li:nth-child(odd) { border-right: 1px solid var(--line); }
-.boundaries li::before {
-  content: "—";
-  margin-right: var(--sp-3);
-  color: var(--faint);
+/* 气泡尾巴：指向正上方的动物 */
+.boundaries li p::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--paper-2);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  border-top-left-radius: 3px;
 }
 @media (max-width: 640px) {
-  .boundaries { grid-template-columns: minmax(0, 1fr); }
-  .boundaries li { border-right: 0 !important; }
-  .boundaries li:nth-child(2) { border-top: 1px solid var(--line); }
+  .boundaries { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 }
 
 /* 分区末尾的轻量回到顶部（文字链） */

@@ -5,6 +5,8 @@ import { BrandMark } from "@/components/brand-mark";
 import { EditorialMotion } from "@/components/editorial-motion";
 import { LumiChat } from "@/components/lumi-chat";
 import { OfficeShowcase } from "@/components/office-showcase";
+import { OfficePortrait } from "@/components/office-portrait";
+import type { DepartmentKey } from "@/domain/office";
 import { ServiceJourney } from "@/components/service-journey";
 import { LanguageSwitch } from "@/components/language-switch";
 import { SiteFooter, customerTier } from "@/components/site-chrome";
@@ -19,6 +21,9 @@ import "./office-showcase.css";
 import "./office-relay.css";
 
 const WORDMARK = "首客 HIFIRST";
+
+/* 服务边界发言阵容：每条边界由一位办公室成员说出 */
+const BOUNDARY_CAST: DepartmentKey[] = ["research", "strategy", "launch", "growth"];
 
 export async function generateMetadata() {
   const locale = await getLocale();
@@ -184,8 +189,11 @@ export default async function Home() {
               </p>
             </div>
             <ul className="boundaries" data-reveal>
-              {copy.boundaries.items.map((item) => (
-                <li key={item}>{item}</li>
+              {copy.boundaries.items.map((item, index) => (
+                <li key={item}>
+                  <span className="boundary-avatar" aria-hidden="true"><OfficePortrait person={BOUNDARY_CAST[index % BOUNDARY_CAST.length]} locale={locale} /></span>
+                  <p>{item}</p>
+                </li>
               ))}
             </ul>
             <div className="section-end" data-reveal>
