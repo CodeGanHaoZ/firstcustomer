@@ -56,6 +56,10 @@
 .lumi-guide-attachments > button { display: grid; place-items: center; width: 36px; height: 36px; cursor: pointer; }
 .lumi-guide-sidebar { display: grid; align-content: start; gap: 18px; min-width: 0; overflow-y: auto; scrollbar-width: thin; padding-inline-end: 2px; }
 
+/* 外层侧栏不滚动，只让项目资料正文区域承担滚动，避免出现两根滚动条。 */
+.lumi-guide-workspace > .lumi-guide-sidebar { display: flex; flex-direction: column; align-content: normal; min-height: 0; overflow: hidden; }
+.lumi-guide-workspace > .lumi-guide-sidebar .workspace-content-body { flex: 1 1 0; min-height: 0; }
+
 /* 办公室状态放在项目标题下方，右侧内容按标题、状态、标签、正文上下展开。 */
 .lumi-guide-content-heading { display: block; }
 .lumi-guide-content-heading .office-peek { min-height: 84px; margin-top: 12px; padding-block: 8px; border-top: 1px solid var(--line); grid-template-columns: 96px minmax(0, 1fr) auto; gap: 12px; }
@@ -64,9 +68,6 @@
 .lumi-guide-content-heading .office-peek__copy > span { font-size: 11px; }
 .lumi-guide-content-heading .office-peek__expand { min-width: 42px; min-height: 52px; padding: 4px; gap: 4px; }
 .lumi-guide-content-heading .office-peek__expand span { font-size: 10px; white-space: normal; text-align: center; }
-
-/* 内容区给需求摘要更多可读空间，同时保留内部滚动，避免长内容撑破右侧工作台。 */
-.lumi-guide-sidebar .workspace-content-body { min-height: clamp(320px, 42dvh, 480px); }
 
 /* 桌面端把右侧项目内容接到标题旁的留白中，减少首屏上下断层。 */
 @media (min-width: 1000px) {
