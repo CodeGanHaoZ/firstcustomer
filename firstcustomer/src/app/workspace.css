@@ -8,6 +8,10 @@
 .workspace-content-tabs button { min-height: 44px; padding: 8px 0 12px; color: var(--muted); font-size: 14px; border-bottom: 2px solid transparent; cursor: pointer; }
 .workspace-content-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--forest); }
 .workspace-content-body { min-height: 0; flex: 1; overflow-y: auto; padding: 24px 8px 28px 0; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; overscroll-behavior: contain; }
+.workspace-content-body--notes { display: flex; flex-direction: column; gap: 16px; }
+.workspace-content-body--notes .workspace-generated { flex: 1 0 auto; min-height: 150px; margin: 0; padding: 18px 18px 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-2); }
+.workspace-content-body--notes .workspace-generated:last-child { border-bottom: 1px solid var(--line); }
+.workspace-content-body--notes > .workspace-empty { flex: 1; display: grid; align-content: center; min-height: 220px; margin: 0; }
 .workspace-content-body:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; }
 .workspace-content-body dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
 .workspace-content-body dl > div:first-child { grid-column: 1 / -1; }

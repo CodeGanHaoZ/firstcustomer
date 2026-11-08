@@ -56,13 +56,13 @@
 .lumi-guide-attachments > button { display: grid; place-items: center; width: 36px; height: 36px; cursor: pointer; }
 .lumi-guide-sidebar { display: grid; align-content: start; gap: 18px; min-width: 0; overflow-y: auto; scrollbar-width: thin; padding-inline-end: 2px; }
 
-/* 办公室状态与项目标题并排，释放底部空间给可滚动的项目内容。 */
-.lumi-guide-content-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, .95fr); align-items: center; gap: 14px; }
-.lumi-guide-content-heading .office-peek { min-height: 84px; padding-block: 8px; border-top: 0; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; }
-.lumi-guide-content-heading .office-peek__scene { width: 72px; height: 64px; border-radius: 10px; }
-.lumi-guide-content-heading .office-peek__copy p { margin-bottom: 2px; font-size: 12px; }
+/* 办公室状态放在项目标题下方，右侧内容按标题、状态、标签、正文上下展开。 */
+.lumi-guide-content-heading { display: block; }
+.lumi-guide-content-heading .office-peek { min-height: 84px; margin-top: 12px; padding-block: 8px; border-top: 1px solid var(--line); grid-template-columns: 96px minmax(0, 1fr) auto; gap: 12px; }
+.lumi-guide-content-heading .office-peek__scene { width: 96px; height: 68px; border-radius: 10px; }
+.lumi-guide-content-heading .office-peek__copy p { margin-bottom: 2px; font-size: 13px; }
 .lumi-guide-content-heading .office-peek__copy > span { font-size: 11px; }
-.lumi-guide-content-heading .office-peek__expand { min-width: 34px; min-height: 48px; padding: 4px; gap: 4px; }
+.lumi-guide-content-heading .office-peek__expand { min-width: 42px; min-height: 52px; padding: 4px; gap: 4px; }
 .lumi-guide-content-heading .office-peek__expand span { font-size: 10px; white-space: normal; text-align: center; }
 
 /* 内容区给需求摘要更多可读空间，同时保留内部滚动，避免长内容撑破右侧工作台。 */
@@ -101,8 +101,6 @@
   .lumi-guide-workspace { display: flex; flex-direction: column; gap: 14px; }
   .lumi-guide-thread { flex: 1; }
   .lumi-guide-sidebar { flex: none; max-height: min(24dvh, 200px); overflow-y: auto; }
-  .lumi-guide-content-heading { display: block; }
-  .lumi-guide-content-heading .office-peek { margin-top: 12px; }
   .lumi-guide-scroll { padding-inline-end: 6px; }
   .lumi-guide-title h1 { font-size: 1.75rem; }
   .lumi-guide-brief summary { padding: 12px 16px; }

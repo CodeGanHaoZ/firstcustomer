@@ -281,7 +281,7 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
           }}>
           {([ ["brief", "需求草稿", "Brief"], ["notes", "对话整理", "Notes"], ["report", "出海报告", "Report"] ] as const).map(([key, zh, en]) => <button key={key} type="button" role="tab" id={`intake-tab-${key}`} aria-selected={contentTab === key} aria-controls="intake-content-panel" tabIndex={contentTab === key ? 0 : -1} onClick={() => setContentTab(key)}>{locale === "en" ? en : zh}</button>)}
         </div>
-        <div id="intake-content-panel" className="workspace-content-body" role="tabpanel" aria-labelledby={`intake-tab-${contentTab}`} tabIndex={0}>
+        <div id="intake-content-panel" className={`workspace-content-body ${contentTab === "notes" ? "workspace-content-body--notes" : ""}`} role="tabpanel" aria-labelledby={`intake-tab-${contentTab}`} tabIndex={0}>
           {contentTab === "brief" ? <><IntakeSummary answers={draft.answers} /><p className="lumi-guide-readiness" data-ready={ready}>{ready ? copy.ready : copy.incomplete}</p></> : null}
           {contentTab === "notes" ? <>
             {draft.messages.some((item) => item.role === "assistant") ? draft.messages.filter((item) => item.role === "assistant").map((item, index) => <article className="workspace-generated" key={index}><h3>Lumi · {locale === "en" ? `Note ${index + 1}` : `第 ${index + 1} 次整理`}</h3><p>{item.content}</p></article>) : <p className="workspace-empty">{locale === "en" ? "Lumi’s notes will appear here as your conversation progresses." : "Lumi 在对话中整理的分析和建议，会保留在这里。"}</p>}
