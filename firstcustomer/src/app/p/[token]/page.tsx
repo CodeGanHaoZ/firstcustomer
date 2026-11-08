@@ -17,12 +17,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { ConclusionStatus, ProvenanceSection } from "@/components/provenance-details";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Decide } from "@/components/decide";
 import { SceneFooter, SiteHeader } from "@/components/site-chrome";
 import { PaymentCodeImage, ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
 import { ExpandableOffice } from "@/components/expandable-office";
+import { AgentByline } from "@/components/agent-byline";
 import { customerOfficeStations, officeGuidance, type OfficeGuideInput } from "@/domain/office-guide";
 import { ClearProjectDraft } from "@/components/project-draft";
 import { ProjectConversationNotes } from "@/components/project-conversation-notes";
@@ -161,7 +162,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           project={project}
           statusLabel={offer && project.status !== "free_ready" ? "待确认 Pro 服务" : undefined}
           eyebrow={<><T>客户项目工作台</T>{showPlan ? <> · <T>{planLabel}</T></> : null}</>}
-          actions={<Link href="/account" className="btn btn--ghost btn--sm"><T>{isAccountProjectToken(token) ? "我的项目" : "试用工作台"}</T></Link>}
+          actions={<Link href="/account" className="btn btn--back"><ArrowLeft size={15} className="arw" aria-hidden="true" /><T>{isAccountProjectToken(token) ? "我的项目" : "试用工作台"}</T></Link>}
         />
         {error ? <p className="notice notice--fail" role="alert"><T>{String(error)}</T></p> : null}
         {notice ? <p className="notice notice--ok" role="status"><T>{String(notice)}</T></p> : null}
@@ -313,7 +314,10 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           </nav>
         {view.diagnosis ? (
           <section id="diagnosis" className="paper scroll-mt-24 rise" aria-labelledby="diagnosis-title">
-            <p className="eyebrow m-0"><T>出海机会报告</T></p>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="eyebrow m-0"><T>出海机会报告</T></p>
+              <AgentByline person="research" />
+            </div>
             <h2 id="diagnosis-title" className="paper__title mt-1 max-w-[30em]">{view.diagnosis.summary}</h2>
             <ConclusionStatus provenance={view.provenance} subjectId={view.diagnosisTaskId} recordKey="summary" />
             <ul className="card-grid mt-5">
@@ -327,10 +331,20 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
               ))}
             </ul>
             {view.diagnosis.unknowns.length ? (
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className="eyebrow m-0"><T>待验证</T></span>
-                {view.diagnosis.unknowns.map((item) => <span key={item} className="pill pill--wait">{item}</span>)}
-              </div>
+              <section className="validation-waterfall" aria-labelledby="validation-waterfall-title">
+                <div className="validation-waterfall__head">
+                  <span id="validation-waterfall-title" className="eyebrow m-0"><T>待验证</T></span>
+                  <span className="validation-waterfall__count">{locale === "en" ? `${view.diagnosis.unknowns.length} open questions` : `${view.diagnosis.unknowns.length} 个问题`}</span>
+                </div>
+                <ol className="validation-waterfall__list">
+                  {view.diagnosis.unknowns.map((item, index) => (
+                    <li key={item}>
+                      <span className="validation-waterfall__index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                      <p>{item}</p>
+                    </li>
+                  ))}
+                </ol>
+              </section>
             ) : null}
           </section>
         ) : null}
@@ -347,6 +361,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         <ProjectConversationNotes projectId={project.id} />
         <RequirementCard project={project} history={requirements} action={customerRequirementsAction.bind(null, token)} />
         <WorkPackageList readiness={readiness} />
+        {/* TODO: 产品和竞品截图上传区暂时下线，需要时恢复这段
         <ScreenshotsSection
           images={view.images}
           hrefFor={(imageId) => `/p/${token}/images/${imageId}`}
@@ -354,17 +369,20 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           uploadAction={customerUploadImages.bind(null, token)}
           deleteAction={customerDeleteImage.bind(null, token)}
         />
-        <div id="research"><EvidenceSection view={view} /></div>
+        */}
+        <div id="research"><EvidenceSection view={view} token={token} cacheKey={`${project.id}:${project.scopeVersion}:${view.evidence.length}:${view.evidence[0]?.collectedAt instanceof Date ? view.evidence[0].collectedAt.toISOString() : ""}`} /></div>
         <ProvenanceSection provenance={view.provenance} />
 
         </aside>
         </div>
 
+        {/* TODO: 「你可以随时从我的项目回到这里」提示暂时下线，需要时恢复这段
         <p className="meta">
           {isAccountProjectToken(token) ? (
             <><T>你可以随时从 </T><Link href="/account" className="link-u"><T>我的项目</T></Link><T> 回到这里。</T></>
           ) : <><T>通过专属链接查看当前项目，也可从本浏览器的 </T><Link href="/account" className="link-u"><T>试用工作台</T></Link><T> 返回。请保存此链接，方便找回项目。</T></>}
         </p>
+        */}
       </main>
       <SceneFooter low />
     </div>

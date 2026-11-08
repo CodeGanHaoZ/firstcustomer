@@ -4,18 +4,20 @@ import { T } from "@/components/ui-text";
 import type { PositioningOption, VisionOutput } from "@/agents/schemas";
 import { ImageUploadInput } from "@/components/image-upload-input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { GRADE_LABELS, type Grade } from "@/domain/evidence";
 import { QUOTE_STATUS_LABELS } from "@/domain/provenance";
 import { ConclusionStatus } from "@/components/provenance-details";
+import { AgentByline } from "@/components/agent-byline";
 import { STATUS_LABELS, usesQuoteFlow, type ProjectStatus } from "@/domain/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { safeHref } from "@/lib/request";
 import type { CSSProperties, ReactNode } from "react";
 import { StatusPill } from "@/components/site-chrome";
 import { hostedUploadLimit } from "@/lib/uploads";
+import { EvidenceSummaryCard, type EvidenceDigest } from "@/components/evidence-summary-card";
 import type { Project, ProjectView } from "@/workflow/queries";
 
 const RESPONSE_LABELS: Record<string, string> = {
@@ -288,41 +290,70 @@ export function ScreenshotsSection(props: {
   );
 }
 
-export function EvidenceSection({ view }: { view: ProjectView }) {
+const hostOf = (url: string | null) => {
+  if (!url) return null;
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return null; }
+};
+
+/** 证据列表抽屉：默认展示前 3 条，其余收进「展开其余 N 条」。 */
+const EVIDENCE_VISIBLE = 3;
+
+function EvidenceCards({ items, empty }: { items: ProjectView["evidence"]; empty: string }) {
+  if (!items.length) return <p className="text-sm text-muted-foreground"><T>{empty}</T></p>;
+  const tile = (e: ProjectView["evidence"][number], i: number) => (
+    <li key={e.id} className="tile rise bg-background" style={{ "--i": Math.min(i, 8) } as CSSProperties}>
+      <div className="flex flex-wrap gap-1.5">
+        <span className="pill"><T>{KIND_LABELS[e.kind] ?? e.kind}</T></span>
+        <span className={e.status === "verified" ? "pill pill--ok" : "pill pill--wait"}><T>{QUOTE_STATUS_LABELS[e.status] ?? "摘录待核对"}</T></span>
+        {e.grade ? <span className="pill pill--line"><T>{GRADE_LABELS[e.grade as Grade]}</T></span> : null}
+      </div>
+      <p className="m-0 leading-relaxed">{e.excerpt}</p>
+      {e.numberValue ? <p className="tile__value text-[1.35rem]">{e.numberValue}{e.metric ? <span className="ms-1 font-sans text-xs text-muted-foreground">（{e.metric}）</span> : null}</p> : null}
+      <p className="tile__foot tile__meta"><SourceLink url={e.url} /><span>{formatDate(e.collectedAt)}</span></p>
+      <a className="text-sm underline" href={`#source-evidence-${e.id}`}><T>查看溯源</T></a>
+    </li>
+  );
+  const visible = items.slice(0, EVIDENCE_VISIBLE);
+  const hidden = items.slice(EVIDENCE_VISIBLE);
+  return <div className="grid gap-3">
+    <ul className="card-grid card-grid--wide">{visible.map((e, i) => tile(e, i))}</ul>
+    {hidden.length ? <details className="fold bg-background">
+      <summary><span className="fold__title"><T>展开其余 </T>{hidden.length}<T> 条证据</T></span><span className="fold__hint"><T>已按时间倒序收起，避免一次看太多</T></span></summary>
+      <ul className="card-grid card-grid--wide fold__body mt-4">{hidden.map((e, i) => tile(e, i + EVIDENCE_VISIBLE))}</ul>
+    </details> : null}
+  </div>;
+}
+
+export function EvidenceSection({ view, token, cacheKey }: { view: ProjectView; token?: string; cacheKey?: string }) {
   const support = view.evidence.filter((e) => e.stance !== "against");
   const against = view.evidence.filter((e) => e.stance === "against");
   const counterSearches = view.searches.filter((s) => s.purpose === "counter");
-  const cards = (items: ProjectView["evidence"], empty: string) =>
-    items.length ? (
-      <ul className="card-grid card-grid--wide">
-        {items.map((e, i) => (
-          <li key={e.id} className="tile rise bg-background" style={{ "--i": Math.min(i, 8) } as CSSProperties}>
-            <div className="flex flex-wrap gap-1.5">
-              <span className="pill"><T>{KIND_LABELS[e.kind] ?? e.kind}</T></span>
-              <span className={e.status === "verified" ? "pill pill--ok" : "pill pill--wait"}><T>{QUOTE_STATUS_LABELS[e.status] ?? "摘录待核对"}</T></span>
-              {e.grade ? <span className="pill pill--line"><T>{GRADE_LABELS[e.grade as Grade]}</T></span> : null}
-            </div>
-            <p className="m-0 leading-relaxed">{e.excerpt}</p>
-            {e.numberValue ? <p className="tile__value text-[1.35rem]">{e.numberValue}{e.metric ? <span className="ms-1 font-sans text-xs text-muted-foreground">（{e.metric}）</span> : null}</p> : null}
-            <p className="tile__foot tile__meta"><SourceLink url={e.url} /><span>{formatDate(e.collectedAt)}</span></p>
-            <a className="text-sm underline" href={`#source-evidence-${e.id}`}><T>查看溯源</T></a>
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <p className="text-sm text-muted-foreground"><T>{empty}</T></p>
-    );
+  const digest: EvidenceDigest | null = token && cacheKey ? {
+    key: cacheKey,
+    items: view.evidence.slice(0, 60).map((e) => ({
+      kind: KIND_LABELS[e.kind] ?? e.kind,
+      stance: e.stance === "against" ? "against" : "support",
+      status: QUOTE_STATUS_LABELS[e.status] ?? e.status,
+      grade: e.grade ? GRADE_LABELS[e.grade as Grade] ?? e.grade : null,
+      excerpt: e.excerpt.slice(0, 200),
+      source: hostOf(e.url),
+      date: e.collectedAt instanceof Date ? e.collectedAt.toISOString().slice(0, 10) : String(e.collectedAt ?? "").slice(0, 10),
+    })),
+    searches: view.searches.slice(0, 120).map((s) => ({ source: s.source, purpose: s.purpose, resultCount: s.resultCount })),
+  } : null;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle><T>市场证据</T></CardTitle>
+        <CardAction><AgentByline person="research" /></CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
+        {digest ? <EvidenceSummaryCard token={token!} digest={digest} /> : null}
         <h3 className="eyebrow m-0"><T>支持证据</T> · {support.length}</h3>
-        {cards(support, "还没有支持证据")}
+        <EvidenceCards items={support} empty="还没有支持证据" />
         <h3 className="eyebrow m-0"><T>反面证据</T> · {against.length}</h3>
-        {cards(against, "还没有找到反面证据")}
+        <EvidenceCards items={against} empty="还没有找到反面证据" />
         {counterSearches.length ? (
           <details className="fold bg-background">
             <summary><span className="fold__title"><T>反向检索记录</T></span></summary>
@@ -355,6 +386,7 @@ export function PositioningSection({ view }: { view: ProjectView }) {
     <Card>
       <CardHeader>
         <CardTitle><T>定位方案（第 </T>{positioning.version}<T> 版）</T></CardTitle>
+        <CardAction><AgentByline person="strategy" /></CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 text-sm">
         <p>{positioning.rationale}</p>
@@ -410,6 +442,7 @@ export function PageSection({ view, previewHref }: { view: ProjectView; previewH
     <Card>
       <CardHeader>
         <CardTitle><T>英文页面和渠道（第 </T>{page.version}<T> 版）</T></CardTitle>
+        <CardAction><AgentByline person="launch" /></CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 text-sm">
         <p>
@@ -491,6 +524,7 @@ export function GrowthSection({ view }: { view: ProjectView }) {
     <Card>
       <CardHeader>
         <CardTitle><T>增长数据和复盘</T></CardTitle>
+        <CardAction><AgentByline person="growth" /></CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 text-sm">
         {report?.feedback.length ? (

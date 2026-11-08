@@ -2,22 +2,27 @@
 
 import Image from "next/image";
 import { ArrowUp, Check, LoaderCircle, Paperclip, RotateCcw, Square, X } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useFormStatus } from "react-dom";
 import { useLocale } from "@/components/locale-provider";
 import { translateUi } from "@/lib/ui-translation";
 import { BRAND } from "@/lib/brand";
+import { demoMember } from "@/lib/office-showcase";
 import { INTAKE_STEPS, PUBLIC_INTAKE_DRAFT_KEY, type IntakeAnswers } from "@/lib/project-intake";
 import { attachmentHelp, INTAKE_ATTACHMENT_POLICY, isAllowedAttachment, isImageAttachment, isTextAttachment, type IntakeAttachmentTier } from "@/lib/intake-attachments";
 import { IntakeAgentRail } from "@/components/intake-agent-rail";
 import {
-  applyIntakeUpdates, INTAKE_HISTORY_LIMIT, INTAKE_MESSAGE_LIMIT, intakeReady, intakeResponseSchema,
+  applyIntakeUpdates, INTAKE_HISTORY_LIMIT, INTAKE_MESSAGE_LIMIT, intakeDisplayReply, intakeReady, intakeResponseSchema,
   LUMI_INTAKE_COPY, LUMI_INTAKE_DRAFT_KEY, parseConversationDraft, readIntakeStream,
   type IntakeConversationDraft, IntakeMessage,
 } from "@/lib/lumi-intake";
 
 const subscribe = () => () => {};
 const rabbit = "/brand/front-desk-rabbit.webp";
+const PARADE_KEYS = ["frontdesk", "research", "strategy", "finance", "launch", "growth"] as const;
+const PARADE_SPRITES: Record<(typeof PARADE_KEYS)[number], number> = {
+  frontdesk: 0, research: 1, strategy: 2, finance: 3, launch: 4, growth: 5,
+};
 type Props = { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string; initialUrl?: string; initialBrand?: string; attachmentTier?: IntakeAttachmentTier };
 
 function ConfirmProject({ disabled }: { disabled: boolean }) {
@@ -93,7 +98,7 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
   useEffect(() => {
     const area = scroll.current;
     if (area && followOutput.current) area.scrollTop = area.scrollHeight;
-  }, [draft.messages.length, busy, partial, error]);
+  }, [draft.messages.length, busy, partial, error, showConfirmation]);
   useEffect(() => {
     const area = scroll.current;
     if (!area) return;
@@ -160,9 +165,26 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
   }
 
   const canRetry = error && draft.messages.at(-1)?.role === "user";
+  const confirmation = showConfirmation ? <form id="lumi-project-submit" className="lumi-guide-confirmation" aria-label={copy.review} aria-describedby="lumi-confirmation-help" action={action} onSubmit={(event) => {
+    if (!ready || busy || error || fileError || creating || hasUnsentChanges) { event.preventDefault(); return; }
+    setCreating(true);
+  }}>
+    <p id="lumi-confirmation-help" className="lumi-guide-note">{copy.confirmPrompt}</p>
+    {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
+    <div hidden aria-hidden><label htmlFor="website">Website</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
+    {hasUnsentChanges ? <p className="lumi-guide-note" role="status">{copy.unsentChanges}</p> : null}
+    <div className="lumi-guide-review-actions">
+      <ConfirmProject disabled={creating || Boolean(fileError) || hasUnsentChanges} />
+      <button className="lumi-guide-revise" type="button" disabled={creating} onClick={() => textarea.current?.focus()}>{copy.revise}</button>
+      <button type="button" className="lumi-guide-revise" disabled={creating} onClick={() => { setContentTab("brief"); setWorkspaceView("content"); window.requestAnimationFrame(() => document.getElementById("intake-content-panel")?.focus()); }}>{locale === "en" ? "Review project content" : "查看项目内容"}</button>
+    </div>
+  </form> : null;
 
   return <div className="lumi-guide">
-    <header className="lumi-guide-title"><h1>{copy.title}</h1><p>{copy.subtitle}</p></header>
+    <header className="lumi-guide-title">
+      <h1>{locale === "en" ? <>Talk your idea through <em>with Lumi</em></> : <>和 Lumi 一起，把想法<em>聊清楚</em></>}</h1>
+      <p>{copy.subtitle}</p>
+    </header>
     <nav className="workspace-mobile-tabs" aria-label={locale === "en" ? "Workspace view" : "工作区视图"}>
       <button type="button" aria-pressed={workspaceView === "conversation"} onClick={() => setWorkspaceView("conversation")}>{locale === "en" ? "Conversation" : "对话"}</button>
       <button type="button" aria-pressed={workspaceView === "content"} onClick={() => setWorkspaceView("content")}>{locale === "en" ? "Project content" : "项目内容"}</button>
@@ -174,28 +196,13 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
             <article className="lumi-guide-message" data-role="assistant">
               <div className="lumi-guide-author"><Image src={rabbit} alt="" width={32} height={32} /><strong>{BRAND.agentName}</strong><span>{copy.speaker}</span></div>
               <p>{restored ? copy.restored : copy.greeting}</p>
+              {!draft.messages.length ? confirmation : null}
             </article>
             {draft.messages.map((message, index) => <article className="lumi-guide-message" data-role={message.role} key={index}>
               <div className="lumi-guide-author">{message.role === "assistant" ? <><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></> : <span>{copy.you}</span>}</div>
-              <p>{message.content}</p>
+              <p>{message.role === "assistant" && index === draft.messages.length - 1 ? intakeDisplayReply(message.content, draft.answers, locale) : message.content}</p>
+              {index === draft.messages.length - 1 ? confirmation : null}
             </article>)}
-            {showConfirmation ? <article className="lumi-guide-message lumi-guide-review" data-role="assistant">
-              <div className="lumi-guide-author"><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></div>
-              <p>{copy.confirmPrompt}</p>
-              <form id="lumi-project-submit" aria-label={copy.review} action={action} onSubmit={(event) => {
-                if (!ready || busy || error || fileError || creating || hasUnsentChanges) { event.preventDefault(); return; }
-                setCreating(true);
-              }}>
-                {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
-                <div hidden aria-hidden><label htmlFor="website">Website</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
-                {hasUnsentChanges ? <p className="lumi-guide-note" role="status">{copy.unsentChanges}</p> : null}
-                <div className="lumi-guide-review-actions">
-                  <button type="button" className="lumi-guide-revise" onClick={() => { setContentTab("brief"); setWorkspaceView("content"); window.requestAnimationFrame(() => document.getElementById("intake-content-panel")?.focus()); }}>{locale === "en" ? "Review project content" : "查看项目内容"}</button>
-                  <ConfirmProject disabled={creating || Boolean(fileError) || hasUnsentChanges} />
-                  <button className="lumi-guide-revise" type="button" disabled={creating} onClick={() => textarea.current?.focus()}>{copy.revise}</button>
-                </div>
-              </form>
-            </article> : null}
           </div>
           {busy || partial ? <article className="lumi-guide-message" data-role="assistant" aria-busy={busy}>
             <div className="lumi-guide-author"><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></div>
@@ -220,7 +227,7 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
               onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(draft.input); } }} />
             <div className="lumi-guide-compose-tools">
               <button type="button" onClick={() => fileInput.current?.click()} disabled={busy || creating} aria-label={copy.attach} title={attachmentHelp(attachmentTier, locale)}><Paperclip size={19} aria-hidden /></button>
-              <span>{draft.input.length ? `${draft.input.length} / ${INTAKE_MESSAGE_LIMIT}` : BRAND.agentName}</span>
+              <span>{draft.input.length ? `${draft.input.length} / ${INTAKE_MESSAGE_LIMIT}` : ""}</span>
               {busy ? <button type="button" className="lumi-guide-send" onClick={() => request.current?.abort()} aria-label={copy.stop}><Square size={15} fill="currentColor" aria-hidden /></button>
                 : <button type="submit" className="lumi-guide-send" aria-label={copy.send} disabled={!draft.input.trim() || creating || Boolean(fileError)}><ArrowUp size={20} aria-hidden /></button>}
             </div>
@@ -250,7 +257,21 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
       </section>
 
       <aside className="lumi-guide-sidebar" aria-label={locale === "en" ? "Project content" : "项目内容"}>
-        <header className="workspace-content-head"><h2>{locale === "en" ? "Project content" : "项目内容"}</h2><span>{locale === "en" ? "Updated as you talk" : "随对话整理"}</span></header>
+        <div className="lumi-guide-parade">
+          <div className="lumi-guide-parade-row" aria-hidden="true">
+            {PARADE_KEYS.map((person) => {
+              const member = demoMember(person, locale);
+              return <span key={person} className="lumi-guide-parade-figure" data-person={person} title={member.name} style={{
+                "--portrait-x": `${PARADE_SPRITES[person] * 100 / 7}%`,
+              } as CSSProperties} />;
+            })}
+          </div>
+          <p>{locale === "en" ? "Once confirmed, these six colleagues pass your project through the office." : "确认项目后，这六位动物同事会在办公室里接力处理你的需求。"}</p>
+        </div>
+        <div className="lumi-guide-content-heading">
+          <header className="workspace-content-head"><h2>{locale === "en" ? "Project content" : "项目内容"}</h2><span>{locale === "en" ? "Updated as you talk" : "随对话整理"}</span></header>
+          <IntakeAgentRail busy={busy} ready={ready} />
+        </div>
         <div className="workspace-content-tabs" role="tablist" aria-label={locale === "en" ? "Project documents" : "项目资料"}
           onKeyDown={(event) => {
             const tabs = ["brief", "notes", "report"] as const;
@@ -260,7 +281,7 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
           }}>
           {([ ["brief", "需求草稿", "Brief"], ["notes", "对话整理", "Notes"], ["report", "出海报告", "Report"] ] as const).map(([key, zh, en]) => <button key={key} type="button" role="tab" id={`intake-tab-${key}`} aria-selected={contentTab === key} aria-controls="intake-content-panel" tabIndex={contentTab === key ? 0 : -1} onClick={() => setContentTab(key)}>{locale === "en" ? en : zh}</button>)}
         </div>
-        <div id="intake-content-panel" className="workspace-content-body" role="tabpanel" aria-labelledby={`intake-tab-${contentTab}`} tabIndex={0}>
+        <div id="intake-content-panel" className={`workspace-content-body ${contentTab === "notes" ? "workspace-content-body--notes" : ""}`} role="tabpanel" aria-labelledby={`intake-tab-${contentTab}`} tabIndex={0}>
           {contentTab === "brief" ? <><IntakeSummary answers={draft.answers} /><p className="lumi-guide-readiness" data-ready={ready}>{ready ? copy.ready : copy.incomplete}</p></> : null}
           {contentTab === "notes" ? <>
             {draft.messages.some((item) => item.role === "assistant") ? draft.messages.filter((item) => item.role === "assistant").map((item, index) => <article className="workspace-generated" key={index}><h3>Lumi · {locale === "en" ? `Note ${index + 1}` : `第 ${index + 1} 次整理`}</h3><p>{item.content}</p></article>) : <p className="workspace-empty">{locale === "en" ? "Lumi’s notes will appear here as your conversation progresses." : "Lumi 在对话中整理的分析和建议，会保留在这里。"}</p>}
@@ -268,7 +289,6 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
           </> : null}
           {contentTab === "report" ? <><h3>{locale === "en" ? "Market opportunity report" : "出海机会报告"}</h3><p className="workspace-empty">{locale === "en" ? "Confirm your project to start the research. Your project workspace will show the report in this content column." : "确认创建项目后，Nori 会开始研究。报告生成后，会在项目工作台的右侧内容栏展示。"}</p></> : null}
         </div>
-        <IntakeAgentRail busy={busy} ready={ready} />
       </aside>
     </div>
   </div>;

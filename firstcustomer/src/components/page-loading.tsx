@@ -1,15 +1,50 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import { useState } from "react";
 import type { CSSProperties } from "react";
 import { useLocale } from "@/components/locale-provider";
 
 const ANIMAL_COUNT = 8;
+const ANIMAL_STORAGE_KEY = "hifirst-loading-animal";
 
-export function PageLoading({ visible = true }: { visible?: boolean }) {
+let cachedAnimal: number | null = null;
+
+function readAnimal() {
+  if (cachedAnimal !== null) return cachedAnimal;
+  if (typeof window === "undefined") return 0;
+
+  try {
+    const stored = Number(window.sessionStorage.getItem(ANIMAL_STORAGE_KEY));
+    cachedAnimal = Number.isInteger(stored) && stored >= 0 && stored < ANIMAL_COUNT
+      ? stored
+      : Math.floor(Math.random() * ANIMAL_COUNT);
+    window.sessionStorage.setItem(ANIMAL_STORAGE_KEY, String(cachedAnimal));
+  } catch {
+    // Private browsing can reject sessionStorage. Keep the in-memory value
+    // stable for the rest of this page instead of choosing on every render.
+    cachedAnimal = Math.floor(Math.random() * ANIMAL_COUNT);
+  }
+  return cachedAnimal;
+}
+
+/** Rotate once per real navigation; every loading surface then reads the same value. */
+export function advanceLoadingAnimal() {
+  const next = (readAnimal() + 1) % ANIMAL_COUNT;
+  cachedAnimal = next;
+  try {
+    window.sessionStorage.setItem(ANIMAL_STORAGE_KEY, String(next));
+  } catch {
+    // The in-memory value still keeps PageTransition and app/loading aligned.
+  }
+  return next;
+}
+
+export function PageLoading({ visible = true, animalIndex }: { visible?: boolean; animalIndex?: number }) {
   const locale = useLocale();
-  const [animal] = useState(() => Math.floor(Math.random() * ANIMAL_COUNT));
+  // Keep the server and hydrated markup identical. Navigation supplies an
+  // explicit next animal; the route-level loading boundary stays on the
+  // stable first frame underneath it.
+  const animal = animalIndex ?? 0;
   const en = locale === "en";
   return (
     <div className="page-transition-overlay" data-visible={visible ? "true" : undefined} aria-hidden={!visible}>

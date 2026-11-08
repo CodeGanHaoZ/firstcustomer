@@ -44,14 +44,19 @@ export function LumiChat({ locale = "zh" }: { locale?: Locale }) {
     } catch { /* The conversation still works without browser storage. */ }
   }
   function changeOpen(next: boolean) {
-    if (next) {
-      try {
-        const saved = parseConversationDraft(localStorage.getItem(LUMI_INTAKE_DRAFT_KEY), localStorage.getItem(PUBLIC_INTAKE_DRAFT_KEY));
-        setMessages(saved.messages); setAnswers(saved.answers); setChoices(saved.choices); setDraft(saved.input); composerInput.current = saved.input;
-      } catch { /* Keep the current conversation if storage is unavailable. */ }
-    } else request.current?.abort();
+    if (next) loadSaved();
+    else request.current?.abort();
     setOpen(next);
   }
+
+  function loadSaved() {
+    try {
+      const saved = parseConversationDraft(localStorage.getItem(LUMI_INTAKE_DRAFT_KEY), localStorage.getItem(PUBLIC_INTAKE_DRAFT_KEY));
+      setMessages(saved.messages); setAnswers(saved.answers); setChoices(saved.choices); setDraft(saved.input); composerInput.current = saved.input;
+    } catch { /* Keep the current conversation if storage is unavailable. */ }
+  }
+  // 深链 ?chat=1 直开时同样恢复历史会话（useState 初始化早于挂载，无法在这里读 storage）。
+  useEffect(() => { if (open && !messages.length) loadSaved(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, [open]);
 
   /* 弹窗吸附到右侧兔子卡片：同一次 getBoundingClientRect 直接给出 left/top/width/height，
      避免用 right 反算时「包含块宽度」与「视口宽度」不一致造成的十几像素露边。 */
@@ -184,13 +189,14 @@ export function LumiChat({ locale = "zh" }: { locale?: Locale }) {
                   <span className="sr-only">{role === "user" ? copy.user : `${BRAND.mascotName} ${copy.said}`}</span>{content}
                 </p>
               ))}
+              {/* 流式回复与等待提示放进同一个 grid：与上一条消息保持一致间距，避免贴住用户气泡 */}
+              {partial ? <p className="lumi-chat-message">{partial}</p> : pending ? <p className="lumi-chat-status" role="status"><LoaderCircle size={15} aria-hidden="true" /> {BRAND.mascotName} {copy.replying}</p> : null}
             </div>
             {!messages.length && (
               <div className="lumi-chat-starters" aria-label={copy.starters}>
                 {starters.map(({ question }) => <button key={question} type="button" onClick={() => send(question)}>{question}</button>)}
               </div>
             )}
-            {partial ? <p className="lumi-chat-message">{partial}</p> : pending ? <p className="lumi-chat-status" role="status"><LoaderCircle size={15} aria-hidden="true" /> {BRAND.mascotName} {copy.replying}</p> : null}
             {!pending && !intakeReady(answers) && choices.length ? <div className="lumi-chat-starters" aria-label={copy.starters}>{choices.map((choice) => <button key={choice.value} type="button" onClick={() => send(choice.value)}>{choice.label}</button>)}</div> : null}
             {error && (
               <div className="lumi-chat-retry">
