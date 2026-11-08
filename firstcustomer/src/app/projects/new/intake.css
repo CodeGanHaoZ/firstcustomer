@@ -71,7 +71,8 @@
 
 /* 桌面端把右侧项目内容接到标题旁的留白中，减少首屏上下断层。 */
 @media (min-width: 1000px) {
-  .lumi-guide-sidebar { position: relative; top: clamp(-116px, -7vw, -72px); }
+  /* 侧栏上移后补回同等高度，避免 100% 缩放时底部出现空白。 */
+  .lumi-guide-sidebar { position: relative; top: clamp(-116px, -7vw, -72px); height: calc(100% + clamp(72px, 7vw, 116px)); }
 }
 
 .lumi-guide-brief { min-width: 0; }
