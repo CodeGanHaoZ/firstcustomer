@@ -141,22 +141,22 @@ export default async function Home() {
               </p>
             </div>
             <div className="split-pair" data-reveal>
-              <div className="split-pair__item">
+              <Link href="/projects/new" className="split-pair__item">
                 <p className="eyebrow">FREE</p>
                 <h3 className="h3">{copy.plans.freeTitle}</h3>
                 <p className="meta">{copy.plans.freeDescription}</p>
-                <Link href="/projects/new" className="split-pair__go">
+                <span className="split-pair__go">
                   {copy.plans.freeCta} <ArrowRight size={14} className="arw" aria-hidden="true" />
-                </Link>
-              </div>
-              <div className="split-pair__item">
+                </span>
+              </Link>
+              <Link href="/account/upgrade" className="split-pair__item">
                 <p className="eyebrow">PRO</p>
                 <h3 className="h3">{copy.plans.proTitle}</h3>
                 <p className="meta">{copy.plans.proDescription}</p>
-                <Link href="/account/upgrade" className="split-pair__go">
+                <span className="split-pair__go">
                   {copy.plans.proCta} <ArrowRight size={14} className="arw" aria-hidden="true" />
-                </Link>
-              </div>
+                </span>
+              </Link>
             </div>
           </div>
         </section>
