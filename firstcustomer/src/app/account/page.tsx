@@ -22,6 +22,38 @@ import { saveTrialProjectsAndReturnAction } from "./actions";
 import { customerMembership } from "@/workflow/membership";
 import { customerPurchasedProjects } from "@/workflow/purchases";
 
+type AccountMembership = Awaited<ReturnType<typeof customerMembership>>;
+
+const FREE_MEMBERSHIP: AccountMembership = {
+  plan: "free",
+  testAccount: false,
+  source: "manual",
+  expiresAt: null,
+};
+
+/**
+ * Account pages are also used while a deployment is being upgraded. If the
+ * application has already shipped but the optional account migrations have
+ * not reached the database yet, a schema error should not turn the whole
+ * customer workspace into a server error. Other database errors still throw
+ * so outages are visible and do not get mistaken for an empty account.
+ */
+function isSchemaCompatibilityError(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error)) return false;
+  const code = (error as { code?: unknown }).code;
+  return code === "42P01" || code === "42703" || code === "42883";
+}
+
+async function withAccountFallback<T>(label: string, task: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await task();
+  } catch (error) {
+    if (!isSchemaCompatibilityError(error)) throw error;
+    console.error(`[account] ${label} unavailable until database migrations finish`, error);
+    return fallback;
+  }
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const [locale, session] = await Promise.all([getLocale(), getCustomerSession()]);
   return { title: translateUi(locale, session ? "我的项目 · 首客 HiFirst" : "试用工作台 · 首客 HiFirst"), robots: { index: false, follow: false } };
@@ -30,13 +62,24 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AccountPage() {
   const [session, tokens] = await Promise.all([getCustomerSession(), trialProjectTokens()]);
   const db = getDb();
-  const membership = await customerMembership(db, session?.user.id);
+  const membership = await withAccountFallback(
+    "membership",
+    () => customerMembership(db, session?.user.id),
+    FREE_MEMBERSHIP,
+  );
   if (membership.plan === "pro") redirect("/account/pro");
-  const [owned, trial, purchased] = await Promise.all([session ? db.select({
-    id: projects.id, productName: projects.productName, status: projects.status,
-    paused: projects.paused, updatedAt: projects.updatedAt,
-  }).from(projects).where(eq(projects.customerId, session.user.id)).orderBy(desc(projects.updatedAt)) : Promise.resolve([]),
-  listTrialProjects(db, tokens), session ? customerPurchasedProjects(db, session.user.id) : Promise.resolve([])]);
+  const [owned, trial, purchased] = await Promise.all([
+    withAccountFallback(
+      "owned projects",
+      () => session ? db.select({
+        id: projects.id, productName: projects.productName, status: projects.status,
+        paused: projects.paused, updatedAt: projects.updatedAt,
+      }).from(projects).where(eq(projects.customerId, session.user.id)).orderBy(desc(projects.updatedAt)) : Promise.resolve([]),
+      [],
+    ),
+    withAccountFallback("trial projects", () => listTrialProjects(db, tokens), []),
+    withAccountFallback("purchased projects", () => session ? customerPurchasedProjects(db, session.user.id) : Promise.resolve([]), []),
+  ]);
   const visible = [...owned.map((project) => ({ ...project, token: accountProjectToken(project.id) })), ...trial]
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
