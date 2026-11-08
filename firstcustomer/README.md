@@ -1,6 +1,6 @@
 # 首客 HiFirst
 
-本目录是首客的 Next.js 应用。项目介绍、线上体验与首页截图见 [仓库 README](../README.md)，需求背景见 [PRD V4.2](../首客_FirstCustomer_产品需求规格说明书_V4.2.md)。本文记录本地开发、配置和部署步骤，以下命令均在本目录执行。
+本目录是首客的 Next.js 应用。项目介绍、线上体验与首页截图见 [仓库 README](../README.md)，需求背景见 [PRD V4.2](../docs/product/PRD-v4.2.md)，其他资料见[文档导航](../docs/README.md)。本文记录本地开发、配置和部署步骤，以下命令均在本目录执行。
 
 Pro 已支持按项目自动计价、付款校验后开通并执行，取消新项目的申请审批。当前采用服务端模拟支付，客户界面使用正常购买文案，后台保留标记并隔离真实收入。默认标准价 ¥99／项目，包含同一产品与目标市场的三轮完整验证；增量 token 预算、成本与服务范围见 [Pro 定价测算](../docs/pro-pricing-service-v3.md)。配置、迁移和流程见 [Pro 购买链路说明](../docs/pro-purchase-implementation.md)。
 

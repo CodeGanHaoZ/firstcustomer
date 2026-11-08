@@ -1,1 +1,29 @@
 .DS_Store
+
+# Local working directories and generated exports
+/.playwright-cli/
+/tmp/
+/output/
+
+# Dependencies, build output and caches
+node_modules/
+.next/
+.vercel/
+coverage/
+*.tsbuildinfo
+__pycache__/
+*.py[cod]
+/video/**/out/
+/reports/*/render/page-*.png
+
+# Local configuration; keep distributable examples
+.env
+.env.*
+!.env.example
+
+# Editor leftovers and duplicate document copies
+*.swp
+*.orig
+*.rej
+*~
+*_副本*.md

@@ -131,11 +131,13 @@ npm run dev
 ```text
 firstcustomer/       Next.js 应用、数据库迁移、Worker 和测试
 brand/               品牌兔子原始素材与形象说明
-docs/images/         README 使用的页面截图
+docs/                当前使用说明、需求基线、设计交接与历史方案
+reports/             历史测试、审计报告与对应证据
 PRODUCT.md           产品定位、用户与能力约束
 DESIGN.md            视觉设计说明
-首客_*.md            产品需求、验收与路演材料
 ```
+
+资料从[文档导航](docs/README.md)和[历史报告索引](reports/README.md)进入。当前需求基线为 [PRD V4.2](docs/product/PRD-v4.2.md)，[验收与路演材料](docs/competition/acceptance-and-pitch-v4.2.md)集中在比赛目录；旧需求版本和定价方案归入 `docs/archive/`。
 
 常用开发命令在 `firstcustomer/` 中执行：
 
@@ -150,4 +152,4 @@ GitHub Actions 在分支推送和 PR 更新时独立运行以上四项校验；�
 
 ## 使用边界
 
-当前版本是 JUNCTION CHINA 2026 · Xiaomi MiMo OPC 项目的 MVP，需求背景见 [PRD V4.2](首客_FirstCustomer_产品需求规格说明书_V4.2.md)，功能以当前代码为准。首客不保证带来付费客户或收入；定位和公开发布由客户确认，没有数据时如实显示样本不足。当前购买链路使用模拟支付，不发生真实扣款，不将试用、密钥授权或模拟成交计入实际收入；历史收款截图仍需经营者核对到账。渠道方案获批不等于已执行，应用不会自动替客户向外部平台发帖。
+当前版本是 JUNCTION CHINA 2026 · Xiaomi MiMo OPC 项目的 MVP，需求背景见 [PRD V4.2](docs/product/PRD-v4.2.md)，功能以当前代码为准。首客不保证带来付费客户或收入；定位和公开发布由客户确认，没有数据时如实显示样本不足。当前购买链路使用模拟支付，不发生真实扣款，不将试用、密钥授权或模拟成交计入实际收入；历史收款截图仍需经营者核对到账。渠道方案获批不等于已执行，应用不会自动替客户向外部平台发帖。
