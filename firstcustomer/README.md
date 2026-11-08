@@ -6,7 +6,7 @@ Pro 已支持按项目自动计价、付款校验后开通并执行，取消新�
 
 新用户无需登录即可领取一次完整单轮 Pro 试用，当前浏览器限领一次；注册后可保存成果、跨设备继续，不额外重赠试用。试用后 ¥99 另购三轮，无自动收费。规则、迁移及预算变化见[免登录试用说明](../docs/pro-new-user-trial.md)。
 
-老板登录后进入 `/admin/owner`，集中处理批价、核款与审批；`/admin/audit` 可查看全公司的决策与操作记录。九道闸门对应、数据口径和本次后端检查见 [OPC 老板经营台说明](../docs/owner-console.md)。
+老板登录后进入 `/admin/owner`，处理项目异常、交付、客服升级与审批，以及历史订单的批价、核款；新项目的 Pro 购买按服务端报价与付款校验自动开通。`/admin/audit` 可查看全公司的决策与操作记录。九道闸门对应、数据口径和后端检查见 [OPC 老板经营台说明](../docs/owner-console.md)。
 
 `/admin/access` 展示当前老板账号与 11 项服务端权限。供给方（服务商／开发者）与需求方（委托客户）的角色、委托流转和交互规格见 [双边协作设计](../docs/two-sided-workflow-design.md)；双边委托模块仍处于设计阶段。
 
@@ -79,7 +79,13 @@ npm run dev
 | `MODEL_COST_SPONSORED` | 赛事赞助模型费用时设为 `1`，经营台保留标价并注明赞助 |
 | `FALLBACK_PROVIDER` / `FALLBACK_BASE_URL` / `FALLBACK_API_KEY` / `FALLBACK_MODEL` | 可选，主模型故障时使用兼容 OpenAI 接口的备用模型 |
 
-首页和创建项目页的 Lumi 共用 `/api/lumi/intake`，支持真实 AI 多轮问答、流式回复、动态选项和需求草稿；原 `/api/lumi` 保留为通用问答接口。项目研究与交付走后台任务。API Key 仅供服务器读取，不需要发给客户，也不应使用 `NEXT_PUBLIC_` 前缀。`.env.local`、`.env` 和 `.vercel/` 均不提交到 Git。
+首页和创建项目页的 Lumi 共用 `/api/lumi/intake`，支持真实 AI 多轮问答、流式回复、动态选项、截图理解和需求草稿。核心信息齐备后，确认按钮出现在最后一条回复下方；只有客户点击确认才创建项目。原 `/api/lumi` 保留为通用问答接口。项目研究与交付走后台任务。API Key 仅供服务器读取，不需要发给客户，也不应使用 `NEXT_PUBLIC_` 前缀。`.env.local`、`.env` 和 `.vercel/` 均不提交到 Git。
+
+## 市场证据与来源查看
+
+客户工作台的市场证据每组默认显示 3 条，其余由抽屉展开；反向检索记录单独展示，待验证项与已保存证据分别呈现。结论溯源中的来源版本默认显示 5 条，可继续展开其余记录、采集原文、哈希和评价历史。
+
+`POST /api/projects/[token]/evidence-summary` 使用当前项目访问校验，根据页面提供的已保存证据摘要与检索记录调用 Flash 模型，生成来源与严谨性参考。前端在当前浏览器会话中按证据摘要键缓存，可在失败时重试；示例模型模式返回不可用。该小结不重新检索网页、不修改证据，也不构成独立事实核验或真实性保证。
 
 ## 客户账号
 
@@ -87,13 +93,17 @@ npm run dev
 
 `BETTER_AUTH_SECRET` 可单独配置，未设置时沿用 `SESSION_SECRET`。固定使用自定义域名时，可通过 `BETTER_AUTH_URL` 指定完整的 HTTPS 地址。客户账号与经营台权限独立，经营者使用独立的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录 `/admin/login`，所有环境均要求登录。修改内部账号或密码后旧会话失效。目前未接入邮件验证、找回密码和第三方登录。
 
+需要同时支持自定义域名与 Vercel 地址时，保留 `BETTER_AUTH_URL` 为空，在 `BETTER_AUTH_ALLOWED_HOSTS` 中逐项配置额外本站主机名（不带协议和路径，以逗号分隔）。服务端合并这些主机与 Vercel 注入的部署域名，不信任任意请求 Host 或所有 `*.vercel.app` 站点。地址解析逻辑见 `src/lib/customer-auth-url.ts`。
+
 本机分配老板账号：运行 `npm run owner:provision`，保留已有密码，缺少密码时生成随机值；凭据写入被 Git 忽略的 `.local-admin-credentials.txt`，文件权限为 0600，终端不会输出密码。指定账号用 `npm run owner:provision -- --username hifirst`；主动更换密码用 `npm run owner:provision -- --rotate-password`，之后重启服务。此命令只修改本机配置，不修改部署平台。
 
 服务端把有效内部会话映射为 `owner`，按经营查看、项目、核款、交付、客服、增长、公司设置、资料、审计和账号 10 类权限保护操作。客户公开注册不能授予内部身份。客户账号项目的会话过期后回到登录页，登录和注册切换保留原项目路径，重新登录后仍校验项目归属；返回地址限制在该角色的站内白名单。
 
-## Pro 密钥开通与检查
+## Pro 试用、购买与密钥开通
 
-当前版本使用服务端 `customer_memberships` 判断账号 Free / Pro 权益，有效 Pro 账号可直接进入高级工作模块，不要求重复报价、上传付款截图或老板开通审核。定位与公开发布仍由客户确认。Free 客户在报告完成后可按项目自助购买 Pro，默认标准价 ¥99。账号流程与历史项目边界见[当前角色与业务流程](../docs/roles-and-workflows.md)。升级现有环境前，需执行 `npm run db:migrate`，应用证据溯源和账号权益迁移。
+新用户完成 Free 报告后可免登录领取一轮完整试用。试用后可另购 ¥99／三轮套餐，沿用同一项目，试用轮次不抵扣付费三轮。每轮复盘与交付检查完成后才能启动下一轮；失败重试与同轮修改不扣新轮次。订单保存 `includedRounds=3` 的不可变快照，缺少该字段的历史订单按单轮处理。具体边界见[试用说明](../docs/pro-new-user-trial.md)与[三轮套餐说明](../docs/pro-pricing-service-v3.md)。
+
+当前版本使用服务端 `customer_memberships` 判断账号 Free / Pro 权益，有效 Pro 账号可直接进入高级工作模块，不要求重复报价、上传付款截图或老板开通审核。定位与公开发布仍由客户确认。Free 客户在报告完成后可按项目自助购买 Pro，默认标准价 ¥99。账号流程与历史项目边界见[当前角色与业务流程](../docs/roles-and-workflows.md)。升级现有环境前，需执行 `npm run db:migrate`，应用全部迁移，包括项目购买、账号试用和访客试用所需的 `0014_project_checkout.sql`、`0015_customer_pro_trials.sql`、`0016_guest_pro_trial.sql`。
 
 免费出海机会报告完成后，可使用以下单项目开通入口：
 
@@ -151,7 +161,7 @@ Research、Strategy、Launch、Growth、接待报价员、项目客服、COO 和
 
 - **证据工具多一个 `save_evidence`：** 摘录由模型挑选，由程序核对并决定等级，所以检索和保存分成两步。模型仍然不能直接写库。
 - **截图不算证据：** 截图由 MiMo 读取后只作为背景交给 Agent。要写进对外页面的产品事实，由老板在“人工补充证据”里登记为“产品事实（客户提供）”。
-- **追问只有一次：** Research 整个项目最多追问客户一次、最多 3 个问题。老板可以选择不再等待。
+- **受限多轮追问：** Research 每个范围最多追问 3 轮、每轮最多 3 个问题；重复问题或达到上限后转经营者处理，未明确项保留为未知，不重置补充额度。
 - **客户账号和经营台分开：** 客户可免登录试用，登录或注册用于归档项目与跨设备访问。经营者通过独立的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录。
 - **免费出海机会分析：** `/projects/new` 由 Lumi 根据描述动态追问，一次提取多项信息，支持流式回复、动态选项、对话修订和截图理解。需求草稿随对话更新，核心信息齐备后由客户确认创建，再自动分析出海机会，完成后可了解 Pro 高级模块。首页兔子对话与项目页共享草稿；兼容旧表单草稿，对话和文本保存在当前浏览器，截图只保留在本次页面会话中。未确认前不创建项目。内部建项仍使用完整表单。
 - **历史订单收款需要人工核对：** 老板在经营台上传收款码。历史报价项目的客户接受报价后能扫码并上传截图，票据员提取信息，老板确认实际到账后才进入定位。账号 Pro 直接使用高级模块；密钥仅授权对应项目，均不记作实收。
@@ -163,7 +173,7 @@ Research、Strategy、Launch、Growth、接待报价员、项目客服、COO 和
 
 ### Vercel + Neon
 
-GitHub 仓库 `kongleiwork-art/firstcustomer` 的 `main` 分支已关联 Vercel 项目 `hifirst`，Root Directory 为 `firstcustomer`。每次推送或合并到 `main`，Vercel 会自动构建，成功后更新[正式站点](https://hifirst.vercel.app/)；构建失败时保留当前线上版本。日常代码发布直接推送 `main` 即可。
+GitHub 仓库 `kongleiwork-art/firstcustomer` 的 `main` 分支已关联 Vercel 项目 `hifirst`，Root Directory 为 `firstcustomer`。每次推送或合并到 `main`，Vercel 会自动构建，成功后更新[正式站点](https://www.yomujp.top/)（[Vercel 地址](https://hifirst.vercel.app/)）；构建失败时保留当前线上版本。
 
 Vercel 部署 Next.js，Neon 提供 PostgreSQL。首次部署及表结构变更时，先对目标数据库独立执行 `npm run db:migrate`，再发布代码；迁移优先使用直连 `DATABASE_URL_UNPOOLED`，否则使用 `DATABASE_URL`。注意本机环境文件可能覆盖命令行注入的同名变量，执行前应确认目标环境。
 
@@ -184,13 +194,25 @@ Vercel 构建使用 `npm run build:vercel`：生产部署先只读检查迁移�
 | `NODE_OPTIONS` | `--experimental-require-module`，供研究任务中的网页解析依赖加载 |
 | `BETTER_AUTH_URL` | 可选，自定义域名使用的完整 HTTPS 地址 |
 | `BETTER_AUTH_ALLOWED_HOSTS` | 多域名部署时的额外本站主机名，逗号分隔；此时保留 `BETTER_AUTH_URL` 为空，自动兼容 Vercel 主域名与发布地址 |
+| `PAYMENT_MODE` | 当前使用 `simulated` 开启服务端模拟购买；生产未显式配置时关闭购买，`disabled` 可停用新支付 |
+| `PRO_MIN_PRICE_FEN` | 项目套餐底价，默认 `9900` 分（¥99／三轮）；已有显式配置不会被默认值覆盖 |
 | `PRIVACY_CONTACT` | 可选，英文验证页隐私说明中的联系信息 |
 
-生产环境移除本机的模拟模型配置。环境变量修改后需重新部署。
+生产环境移除 `LLM_PROVIDER=stub`、`ALLOW_STUB=1` 等本机模拟模型配置。`PAYMENT_MODE` 单独控制支付通道，与模型是否真实调用无关。环境变量修改后需重新部署。
 
 云端任务先保存到 PostgreSQL，再由 Vercel Queues 的 `hifirst-work` 主题唤起 `/api/jobs/work` 执行。`vercel.json` 将函数部署到 `sin1`，并在每天 UTC 01:00（北京时间 09:00）调用 `/api/jobs/daily`，唤醒等待任务并生成站会。该部署不需要额外运行本机的常驻 Worker。
 
 线上每次上传的文件合计不得超过 4 MB。Lumi 的动画会静音循环，可手动暂停；离开视口、页面隐藏或打开聊天时暂停，系统开启减少动态效果时保留静态封面。
+
+### GitHub Pages 演示材料
+
+`codex/hifirst-video-pages` 是独立静态发布分支，发布源为分支根目录，未包含 Next.js 应用或生产配置：
+
+- [视频播放页](https://kongleiwork-art.github.io/firstcustomer/)与 [MP4 直链](https://kongleiwork-art.github.io/firstcustomer/hifirst-launch-v1-fast.mp4)。
+- [经营实证报告](https://kongleiwork-art.github.io/firstcustomer/evidence/)，首屏提供完整流水的查看与下载按钮。
+- [流水查看页](https://kongleiwork-art.github.io/firstcustomer/evidence/ledger/)支持搜索全部 174 条记录、横向查看 12 个字段及[下载原始 CSV](https://kongleiwork-art.github.io/firstcustomer/evidence/operating-ledger.csv)。
+
+这些材料是独立发布的导出快照，更新主应用不会自动重生成报告或视频。分支中的 `.nojekyll` 用于直接提供静态文件。
 
 ### Docker Compose
 
