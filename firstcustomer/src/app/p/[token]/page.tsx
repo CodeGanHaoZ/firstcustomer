@@ -315,10 +315,20 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
               ))}
             </ul>
             {view.diagnosis.unknowns.length ? (
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className="eyebrow m-0"><T>待验证</T></span>
-                {view.diagnosis.unknowns.map((item) => <span key={item} className="pill pill--wait">{item}</span>)}
-              </div>
+              <section className="validation-waterfall" aria-labelledby="validation-waterfall-title">
+                <div className="validation-waterfall__head">
+                  <span id="validation-waterfall-title" className="eyebrow m-0"><T>待验证</T></span>
+                  <span className="validation-waterfall__count">{view.diagnosis.unknowns.length}<T> 个问题</T></span>
+                </div>
+                <ol className="validation-waterfall__list">
+                  {view.diagnosis.unknowns.map((item, index) => (
+                    <li key={item}>
+                      <span className="validation-waterfall__index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                      <p>{item}</p>
+                    </li>
+                  ))}
+                </ol>
+              </section>
             ) : null}
           </section>
         ) : null}
@@ -350,11 +360,13 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         </aside>
         </div>
 
+        {/* TODO: 「你可以随时从我的项目回到这里」提示暂时下线，需要时恢复这段
         <p className="meta">
           {isAccountProjectToken(token) ? (
             <><T>你可以随时从 </T><Link href="/account" className="link-u"><T>我的项目</T></Link><T> 回到这里。</T></>
           ) : <><T>通过专属链接查看当前项目，也可从本浏览器的 </T><Link href="/account" className="link-u"><T>试用工作台</T></Link><T> 返回。请保存此链接，方便找回项目。</T></>}
         </p>
+        */}
       </main>
       <SceneFooter low />
     </div>
