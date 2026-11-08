@@ -65,14 +65,14 @@
 
 ## 六个部门
 
-| 部门 | 角色 | 工作内容 |
-| --- | --- | --- |
-| 前台 | Lumi 露米 · 奶油兔 | 接待、整理需求与报告、项目客服；兼容历史报价任务 |
-| 市场研究室 | Nori 小枭 · 猫头鹰 | 查找需求、竞品定价、付费信号与反面证据 |
-| 战略决策室 | Fino 赤狐 · 狐狸 | 比较目标人群，形成定位和实验计划 |
-| 财务室 | Milo 松栗 · 松鼠 | 新项目付款校验与开通；历史截图辅助识别，实际到账仍由经营者核对 |
-| 产品发布室 | Kito 蓝狸 · 浣熊 | 制作英文验证页、渠道文案与发布材料 |
-| 增长运营室 | Pogo 芽芽 · 青蛙 | 分析真实访问、回复和留资，给出复盘结论 |
+| 形象 | 部门 | 角色 | 工作内容 |
+| :---: | --- | --- | --- |
+| <img src="docs/images/team/lumi.webp" alt="Lumi 露米 · 奶油兔" width="72"> | 前台 | Lumi 露米 · 奶油兔 | 接待、整理需求与报告、项目客服；兼容历史报价任务 |
+| <img src="docs/images/team/nori.webp" alt="Nori 小枭 · 猫头鹰" width="72"> | 市场研究室 | Nori 小枭 · 猫头鹰 | 查找需求、竞品定价、付费信号与反面证据 |
+| <img src="docs/images/team/fino.webp" alt="Fino 赤狐 · 狐狸" width="72"> | 战略决策室 | Fino 赤狐 · 狐狸 | 比较目标人群，形成定位和实验计划 |
+| <img src="docs/images/team/milo.webp" alt="Milo 松栗 · 松鼠" width="72"> | 财务室 | Milo 松栗 · 松鼠 | 新项目付款校验与开通；历史截图辅助识别，实际到账仍由经营者核对 |
+| <img src="docs/images/team/kito.webp" alt="Kito 蓝狸 · 浣熊" width="72"> | 产品发布室 | Kito 蓝狸 · 浣熊 | 制作英文验证页、渠道文案与发布材料 |
+| <img src="docs/images/team/pogo.webp" alt="Pogo 芽芽 · 青蛙" width="72"> | 增长运营室 | Pogo 芽芽 · 青蛙 | 分析真实访问、回复和留资，给出复盘结论 |
 
 金毛老板形象名为 **Toby 托比**；绵羊 COO 与经营周报助手名为 **Yuki 云团**。角色名集中维护在 `firstcustomer/src/lib/brand.ts`。
 
