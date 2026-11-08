@@ -75,27 +75,42 @@ export function ProvenanceSection({ provenance, reviewAction }: {
         </div>
       </details>)}
       <h3 className="font-medium"><T>保存的来源版本</T></h3>
-      {provenance.evidence.map((item) => <details key={item.id} id={`source-evidence-${item.id}`} className="fold scroll-mt-24">
-        <summary className="p-3"><T>{QUOTE_STATUS_LABELS[item.status] ?? "摘录待核对"}</T> · {item.sourceName} · {item.excerpt.slice(0, 60)}</summary>
-        <div className="grid gap-3 border-t p-4">
-          <blockquote className="border-s-2 ps-3">{item.excerpt}</blockquote>
-          <p><T>证据录入者</T>：{item.createdBy} · {formatDateTime(item.createdAt)}</p>
-          {item.originEvidenceId && <p className="break-all text-xs"><T>预存证据来源记录</T>：{item.originEvidenceId}</p>}
-          {item.task && <p><T>AI 提取或选用任务</T>：{item.task.agent} · {item.task.model ?? "—"} · {formatDateTime(item.task.startedAt)}</p>}
-          {item.source ? <>
-            <p>{item.source.title}</p>
-            {safeHref(item.source.url) && <a className="break-all underline" target="_blank" rel="noreferrer noopener" href={safeHref(item.source.url)!}><T>打开当前原网页（可能已更新）</T></a>}
-            <p><T>快照保存时间</T>：{formatDateTime(item.source.capturedAt)} · {item.source.method} · {item.source.actor}</p>
-            <p className="break-all text-xs"><T>来源版本</T>：{item.source.id}<br />SHA-256（UTF-8）：{item.source.sha256}</p>
-            <p className="text-xs text-muted-foreground"><T>保存的是本次取得的正文或检索片段；本地摘要不是可信时间戳，也不证明内容属实。</T></p>
-            <details><summary><T>展开采集时保存的原文</T></summary>
-              <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-lg border p-3 font-sans text-sm">{item.source.text}</pre>
-            </details>
-          </> : <p><T>历史材料没有可检查的来源版本，请重新采集；不使用当前网页冒充旧原文。</T></p>}
-          {item.issues.map((issue) => <p key={issue} className="text-amber-800"><T>{issue}</T></p>)}
-          <p className="text-muted-foreground"><T>人工原文复核：尚未记录；结论评价与原文复核分别处理。</T></p>
-        </div>
-      </details>)}
+      {(() => {
+        const SOURCE_VISIBLE = 5;
+        const evidence = provenance.evidence;
+        const visible = evidence.slice(0, SOURCE_VISIBLE);
+        const hidden = evidence.slice(SOURCE_VISIBLE);
+        const renderFold = (item: typeof evidence[number]) => <details key={item.id} id={`source-evidence-${item.id}`} className="fold scroll-mt-24">
+          <summary className="p-3"><T>{QUOTE_STATUS_LABELS[item.status] ?? "摘录待核对"}</T> · {item.sourceName} · {item.excerpt.slice(0, 60)}</summary>
+          <div className="grid gap-3 border-t p-4">
+            <blockquote className="border-s-2 ps-3">{item.excerpt}</blockquote>
+            <p><T>证据录入者</T>：{item.createdBy} · {formatDateTime(item.createdAt)}</p>
+            {item.originEvidenceId && <p className="break-all text-xs"><T>预存证据来源记录</T>：{item.originEvidenceId}</p>}
+            {item.task && <p><T>AI 提取或选用任务</T>：{item.task.agent} · {item.task.model ?? "—"} · {formatDateTime(item.task.startedAt)}</p>}
+            {item.source ? <>
+              <p>{item.source.title}</p>
+              {safeHref(item.source.url) && <a className="break-all underline" target="_blank" rel="noreferrer noopener" href={safeHref(item.source.url)!}><T>打开当前原网页（可能已更新）</T></a>}
+              <p><T>快照保存时间</T>：{formatDateTime(item.source.capturedAt)} · {item.source.method} · {item.source.actor}</p>
+              <p className="break-all text-xs"><T>来源版本</T>：{item.source.id}<br />SHA-256（UTF-8）：{item.source.sha256}</p>
+              <p className="text-xs text-muted-foreground"><T>保存的是本次取得的正文或检索片段；本地摘要不是可信时间戳，也不证明内容属实。</T></p>
+              <details><summary><T>展开采集时保存的原文</T></summary>
+                <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-lg border p-3 font-sans text-sm">{item.source.text}</pre>
+              </details>
+            </> : <p><T>历史材料没有可检查的来源版本，请重新采集；不使用当前网页冒充旧原文。</T></p>}
+            {item.issues.map((issue) => <p key={issue} className="text-amber-800"><T>{issue}</T></p>)}
+            <p className="text-muted-foreground"><T>人工原文复核：尚未记录；结论评价与原文复核分别处理。</T></p>
+          </div>
+        </details>;
+        return <div className="grid gap-3">
+          <div className="grid gap-3">{visible.map(renderFold)}</div>
+          {hidden.length ? <details className="fold evidence-fold bg-background">
+            <summary>
+              <span className="evidence-fold__btn"><span className="evidence-fold__count">{hidden.length}</span><T>展开其余来源版本</T></span>
+            </summary>
+            <div className="grid gap-3 fold__body mt-4">{hidden.map(renderFold)}</div>
+          </details> : null}
+        </div>;
+      })()}
     </CardContent>
   </Card>;
 }

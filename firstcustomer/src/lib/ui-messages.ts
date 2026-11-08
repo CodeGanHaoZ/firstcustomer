@@ -329,6 +329,7 @@ export const UI_MESSAGES: Readonly<Record<string, string>> = {
   "交付清单": "Deliverables",
   "补充信息": "Additional information",
   "展开其余证据": "Show remaining evidence",
+  "展开其余来源版本": "Show remaining source versions",
   "没有回答": "Not answered",
   "需要补充这些信息": "Please provide these details",
   "第": "Round",
