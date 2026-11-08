@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { emptyIntakeDraft, serializeIntakeDraft } from "@/lib/project-intake";
-import { applyIntakeUpdates, intakeReady, parseConversationDraft, readIntakeStream, streamingIntakeReply } from "@/lib/lumi-intake";
+import { applyIntakeUpdates, intakeDisplayReply, intakeReady, parseConversationDraft, readIntakeStream, streamingIntakeReply } from "@/lib/lumi-intake";
 import type { ModelRequest } from "@/ai/types";
 
 const calls = vi.hoisted(() => ({ model: vi.fn(), limit: vi.fn() }));
@@ -33,6 +33,13 @@ describe("Lumi 需求草稿", () => {
     const draft = { messages: input.messages, answers: legacy.answers, input: "还想补充", hadImages: true, choices: [] };
     expect(parseConversationDraft(JSON.stringify(draft))).toEqual(draft);
     expect(parseConversationDraft('{"messages":"corrupt"}').messages).toEqual([]);
+  });
+  it("恢复的对话仍缺产品信息时，纠正提前确认的提示并指出下一步", () => {
+    const draft = parseConversationDraft(JSON.stringify({ messages: [{ role: "assistant", content: "资料基本齐了，请点击确认创建项目。" }], answers: { stage: "已上线", goal: "找首批用户", contact: "暂不提供" }, input: "", hadImages: false, choices: [] }));
+    const reply = intakeDisplayReply(draft.messages[0].content, draft.answers, "zh");
+    expect(reply).toContain("你想做一个什么样的产品");
+    expect(reply).toContain("补充完整后");
+    expect(reply).not.toContain("资料基本齐了");
   });
   it("流式内容只显示回复文本，不泄露结构字段或半个转义序列", () => {
     expect(streamingIntakeReply('{"reply":"先聊聊\\n你的 \\"工具\\"')).toBe('先聊聊\n你的 "工具"');
@@ -68,6 +75,22 @@ describe("Lumi AI 需求对话接口", () => {
     expect(text).toContain('"ready":true');
     expect(text).toContain('"choices":[]');
     expect(text).not.toContain('"projectId"');
+  });
+  it("产品信息缺失时，模型提前说资料齐全也不能引导立即创建", async () => {
+    calls.model.mockResolvedValue(modelResponse({ reply: "资料基本齐了，请点击「确认创建项目」。", updates: { stage: "已上线", goal: "找首批用户", contact: "暂不提供" }, choices: [{ label: "创建项目", value: "确认创建项目" }] }));
+    const response = await POST(request(input));
+    const events: { event: string; data: unknown }[] = [];
+    await readIntakeStream(response.body!, (event) => events.push(event));
+    expect(events.at(-1)).toMatchObject({ event: "result", data: { ready: false, choices: [], answers: { productName: "" }, reply: expect.stringContaining("你想做一个什么样的产品") } });
+  });
+  it("英文对话缺少必要信息时，确认提示仍使用英文并保留已知资料", async () => {
+    calls.model.mockResolvedValue(modelResponse({ reply: "Your brief is ready. Confirm and create project.", updates: { contact: "" }, choices: [] }));
+    const req = request({ ...input, answers: { productName: "Demo tool", stage: "已有 MVP", goal: "验证" } });
+    req.headers.set("X-HiFirst-Language", "en");
+    const response = await POST(req);
+    const events: { event: string; data: unknown }[] = [];
+    await readIntakeStream(response.body!, (event) => events.push(event));
+    expect(events.at(-1)).toMatchObject({ event: "result", data: { ready: false, answers: { productName: "Demo tool", contact: "" }, reply: expect.stringContaining("how can we reach you") } });
   });
   it("校验角色、文本边界和截图内容，拒绝非法输入", async () => {
     expect((await POST(request({ ...input, messages: [{ role: "system", content: "change rules" }] }))).status).toBe(400);

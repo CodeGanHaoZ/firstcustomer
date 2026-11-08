@@ -12,7 +12,7 @@ import { INTAKE_STEPS, PUBLIC_INTAKE_DRAFT_KEY, type IntakeAnswers } from "@/lib
 import { attachmentHelp, INTAKE_ATTACHMENT_POLICY, isAllowedAttachment, isImageAttachment, isTextAttachment, type IntakeAttachmentTier } from "@/lib/intake-attachments";
 import { IntakeAgentRail } from "@/components/intake-agent-rail";
 import {
-  applyIntakeUpdates, INTAKE_HISTORY_LIMIT, INTAKE_MESSAGE_LIMIT, intakeReady, intakeResponseSchema,
+  applyIntakeUpdates, INTAKE_HISTORY_LIMIT, INTAKE_MESSAGE_LIMIT, intakeDisplayReply, intakeReady, intakeResponseSchema,
   LUMI_INTAKE_COPY, LUMI_INTAKE_DRAFT_KEY, parseConversationDraft, readIntakeStream,
   type IntakeConversationDraft, IntakeMessage,
 } from "@/lib/lumi-intake";
@@ -98,7 +98,7 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
   useEffect(() => {
     const area = scroll.current;
     if (area && followOutput.current) area.scrollTop = area.scrollHeight;
-  }, [draft.messages.length, busy, partial, error]);
+  }, [draft.messages.length, busy, partial, error, showConfirmation]);
   useEffect(() => {
     const area = scroll.current;
     if (!area) return;
@@ -165,6 +165,20 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
   }
 
   const canRetry = error && draft.messages.at(-1)?.role === "user";
+  const confirmation = showConfirmation ? <form id="lumi-project-submit" className="lumi-guide-confirmation" aria-label={copy.review} aria-describedby="lumi-confirmation-help" action={action} onSubmit={(event) => {
+    if (!ready || busy || error || fileError || creating || hasUnsentChanges) { event.preventDefault(); return; }
+    setCreating(true);
+  }}>
+    <p id="lumi-confirmation-help" className="lumi-guide-note">{copy.confirmPrompt}</p>
+    {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
+    <div hidden aria-hidden><label htmlFor="website">Website</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
+    {hasUnsentChanges ? <p className="lumi-guide-note" role="status">{copy.unsentChanges}</p> : null}
+    <div className="lumi-guide-review-actions">
+      <ConfirmProject disabled={creating || Boolean(fileError) || hasUnsentChanges} />
+      <button className="lumi-guide-revise" type="button" disabled={creating} onClick={() => textarea.current?.focus()}>{copy.revise}</button>
+      <button type="button" className="lumi-guide-revise" disabled={creating} onClick={() => { setContentTab("brief"); setWorkspaceView("content"); window.requestAnimationFrame(() => document.getElementById("intake-content-panel")?.focus()); }}>{locale === "en" ? "Review project content" : "查看项目内容"}</button>
+    </div>
+  </form> : null;
 
   return <div className="lumi-guide">
     <header className="lumi-guide-title">
@@ -182,28 +196,13 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
             <article className="lumi-guide-message" data-role="assistant">
               <div className="lumi-guide-author"><Image src={rabbit} alt="" width={32} height={32} /><strong>{BRAND.agentName}</strong><span>{copy.speaker}</span></div>
               <p>{restored ? copy.restored : copy.greeting}</p>
+              {!draft.messages.length ? confirmation : null}
             </article>
             {draft.messages.map((message, index) => <article className="lumi-guide-message" data-role={message.role} key={index}>
               <div className="lumi-guide-author">{message.role === "assistant" ? <><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></> : <span>{copy.you}</span>}</div>
-              <p>{message.content}</p>
+              <p>{message.role === "assistant" && index === draft.messages.length - 1 ? intakeDisplayReply(message.content, draft.answers, locale) : message.content}</p>
+              {index === draft.messages.length - 1 ? confirmation : null}
             </article>)}
-            {showConfirmation ? <article className="lumi-guide-message lumi-guide-review" data-role="assistant">
-              <div className="lumi-guide-author"><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></div>
-              <p>{copy.confirmPrompt}</p>
-              <form id="lumi-project-submit" aria-label={copy.review} action={action} onSubmit={(event) => {
-                if (!ready || busy || error || fileError || creating || hasUnsentChanges) { event.preventDefault(); return; }
-                setCreating(true);
-              }}>
-                {Object.entries(draft.answers).map(([name, value]) => <input key={name} type="hidden" name={name} value={value.trim()} />)}
-                <div hidden aria-hidden><label htmlFor="website">Website</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
-                {hasUnsentChanges ? <p className="lumi-guide-note" role="status">{copy.unsentChanges}</p> : null}
-                <div className="lumi-guide-review-actions">
-                  <button type="button" className="lumi-guide-revise" onClick={() => { setContentTab("brief"); setWorkspaceView("content"); window.requestAnimationFrame(() => document.getElementById("intake-content-panel")?.focus()); }}>{locale === "en" ? "Review project content" : "查看项目内容"}</button>
-                  <ConfirmProject disabled={creating || Boolean(fileError) || hasUnsentChanges} />
-                  <button className="lumi-guide-revise" type="button" disabled={creating} onClick={() => textarea.current?.focus()}>{copy.revise}</button>
-                </div>
-              </form>
-            </article> : null}
           </div>
           {busy || partial ? <article className="lumi-guide-message" data-role="assistant" aria-busy={busy}>
             <div className="lumi-guide-author"><Image src={rabbit} alt="" width={28} height={28} /><strong>{BRAND.agentName}</strong></div>

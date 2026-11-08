@@ -10,7 +10,8 @@
 .lumi-guide-thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .lumi-guide-scroll { overflow-y: auto; min-height: 0; flex: 1; padding: 8px 20px 24px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; overscroll-behavior: contain; }
 .lumi-guide-log { display: grid; gap: 26px; }
-.lumi-guide-review form { margin-top: 18px; }
+.lumi-guide-confirmation { margin-top: 18px; }
+.lumi-guide-confirmation > .lumi-guide-note { color: var(--muted); }
 .lumi-guide-review dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin-bottom: 20px; }
 .lumi-guide-review dl > div { min-width: 0; border-top: 1px solid var(--line); padding-top: 12px; }
 .lumi-guide-review dt { margin-bottom: 5px; color: var(--muted); font-size: 12px; }
