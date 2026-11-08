@@ -1,6 +1,5 @@
 import { ArrowDown, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { AmbientMotion } from "@/components/ambient-motion";
 import { BackToTop } from "@/components/back-to-top";
 import { BrandMark } from "@/components/brand-mark";
 import { EditorialMotion } from "@/components/editorial-motion";
@@ -16,7 +15,6 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import { signOutAction } from "@/app/account/actions";
 import "./home.css";
 import "./editorial.css";
-import "./ambient.css";
 import "./office-showcase.css";
 import "./office-relay.css";
 
@@ -223,9 +221,6 @@ export default async function Home() {
 
       {/* ---------- 全站统一页脚 ---------- */}
       <SiteFooter />
-
-      {/* ---------- 氛围动效层（纸尘颗粒 + 光斑，最底、不挡交互） ---------- */}
-      <AmbientMotion />
 
       {/* ---------- 交互层 + 悬浮回到顶部 ---------- */}
       <EditorialMotion key={locale} />

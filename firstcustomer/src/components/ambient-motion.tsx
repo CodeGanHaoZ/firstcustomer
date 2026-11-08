@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 
 /**
  * 全页氛围动效层：
@@ -8,11 +9,15 @@ import { useEffect, useRef } from "react";
  * 2. .ambient-glow 光斑呼吸漂移（纯 CSS，见 ambient.css）
  * 遵守 prefers-reduced-motion：减少动效时不渲染任何东西；
  * 页面不可见时暂停 rAF，节省电量。
+ * /admin 后台工作台不渲染（数据界面保持素净）。
  */
 export function AmbientMotion() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pathname = usePathname();
+  const skip = pathname?.startsWith("/admin") ?? false;
 
   useEffect(() => {
+    if (skip) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -85,8 +90,9 @@ export function AmbientMotion() {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("resize", fit);
     };
-  }, []);
+  }, [skip]);
 
+  if (skip) return null;
   return (
     <div className="ambient-layer" aria-hidden="true">
       <div className="ambient-glow" />
