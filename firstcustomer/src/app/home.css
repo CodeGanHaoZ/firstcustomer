@@ -103,8 +103,11 @@
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: #27362442;
-  transition: opacity 180ms ease-out;
+  /* 毛玻璃底：深绿薄纱 + 模糊，把背景画面揉成朦胧色块 */
+  background: #27362450;
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  transition: opacity 260ms ease-out;
 }
 
 .lumi-chat {
@@ -118,24 +121,38 @@
   width: var(--lumi-w, min(27rem, calc(100% - 3rem)));
   height: var(--lumi-h, min(35rem, calc(100dvh - 3rem)));
   overflow: hidden;
-  border-radius: 1rem;
-  background: #fffdf6;
+  border-radius: 1.25rem;
+  /* 毛玻璃面板：半透暖白 + 大半径模糊提饱和，边缘高光细线 */
+  background: linear-gradient(168deg, #fffdf6e8 0%, #fbfaf3d9 55%, #f4f1e6d0 100%);
+  backdrop-filter: blur(28px) saturate(1.5);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
   color: #243b2d;
-  box-shadow: 0 18px 56px #21322036;
-  /* 弹窗吸附右侧卡片，入场只淡入；任何 translate 都会让对齐看起来偏掉 */
-  transition: opacity 200ms ease-out;
+  border: 1px solid #ffffffb8;
+  box-shadow:
+    0 24px 70px #2132203d,
+    0 4px 18px #21322024,
+    inset 0 1px 0 #ffffffcc;
+  /* 弹窗吸附右侧卡片，入场轻微浮起 + 淡入；结束时 transform 归零不影响对齐 */
+  transition: opacity 240ms ease-out, transform 260ms cubic-bezier(.16, 1, .3, 1);
 }
 
 .lumi-chat-backdrop:is([data-starting-style], [data-ending-style]),
-.lumi-chat:is([data-starting-style], [data-ending-style]) { opacity: 0; }
+.lumi-chat:is([data-starting-style], [data-ending-style]) {
+  opacity: 0;
+  transform: translateY(14px) scale(.975);
+}
 
 .lumi-chat-header {
   display: flex;
   align-items: center;
   gap: .7rem;
   padding: .85rem 1rem;
-  border-bottom: 1px solid #dbe2ce;
-  background: #ebf0e2;
+  /* 半透明磨砂顶栏，与面板同语言 */
+  border-bottom: 1px solid #ffffffa8;
+  background: linear-gradient(180deg, #ebf0e2b0 0%, #ebf0e270 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 1px 0 #ffffff90;
 }
 
 .lumi-chat-avatar {
@@ -143,6 +160,7 @@
   padding: .16rem;
   border-radius: .65rem;
   background: #f4e6cd;
+  box-shadow: 0 2px 6px #2132201c;
 }
 
 .lumi-chat-title { font-size: 1.05rem; font-weight: 800; }
@@ -156,8 +174,9 @@
   place-items: center;
   border-radius: .5rem;
   cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
 }
-.lumi-chat-close:hover { background: #dce5d0; }
+.lumi-chat-close:hover { background: #dce5d0b8; transform: rotate(90deg); }
 
 .lumi-chat-scroll {
   min-height: 0;
@@ -173,17 +192,29 @@
   max-width: 91%;
   padding: .65rem .8rem;
   border-radius: .25rem .75rem .75rem .75rem;
-  background: #f1eee2;
+  /* 半透明磨砂气泡 */
+  background: #f1eee2cc;
+  border: 1px solid #ffffff9c;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px #21322014;
   font-size: .94rem;
   line-height: 1.62;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+  /* 新消息浮现：上移淡入 */
+  animation: lumi-message-in 340ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+@keyframes lumi-message-in {
+  from { opacity: 0; transform: translateY(10px) scale(.97); }
+  to { opacity: 1; transform: none; }
 }
 
 .lumi-chat-message[data-speaker="user"] {
   justify-self: end;
   border-radius: .75rem .25rem .75rem .75rem;
-  background: #dfebd8;
+  background: linear-gradient(160deg, #dfebd8d9 0%, #d2e4c9d0 100%);
 }
 
 .lumi-chat-starters { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .75rem; }
@@ -192,12 +223,20 @@
   padding: .4rem .65rem;
   border: 1px solid #b9c8ac;
   border-radius: .55rem;
+  background: #ffffffa0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   color: #34563d;
   font-size: .82rem;
   font-weight: 650;
   cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
-.lumi-chat-starters button:hover { background: #eef2e7; }
+.lumi-chat-starters button:hover {
+  background: #eef2e7e0;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px #2132201a;
+}
 
 .lumi-chat-status, .lumi-chat-retry {
   display: flex;
@@ -214,7 +253,10 @@
 
 .lumi-chat-footer {
   padding: .75rem 1rem max(.75rem, env(safe-area-inset-bottom));
-  border-top: 1px solid #e4dece;
+  border-top: 1px solid #ffffff9c;
+  background: linear-gradient(0deg, #f4f1e6a8 0%, #f4f1e660 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .lumi-chat-compose {
@@ -224,10 +266,18 @@
   padding: .3rem;
   border: 1px solid #c5cbb8;
   border-radius: .65rem;
-  background: #fffef9;
+  /* 输入区磨砂白 */
+  background: #fffef9c2;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 3px #2132200d;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
-.lumi-chat-compose:focus-within { border-color: #56764d; }
+.lumi-chat-compose:focus-within {
+  border-color: #56764d;
+  box-shadow: inset 0 1px 3px #2132200d, 0 0 0 3px #56764d1f;
+}
 .lumi-chat-compose textarea {
   flex: 1;
   min-width: 0;
@@ -288,7 +338,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .brand-welcome, .brand-welcome-shell, .lumi-chat-backdrop, .lumi-chat { transition: none; }
+  .lumi-chat:is([data-starting-style], [data-ending-style]) { transform: none; }
+  .lumi-chat-message { animation: none; }
   .lumi-chat-status svg { animation: none; }
+  .lumi-chat-close:hover, .lumi-chat-starters button:hover { transform: none; }
 }
 
 /* Keep optional customer login reachable in the compact navigation. */
