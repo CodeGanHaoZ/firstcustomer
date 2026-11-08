@@ -23,7 +23,7 @@ import "./office-relay.css";
 const WORDMARK = "首客 HIFIRST";
 
 /* 服务边界发言阵容：每条边界由一位办公室成员说出 */
-const BOUNDARY_CAST: DepartmentKey[] = ["research", "strategy", "launch", "growth"];
+const BOUNDARY_CAST: DepartmentKey[] = ["research", "strategy", "launch", "growth", "frontdesk", "finance"];
 
 export async function generateMetadata() {
   const locale = await getLocale();

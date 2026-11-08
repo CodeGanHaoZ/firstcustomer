@@ -1327,7 +1327,7 @@ main .container,
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(18px, 2.4vw, 30px) clamp(20px, 3vw, 44px);
 }
 .boundaries li {
@@ -1371,8 +1371,12 @@ main .container,
   border-left: 1px solid var(--line);
   border-top-left-radius: 3px;
 }
-@media (max-width: 640px) {
-  .boundaries { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (max-width: 900px) {
+  .boundaries { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; }
+  .boundaries li p { font-size: 15px; padding: 12px 16px; }
+}
+@media (max-width: 560px) {
+  .boundaries { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 }
 
 /* 分区末尾的轻量回到顶部（文字链） */
