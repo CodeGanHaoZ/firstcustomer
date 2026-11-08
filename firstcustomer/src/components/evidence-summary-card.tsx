@@ -19,7 +19,10 @@ export function EvidenceSummaryCard({ token, digest }: { token: string; digest: 
   const [summary, setSummary] = useState("");
   const [attempt, setAttempt] = useState(0);
   const digestRef = useRef(digest);
-  digestRef.current = digest;
+
+  useEffect(() => {
+    digestRef.current = digest;
+  }, [digest]);
 
   useEffect(() => {
     let cancelled = false;
