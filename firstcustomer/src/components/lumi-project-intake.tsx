@@ -268,7 +268,10 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
           </div>
           <p>{locale === "en" ? "Once confirmed, these six colleagues pass your project through the office." : "确认项目后，这六位动物同事会在办公室里接力处理你的需求。"}</p>
         </div>
-        <header className="workspace-content-head"><h2>{locale === "en" ? "Project content" : "项目内容"}</h2><span>{locale === "en" ? "Updated as you talk" : "随对话整理"}</span></header>
+        <div className="lumi-guide-content-heading">
+          <header className="workspace-content-head"><h2>{locale === "en" ? "Project content" : "项目内容"}</h2><span>{locale === "en" ? "Updated as you talk" : "随对话整理"}</span></header>
+          <IntakeAgentRail busy={busy} ready={ready} />
+        </div>
         <div className="workspace-content-tabs" role="tablist" aria-label={locale === "en" ? "Project documents" : "项目资料"}
           onKeyDown={(event) => {
             const tabs = ["brief", "notes", "report"] as const;
@@ -286,7 +289,6 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
           </> : null}
           {contentTab === "report" ? <><h3>{locale === "en" ? "Market opportunity report" : "出海机会报告"}</h3><p className="workspace-empty">{locale === "en" ? "Confirm your project to start the research. Your project workspace will show the report in this content column." : "确认创建项目后，Nori 会开始研究。报告生成后，会在项目工作台的右侧内容栏展示。"}</p></> : null}
         </div>
-        <IntakeAgentRail busy={busy} ready={ready} />
       </aside>
     </div>
   </div>;

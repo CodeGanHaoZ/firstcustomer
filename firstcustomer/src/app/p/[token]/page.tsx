@@ -318,7 +318,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
               <section className="validation-waterfall" aria-labelledby="validation-waterfall-title">
                 <div className="validation-waterfall__head">
                   <span id="validation-waterfall-title" className="eyebrow m-0"><T>待验证</T></span>
-                  <span className="validation-waterfall__count">{view.diagnosis.unknowns.length}<T> 个问题</T></span>
+                  <span className="validation-waterfall__count">{locale === "en" ? `${view.diagnosis.unknowns.length} open questions` : `${view.diagnosis.unknowns.length} 个问题`}</span>
                 </div>
                 <ol className="validation-waterfall__list">
                   {view.diagnosis.unknowns.map((item, index) => (
