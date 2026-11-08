@@ -6,7 +6,21 @@
 
 [在线体验](https://www.yomujp.top/) · [试用工作台](https://www.yomujp.top/account) · [创建项目](https://www.yomujp.top/projects/new) · [开发与部署说明](firstcustomer/README.md)
 
-![首客首页：动态前台兔子 Lumi 与 AI 出海办公室](docs/images/homepage.jpg)
+![首客首页：Lumi 接待与免费出海机会分析入口](docs/images/homepage.webp)
+
+## 产品界面
+
+### 和 Lumi 梳理项目需求
+
+通过对话整理产品、阶段、目标和需求草稿，确认后再创建项目、开始出海机会分析。
+
+![Lumi 项目引导：左侧对话与快捷开场，右侧同步整理需求草稿](docs/images/project-intake.webp)
+
+### 看见 AI 同事的协作
+
+首页办公室演示六位动物同事如何接力处理接待、研究、定位、核款、发布与复盘，展示当前任务和下一位接手者。
+
+![AI 办公室协作演示：六个部门、动物员工、工作状态与交接对白](docs/images/office.webp)
 
 ## 演示视频与比赛材料
 
