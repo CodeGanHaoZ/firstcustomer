@@ -519,7 +519,7 @@ a.tile:hover .tile__arrow { transform: translate(3px, 0); color: var(--forest); 
 .upgrade-cost-note p { margin: 4px 0 0; color: #806b4a; font-size: 12px; line-height: 1.65; }
 .upgrade-cost-note > span { color: #a18252; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; white-space: nowrap; }
 
-.upgrade-process { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16px, .32fr) minmax(0, 1fr) minmax(16px, .32fr) minmax(0, 1.08fr); align-items: start; gap: 8px; padding: 20px 22px; border: 1px solid rgba(104, 129, 91, .2); border-radius: 20px; background: #eef2e8; }
+.upgrade-process { display: grid; grid-template-columns: minmax(0, auto) minmax(24px, 1fr) minmax(0, auto) minmax(24px, 1fr) minmax(0, auto); align-items: start; gap: 12px; padding: 20px 26px; border: 1px solid rgba(104, 129, 91, .2); border-radius: 20px; background: #eef2e8; }
 .upgrade-process__step { display: flex; align-items: flex-start; gap: 11px; min-width: 0; }
 .upgrade-process__step > span { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--forest); color: #fff; }
 .upgrade-process__step strong { display: block; color: var(--ink); font-size: var(--fs-meta); }
