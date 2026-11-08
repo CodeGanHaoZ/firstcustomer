@@ -298,7 +298,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           </nav>
         {view.diagnosis ? (
           <section id="diagnosis" className="paper scroll-mt-24 rise" aria-labelledby="diagnosis-title">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <p className="eyebrow m-0"><T>出海机会报告</T></p>
               <AgentByline person="research" />
             </div>

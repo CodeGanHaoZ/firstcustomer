@@ -6,7 +6,7 @@ import type { workPackageReadiness } from "@/workflow/work-packages";
 
 export function WorkPackageList({ readiness }: { readiness: Awaited<ReturnType<typeof workPackageReadiness>> }) {
   return <section id="work-packages" className="paper rise">
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="paper__title"><T>工作包与验收检查</T></h2><p className="paper__lead"><T>同一工作包的重试累计为运行次数；检查依据是已保存的成果、指标和审批记录。</T></p></div>
       <AgentByline person="finance" />
     </div>
