@@ -187,7 +187,7 @@
   scrollbar-color: #a4ac96 transparent;
 }
 
-.lumi-chat-log { display: grid; gap: .65rem; }
+.lumi-chat-log { display: grid; gap: .8rem; }
 .lumi-chat-message {
   justify-self: start;
   max-width: 91%;
@@ -243,10 +243,12 @@
   display: flex;
   align-items: center;
   gap: .45rem;
-  margin-top: .7rem;
   color: #4e604a;
   font-size: .82rem;
 }
+/* 等待提示作为 log grid 的末项，间距交给 grid gap，避免与上方气泡贴叠 */
+.lumi-chat-log .lumi-chat-status { margin-top: 0; }
+.lumi-chat-retry { margin-top: .7rem; }
 .lumi-chat-status svg { animation: lumi-spin 1s linear infinite; }
 @keyframes lumi-spin { to { transform: rotate(1turn); } }
 .lumi-chat-retry { flex-wrap: wrap; color: #7b4533; }
