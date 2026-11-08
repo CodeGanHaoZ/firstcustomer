@@ -35,7 +35,11 @@
 .office-peek__expand span { font-size: 11px; white-space: nowrap; }
 .office-peek__expand:hover, .office-fullscreen__header button:hover { background: var(--paper-2); }
 .office-peek button:focus-visible, .office-fullscreen button:focus-visible, .workspace-content-tabs button:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; }
-.office-fullscreen { position: fixed; inset: 0; margin: auto; width: min(1280px, calc(100vw - 48px)); max-width: none; max-height: calc(100dvh - 48px); padding: 24px; border: 0; border-radius: 16px; background: var(--paper); color: var(--ink); overflow-y: auto; overscroll-behavior: contain; box-shadow: 0 24px 80px rgb(16 18 16 / .24); }
+.office-fullscreen { position: fixed; inset: 0; margin: auto; width: min(1280px, calc(100vw - 48px)); max-width: none; max-height: calc(100dvh - 48px); padding: 24px; border: 0; outline: 0; border-radius: 16px; background: var(--paper); color: var(--ink); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--forest) var(--paper-2); box-shadow: 0 24px 80px rgb(16 18 16 / .24); }
+.office-fullscreen::-webkit-scrollbar { width: 12px; }
+.office-fullscreen::-webkit-scrollbar-track { background: var(--paper-2); border-radius: 999px; }
+.office-fullscreen::-webkit-scrollbar-thumb { background: var(--forest); border: 3px solid var(--paper-2); border-radius: 999px; }
+.office-fullscreen::-webkit-scrollbar-thumb:hover { background: var(--ink); }
 .office-fullscreen::backdrop { background: rgb(16 18 16 / .68); }
 .office-fullscreen__header { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
 .office-fullscreen__header h2 { margin: 0; font-family: var(--font-serif); font-size: 28px; font-weight: 400; }
@@ -55,14 +59,16 @@
 .workspace-report-links a:hover { text-decoration: underline; }
 .validation-waterfall { display: grid; gap: 12px; margin-top: 24px; }
 .validation-waterfall__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.validation-waterfall__count { color: var(--muted); font-size: 12px; }
+/* 待验证 = 未完成状态：整组用暖黄便签色，与绿色的「已结论」内容区分 */
+.validation-waterfall__head .eyebrow { color: #8a6d1f; }
+.validation-waterfall__count { padding: 2px 10px; border: 1px solid #e6d193; border-radius: 999px; background: #f8eec6; color: #8a6d1f; font-size: 12px; font-weight: 600; }
 .validation-waterfall__list { position: relative; display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.validation-waterfall__list::before { content: ""; position: absolute; inset: 12px auto 12px 14px; border-inline-start: 1px dashed var(--line-strong); pointer-events: none; }
-.validation-waterfall__list li { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: start; gap: 10px; width: min(100%, 560px); min-height: 48px; padding: 11px 14px 11px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-2); box-shadow: 0 5px 18px rgb(16 18 16 / .035); }
+.validation-waterfall__list::before { content: ""; position: absolute; inset: 12px auto 12px 14px; border-inline-start: 1.5px dashed #d9c27a; pointer-events: none; }
+.validation-waterfall__list li { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: start; gap: 10px; width: min(100%, 560px); min-height: 48px; padding: 11px 14px 11px 10px; border: 1px solid #e9d79f; border-radius: 12px; background: linear-gradient(180deg, #fdf8e7 0%, #fbf2d4 100%); box-shadow: 0 5px 18px rgb(122 96 22 / .06); }
 .validation-waterfall__list li:nth-child(even) { margin-inline-start: clamp(18px, 6%, 52px); width: calc(100% - clamp(18px, 6%, 52px)); }
-.validation-waterfall__index { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--paper); color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .04em; z-index: 1; }
+.validation-waterfall__index { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #cfae4e; border-radius: 50%; background: #fffdf4; color: #8a6d1f; font-size: 10px; font-weight: 700; letter-spacing: .04em; z-index: 1; }
 .validation-waterfall__list p { margin: 3px 0 0; color: var(--ink-2); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
-.validation-waterfall__list li:hover { border-color: var(--forest); box-shadow: 0 8px 22px rgb(16 18 16 / .07); }
+.validation-waterfall__list li:hover { border-color: #cfae4e; box-shadow: 0 8px 22px rgb(122 96 22 / .12); }
 .customer-project-content .card-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .customer-project-content .paper { padding: 28px; }
 .customer-project-activity .office-peek { border-top: 0; padding-top: 0; }
