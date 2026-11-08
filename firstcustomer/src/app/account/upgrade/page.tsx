@@ -11,13 +11,12 @@ import { customerMembership } from "@/workflow/membership";
 import { desc, eq } from "drizzle-orm";
 import { projects } from "@/db/schema";
 import { accountProjectToken } from "@/lib/customer-project";
+import { PlanComparison } from "@/components/plan-comparison";
 
 export async function generateMetadata() {
   const en = (await getLocale()) === "en";
   return { title: en ? "Free and Pro · HiFirst" : "Free 与 Pro · 首客 HiFirst", robots: { index: false, follow: false } };
 }
-
-type ComparisonRow = { label: string; free: string; pro: string };
 
 export default async function UpgradePage() {
   const session = await getCustomerSession();
@@ -27,20 +26,6 @@ export default async function UpgradePage() {
   const browserTrial = await guestProTrial(getDb(), await currentProTrialVisitor());
   const owned = session ? await getDb().select({ id: projects.id, productName: projects.productName, status: projects.status })
     .from(projects).where(eq(projects.customerId, session.user.id)).orderBy(desc(projects.updatedAt)) : [];
-  const comparison: ComparisonRow[] = en ? [
-    { label: "Research depth", free: "Opportunity scan", pro: "Opportunity scan + strategic synthesis" },
-    { label: "AI workflow", free: "Standard analysis queue", pro: "Evidence-backed positioning and a complete validation workflow" },
-    { label: "Evidence and search", free: "Candidate audiences, evidence and open questions", pro: "Expanded market evidence and overseas search for the active project" },
-    { label: "Deliverables", free: "Opportunity report", pro: "Three rounds of positioning, English pages, channel plans and growth reviews" },
-    { label: "Execution", free: "Decide what to validate next", pro: "One free trial round; three additional rounds after payment verification" },
-  ] : [
-    { label: "研究深度", free: "出海机会扫描", pro: "机会扫描 + 定位与战略综合判断" },
-    { label: "AI 工作链路", free: "标准分析队列", pro: "基于证据的定位判断和完整验证链路" },
-    { label: "证据与搜索", free: "候选人群、支持/反面证据、待验证问题", pro: "当前项目的扩展市场证据与海外搜索" },
-    { label: "交付内容", free: "出海机会报告", pro: "三轮定位方案、英文验证页、渠道行动方案与增长复盘" },
-    { label: "执行方式", free: "帮助你决定下一步验证什么", pro: "免费试用一轮；付款后再开通三轮完整验证" },
-  ];
-
   const freeFeatures = en
     ? ["Opportunity report and candidate audiences", "Support and counter evidence with open questions", "No payment required to start the first analysis"]
     : ["出海机会报告与候选人群", "支持与反面证据，以及待验证问题", "无需付款即可开始第一轮分析"];
@@ -88,11 +73,7 @@ export default async function UpgradePage() {
     </section>
 
     <section className="upgrade-comparison rise" style={{ "--i": 3 } as React.CSSProperties} aria-labelledby="upgrade-comparison-title">
-      <div className="upgrade-section-head"><div><p className="upgrade-plan__kicker">{en ? "At a glance" : "一眼看懂"}</p><h2 id="upgrade-comparison-title">{en ? "Free and Pro performance comparison" : "Free 与 Pro 性能差异对比"}</h2></div><p>{en ? "One product, one target market. The project page confirms the scope and price before payment." : "适用于一个产品、一个目标市场。付款前在项目页确认服务范围与价格，无需申请审批。"}</p></div>
-      <div className="upgrade-comparison__table" role="table">
-        <div className="upgrade-comparison__row upgrade-comparison__row--head" role="row"><div role="columnheader">{en ? "Capability" : "能力维度"}</div><div role="columnheader">Free</div><div role="columnheader">Pro</div></div>
-        {comparison.map((row) => <div className="upgrade-comparison__row" role="row" key={row.label}><div className="upgrade-comparison__label" role="rowheader">{row.label}</div><div role="cell">{row.free}</div><div role="cell">{row.pro}</div></div>)}
-      </div>
+      <PlanComparison en={en} />
     </section>
 
     <aside className="upgrade-cost-note rise" style={{ "--i": 4 } as React.CSSProperties}>
