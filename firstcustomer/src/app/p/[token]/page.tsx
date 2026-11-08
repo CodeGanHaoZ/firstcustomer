@@ -310,10 +310,12 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           <header className="workspace-content-head"><h2>{locale === "en" ? "Project content" : "项目内容"}</h2><span>{locale === "en" ? "Saved project records" : "需求与成果，持续更新"}</span></header>
           <nav className="workspace-report-links" aria-label={locale === "en" ? "Project documents" : "项目资料"}>
             <a href="#requirements">{locale === "en" ? "Brief" : "需求"}</a><a href="#diagnosis">{locale === "en" ? "Opportunity report" : "出海报告"}</a>
-            {advancedAvailable ? <><a href="#strategy">{locale === "en" ? "Positioning" : "定位方案"}</a><a href="#launch">{locale === "en" ? "Page" : "英文页面"}</a><a href="#growth">{locale === "en" ? "Review" : "复盘"}</a></> : null}
+            {advancedAvailable && view.positioning ? <a href="#strategy">{locale === "en" ? "Positioning" : "定位方案"}</a> : null}
+            {advancedAvailable && view.page ? <a href="#launch">{locale === "en" ? "Page" : "英文页面"}</a> : null}
+            {advancedAvailable && (view.metrics || view.report) ? <a href="#growth">{locale === "en" ? "Review" : "复盘"}</a> : null}
           </nav>
         {view.diagnosis ? (
-          <section id="diagnosis" className="paper scroll-mt-24 rise" aria-labelledby="diagnosis-title">
+          <section id="diagnosis" className="paper report-diagnosis scroll-mt-24 rise" aria-labelledby="diagnosis-title">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <p className="eyebrow m-0"><T>出海机会报告</T></p>
               <AgentByline person="research" />
@@ -353,9 +355,10 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         {advancedAvailable ? (
           <>
             <DeliverablesSection view={view} deliveryStatus={order?.deliveryStatus} closingHref="#delivery" selfServicePro={selfServicePro} />
-            <div id="strategy"><PositioningSection view={view} /></div>
-            <div id="launch"><PageSection view={view} previewHref={`/p/${token}/preview`} /></div>
-            <div id="growth"><GrowthSection view={view} /></div>
+            {/* 注意：aside 是 grid + 44px gap，空 wrapper div 也会占一格间距；内容未生成时不要渲染壳 */}
+            {view.positioning ? <div id="strategy"><PositioningSection view={view} /></div> : null}
+            {view.page ? <div id="launch"><PageSection view={view} previewHref={`/p/${token}/preview`} /></div> : null}
+            {view.metrics || view.report ? <div id="growth"><GrowthSection view={view} /></div> : null}
           </>
         ) : null}
         <ProjectConversationNotes projectId={project.id} />
