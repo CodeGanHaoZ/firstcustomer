@@ -6,8 +6,9 @@ import { agentTasks, campaigns, decisions, deliverables, evidenceItems, landingP
 import { experimentPlan } from "@/agents/schemas";
 import { gateState } from "@/domain/approval";
 import { evaluateExperiment } from "@/domain/experiment";
-import { isAccountPro, isKeyActivatedPro, isPurchasedPro, isSelfServicePro } from "@/domain/workflow";
-import { projectPurchasePayment } from "./purchases";
+import { proRoundProgress } from "@/domain/pro-pricing";
+import { isAccountPro, isKeyActivatedPro, isLegacyProOffer, isPurchasedPro, isSelfServicePro, isTrialPro } from "@/domain/workflow";
+import { projectProTrial, projectPurchasePayment, proPurchaseOffer, validProTrialClaim } from "./purchases";
 import { loadProjectProvenance } from "./provenance";
 
 type Project = typeof projects.$inferSelect;
@@ -53,8 +54,18 @@ export async function workPackageReadiness(db: Db, project: Project) {
     { label: "引用材料有不可变来源版本和溯源记录", passed: ids.length > 0 && ids.every((id) => traceIds.has(id)) && provenance.conclusions.some((row) => row.subjectId === research?.id && row.complete) },
   ]);
   if (project.productPlan !== "free") {
-    if (isPurchasedPro(project)) {
-      const [order] = await db.select().from(orders).where(eq(orders.projectId, project.id)).limit(1);
+    const [order] = await db.select().from(orders).where(eq(orders.projectId, project.id)).limit(1);
+    const automaticOffer = isLegacyProOffer(project) ? await proPurchaseOffer(db, project, order ?? null) : null;
+    const selfService = isSelfServicePro(project) || Boolean(automaticOffer);
+    if (isTrialPro(project)) {
+      const trial = await projectProTrial(db, project.id);
+      const grant = approvals.find((item) => item.gate === "pro_access" && item.verdict === "approve" &&
+        item.subjectVersion === project.scopeVersion && (item.snapshot as { trialClaimId?: string } | null)?.trialClaimId === trial?.id);
+      add("commerce", "新用户免费试用授权", trial?.id ?? null, [
+        { label: "一次完整试用已绑定当前项目", passed: Boolean(validProTrialClaim(project, order ?? null, trial) && grant) },
+        { label: "免费试用覆盖当前需求与范围", passed: Boolean(trial && trial.snapshot.scopeVersion === project.scopeVersion && trial.snapshot.requirementVersion === project.requirementVersion && proRoundProgress(trial.snapshot, project.round).covered) },
+      ]);
+    } else if (isPurchasedPro(project) || automaticOffer) {
       const payment = order ? await projectPurchasePayment(db, order.id) : null;
       const quote = order?.pricingSnapshot;
       const grant = approvals.find((item) => item.gate === "pro_access" && item.subjectVersion === project.scopeVersion &&
@@ -62,24 +73,21 @@ export async function workPackageReadiness(db: Db, project: Project) {
       add("commerce", "项目服务付款核验", payment?.id ?? null, [
         { label: "支付订单金额与当前报价一致", passed: Boolean(quote && payment?.amountFen === quote.quoteFen && order?.quoteFen === quote.quoteFen) },
         { label: "付款校验及项目开通记录已保存", passed: order?.status === "simulation_active" && payment?.status === "succeeded" && Boolean(grant) },
-        { label: "购买权益对应当前项目范围", passed: quote?.projectId === project.id && quote.scopeVersion === project.scopeVersion && quote.round === project.round },
+        { label: "购买权益对应当前项目范围", passed: Boolean(quote && quote.projectId === project.id && quote.scopeVersion === project.scopeVersion && proRoundProgress(quote, project.round).covered) },
       ]);
     } else if (isAccountPro(project)) {
-      const [order] = await db.select().from(orders).where(eq(orders.projectId, project.id)).limit(1);
       const grant = approvals.find((item) => item.gate === "pro_access" && item.verdict === "approve" && (item.snapshot as { method?: string } | null)?.method === "account");
       add("commerce", "Pro 账号权益", grant?.id ?? null, [
         { label: "当前项目使用 Pro 账号权益", passed: order?.status === "account_active" },
         { label: "账号权益开通记录已保存", passed: Boolean(grant) },
       ]);
     } else if (isKeyActivatedPro(project)) {
-      const [order] = await db.select().from(orders).where(eq(orders.projectId, project.id)).limit(1);
       const grant = approvals.find((item) => item.gate === "pro_access" && item.verdict === "approve" && item.subjectVersion === project.scopeVersion);
       add("commerce", "Pro 密钥授权", grant?.id ?? null, [
         { label: "当前项目已通过密钥开通 Pro", passed: order?.status === "key_activated" },
         { label: "当前范围的密钥开通记录已保存", passed: Boolean(grant) },
       ]);
     } else if (project.requiresPayment && !project.isOwnProduct) {
-      const [order] = await db.select().from(orders).where(eq(orders.projectId, project.id)).limit(1);
       const [payment] = order ? await db.select().from(payments).where(eq(payments.orderId, order.id)).limit(1) : [];
       add("commerce", "服务费用核对", payment?.id ?? null, [
         { label: "提案已接受且订单记录为已付款", passed: order?.status === "paid" && Boolean(order.proposal) },
@@ -88,11 +96,11 @@ export async function workPackageReadiness(db: Db, project: Project) {
     }
     add("strategy", "定位与验证计划", positioning?.id ?? null, [
       { label: "定位方案与实验计划已保存", passed: Boolean(positioning && experimentPlan.safeParse(positioning.experiment).success && positioning.chosenOption !== null) },
-      { label: isSelfServicePro(project) ? "客户已确认当前定位版本" : "老板和客户已确认当前定位版本", passed: Boolean(positioning && gateState(approvals, "positioning", positioning.version, !isSelfServicePro(project)).complete) },
+      { label: selfService ? "客户已确认当前定位版本" : "老板和客户已确认当前定位版本", passed: Boolean(positioning && gateState(approvals, "positioning", positioning.version, !selfService).complete) },
     ]);
     add("launch", "英文页面与渠道行动", page?.id ?? null, [
       { label: "当前定位对应的页面已发布", passed: Boolean(page?.status === "published" && page.publishedAt && page.positioningVersion === positioning?.version) },
-      { label: isSelfServicePro(project) ? "客户已确认当前页面版本" : "当前页面版本已通过双方审批", passed: Boolean(page && gateState(approvals, "publish", page.version, !isSelfServicePro(project)).complete) },
+      { label: selfService ? "客户已确认当前页面版本" : "当前页面版本已通过双方审批", passed: Boolean(page && gateState(approvals, "publish", page.version, !selfService).complete) },
       { label: "渠道行动卡已批准，实际执行状态单独记录", passed: Boolean(campaign && ["approved", "executed"].includes(campaign.status)) },
     ]);
     add("growth", "增长复盘", report?.id ?? null, [

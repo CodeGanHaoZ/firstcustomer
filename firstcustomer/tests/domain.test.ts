@@ -49,7 +49,9 @@ describe("状态机", () => {
 
   it("免费初诊完成后可请求 Pro 报价，或通过密钥进入策略", () => {
     expect(canTransition("researching", "free_ready")).toBe(true);
-    expect(canTransition("free_ready", "drafting_quote")).toBe(true);
+    expect(canTransition("drafting_quote", "awaiting_quote")).toBe(false);
+    expect(canTransition("drafting_quote", "free_ready")).toBe(true);
+    expect(canTransition("awaiting_quote", "awaiting_payment")).toBe(true);
     expect(canTransition("free_ready", "strategizing")).toBe(true);
     expect(canTransition("awaiting_quote_acceptance", "strategizing")).toBe(true);
     expect(usesQuoteFlow({ requiresPayment: true, isOwnProduct: false, productPlan: "free" })).toBe(false);
@@ -83,7 +85,7 @@ describe("客户项目进度", () => {
   it("只在客户能处理时指向对应事项，上传截图后等待核对", () => {
     expect(progress({ status: "awaiting_publish" }).action).toBeUndefined();
     expect(progress({ status: "awaiting_publish", openGate: "publish" }).action?.href).toBe("#approval");
-    expect(progress({ status: "awaiting_quote_acceptance", quoteVisible: true }).action?.href).toBe("#proposal");
+    expect(progress({ status: "awaiting_quote_acceptance", quoteVisible: true }).action?.href).toBe("#pro");
     expect(progress({ status: "awaiting_payment", awaitingPayment: true }).action?.href).toBe("#payment");
     expect(progress({ status: "awaiting_payment", awaitingPayment: true, receiptUploaded: true }).title).toBe("待首客确认到账");
     expect(progress({ status: "delivered", deliveryStatus: "changes_requested" }).action?.href).toBe("#delivery");

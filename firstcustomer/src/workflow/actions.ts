@@ -28,14 +28,15 @@ import {
   type Verdict,
 } from "@/domain/approval";
 import { expiresAt, gradeFor, verifyQuote, type EvidenceKind } from "@/domain/evidence";
-import { isPurchasedPro, isSelfServicePro, type ProjectStatus } from "@/domain/workflow";
+import { isProjectServicePro, isPurchasedPro, isSelfServicePro, type ProjectStatus } from "@/domain/workflow";
 import { assertAccountProjectAccess } from "./membership";
 import { reportFor, type Escalation, type PendingRequest } from "./engine";
 import { transition } from "./transitions";
 import { evidenceTraceProblems } from "./provenance";
 import { recordRequirementVersion } from "./requirements";
 import { workPackageReadiness } from "./work-packages";
-import { MAX_AMOUNT_FEN } from "./commerce";
+import { MAX_AMOUNT_FEN, projectOrder } from "./commerce";
+import { proRoundProgress } from "@/domain/pro-pricing";
 
 export type Enqueue = (projectId: string, transaction?: Db) => Promise<void>;
 
@@ -263,7 +264,7 @@ export async function decide(
       throw new Error("当前阶段不能做这个决定");
     }
     await assertAccountProjectAccess(tx, project);
-    if (gate === "next_round" && isPurchasedPro(project)) throw new Error("本次 Pro 服务包含当前一轮验证，请完成本轮后另行确认新的服务范围");
+    if (gate === "next_round" && isProjectServicePro(project)) throw new Error("请使用套餐内的下一轮入口，由系统核对剩余轮数；免费试用仅含一轮");
     if (verdict === "reject" && !input.reason?.trim()) {
       throw new Error("退回时必须写明原因");
     }
@@ -400,6 +401,51 @@ async function applyApproval(
     pendingRequest: pending,
   });
   await enqueue(project.id);
+}
+
+export async function startPurchasedProRound(db: Db, enqueue: Enqueue, input: { projectId: string; round: number; focus?: string }) {
+  if (!Number.isSafeInteger(input.round) || input.round < 1) throw new Error("请刷新后核对当前轮次");
+  const focus = input.focus?.trim() ?? "";
+  if (focus.length > 500) throw new Error("调整重点请控制在 500 字以内");
+  return db.transaction(async (tx) => {
+    const [project] = await tx.select().from(projects).where(eq(projects.id, input.projectId)).for("update");
+    if (!project || project.paused || !isPurchasedPro(project)) throw new Error("当前项目无法开启套餐内下一轮");
+    await assertAccountProjectAccess(tx, project);
+    // A replay of the previous form cannot consume another round.
+    if (project.round > input.round) return false;
+    if (project.round !== input.round) throw new Error("轮次已更新，请刷新后查看");
+    const order = await projectOrder(tx, project.id);
+    const quote = order?.pricingSnapshot;
+    if (!order || !quote) throw new Error("项目购买记录不存在");
+    const allowance = proRoundProgress(quote, project.round);
+    if (!allowance.covered || allowance.remaining < 1) throw new Error("本次套餐的验证轮数已用完，已有成果仍可查看");
+    if (!["reviewing", "delivered"].includes(project.status)) throw new Error("请先完成当前轮的验证与复盘");
+    const report = await reportFor(tx, project);
+    const [acceptance] = project.status === "delivered" && order.deliveryStatus === "accepted"
+      ? await tx.select({ id: decisions.id }).from(decisions).where(and(eq(decisions.projectId, project.id),
+        eq(decisions.gate, "acceptance"), eq(decisions.subjectVersion, project.round),
+        eq(decisions.actorRole, "customer"), eq(decisions.verdict, "approve"))).limit(1) : [];
+    // An accepted historical round stays complete when its evidence ages. The
+    // new round rechecks evidence before producing or publishing new claims.
+    if (!report || (!acceptance && !(await workPackageReadiness(tx, project)).ready)) throw new Error("本轮交付检查尚未完成，请先核对当前成果");
+    const nextHypothesis = (report.content as { next_hypothesis?: string | null }).next_hypothesis;
+    const pending: PendingRequest = { route: "growth->strategy", request: {
+      missing: focus || nextHypothesis || "根据上一轮复盘，在同一产品和目标市场内调整定位、页面或渠道验证假设",
+      reason: "客户确认使用套餐内下一轮，复用现有研究，保持已购买的产品与目标市场范围",
+      source_types: [],
+    } };
+    const nextRound = project.round + 1;
+    await transition(tx, project, "strategizing", "customer", "客户开启套餐内下一轮验证", {
+      round: nextRound, pendingRequest: pending, founderNote: null, failedFrom: null, failedReason: null,
+    });
+    await tx.update(orders).set({ deliveryStatus: "not_started" }).where(eq(orders.id, order.id));
+    await tx.insert(decisions).values({ projectId: project.id, subjectId: order.id, gate: "pro_round", subjectVersion: nextRound,
+      actorRole: "customer", verdict: "approve", reason: focus || "确认开启套餐内下一轮验证",
+      snapshot: { orderId: order.id, pricingVersion: quote.version, fromRound: project.round, toRound: nextRound,
+        includedRounds: allowance.included, remainingRounds: allowance.remaining - 1, previousReportId: report.id } });
+    await enqueue(project.id, tx);
+    return true;
+  });
 }
 
 export async function startReview(db: Db, enqueue: Enqueue, projectId: string, actor: ActorRole = "founder") {
@@ -549,23 +595,6 @@ export async function recordFeedback(
     landingPageId: input.landingPageId,
     type: input.type,
     payload: { text: input.text, url: input.url ?? null },
-  });
-}
-
-export async function setQuote(db: Db, projectId: string, quoteFen: number) {
-  if (!Number.isSafeInteger(quoteFen) || quoteFen <= 0 || quoteFen > MAX_AMOUNT_FEN) throw new Error("请填写正确的报价金额");
-  await db.transaction(async (tx) => {
-    const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
-    if (!project) throw new Error("项目不存在");
-    if (project.requiresPayment || project.productPlan !== "legacy") throw new Error("请通过项目报价审批确认报价");
-    if (project.paused || project.status === "cancelled") throw new Error("暂停或取消的项目不能修改报价");
-    const [order] = await tx.select().from(orders).where(eq(orders.projectId, projectId));
-    if (!order) throw new Error("项目没有订单");
-    if (["paid", "accepted", "key_activated"].includes(order.status)) throw new Error("已接受或已付款的订单不能直接改价");
-    await tx.update(orders).set({ quoteFen, status: "quoted", quoteVersion: order.quoteVersion + 1 }).where(eq(orders.id, order.id));
-    await tx.insert(decisions).values({ projectId, gate: "quote", subjectVersion: order.quoteVersion + 1,
-      actorRole: "founder", verdict: "approve", reason: "老板更新旧版订单报价",
-      snapshot: { orderId: order.id, previousQuoteFen: order.quoteFen, quoteFen } });
   });
 }
 

@@ -10,6 +10,7 @@ export const DECISION_LABELS: Record<string, string> = {
   quote: "⑤ 报价确认",
   payment: "⑥ 到账确认",
   pro_access: "Pro 权益开通",
+  pro_round: "套餐验证轮次",
   support: "⑦ 客服升级处理",
   weekly: "⑧ 周报决策",
   acceptance: "⑨ 交付验收",

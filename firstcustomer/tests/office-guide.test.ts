@@ -14,9 +14,9 @@ describe("office workflow guidance", () => {
   });
   it("explains the real Free, Pro proposal, and already-paid research branches", () => {
     expect(officeGuidance(base).nextActor).toBe("customer");
-    expect(officeGuidance({ ...base, plan: "pro", quoteRequired: true }).nextActor).toBe("frontdesk");
+    expect(officeGuidance({ ...base, plan: "pro", quoteRequired: true }).nextActor).toBe("customer");
     expect(officeGuidance({ ...base, plan: "pro", quoteRequired: true, quotePaid: true }).nextActor).toBe("strategy");
-    expect(officeGuidance({ ...base, status: "free_ready" }).condition).toContain("账号开通 Pro");
+    expect(officeGuidance({ ...base, status: "free_ready" }).condition).toContain("本项目付款校验");
   });
   it("distinguishes operator review from customer approval and keeps the gates", () => {
     const waiting = { ...base, status: "awaiting_positioning" };
@@ -25,8 +25,8 @@ describe("office workflow guidance", () => {
     expect(officeGuidance({ ...waiting, openGate: "positioning" })).toMatchObject({ state: "action", link: { href: "#approval" }, nextActor: "launch" });
     expect(officeGuidance({ ...waiting, audience: "operator", operatorTurn: true })).toMatchObject({ state: "action", link: { href: "#decisions" } });
     expect(officeGuidance({ ...waiting, audience: "operator", operatorTurn: false }).state).toBe("waiting");
-    expect(officeGuidance({ ...base, status: "awaiting_quote" })).toMatchObject({ state: "waiting", nextActor: "customer" });
-    expect(officeGuidance({ ...base, status: "awaiting_quote", audience: "operator" }).state).toBe("action");
+    expect(officeGuidance({ ...base, status: "awaiting_quote" })).toMatchObject({ state: "action", nextActor: "finance" });
+    expect(officeGuidance({ ...base, status: "awaiting_quote", audience: "operator" }).state).toBe("waiting");
   });
   it("does not confuse receipt upload with confirmation of actual funds", () => {
     expect(officeGuidance({ ...base, status: "awaiting_payment" }).state).toBe("action");

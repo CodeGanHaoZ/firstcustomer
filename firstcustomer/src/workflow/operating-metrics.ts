@@ -9,12 +9,13 @@ const externalCustomerProject = () => and(eq(projects.isOwnProduct, false), sql`
 )`);
 
 export async function operatingMetrics(db: Db) {
+  const financialProject = () => and(externalCustomerProject(), sql`${orders.paymentMode} is distinct from 'simulated'`, sql`${orders.status} <> 'trial_active'`);
   const [orderRows, [cash], [effort], [growthEvents], [leadMetrics], tasks, company] = await Promise.all([
     db.select({ status: orders.status, delivery: orders.deliveryStatus }).from(orders)
-      .innerJoin(projects, eq(projects.id, orders.projectId)).where(externalCustomerProject()),
+      .innerJoin(projects, eq(projects.id, orders.projectId)).where(financialProject()),
     db.select({ amount: sum(payments.amountFen), first: min(payments.paidAt) }).from(payments)
       .innerJoin(orders, eq(orders.id, payments.orderId))
-      .innerJoin(projects, eq(projects.id, orders.projectId)).where(externalCustomerProject()),
+      .innerJoin(projects, eq(projects.id, orders.projectId)).where(financialProject()),
     db.select({ minutes: sum(orders.founderMinutes) }).from(orders),
     db.select({
       visits: sql<number>`count(distinct (${events.landingPageId}, ${events.visitorHash})) filter (where ${events.type} = 'visit' and ${events.visitorHash} is not null)`.mapWith(Number),

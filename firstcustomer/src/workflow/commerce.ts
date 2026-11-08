@@ -1,16 +1,12 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import type { ProposalOutput } from "@/agents/schemas";
 import type { Db } from "@/db";
 import { decisions, orders, paymentCode, paymentReceipts, payments, projects } from "@/db/schema";
-import type { ActorRole, Verdict } from "@/domain/approval";
+import type { ActorRole } from "@/domain/approval";
 import { detectImageType, imageError } from "@/domain/images";
 import { usesQuoteFlow } from "@/domain/workflow";
-import { formatYuan } from "@/lib/format";
 import { transition } from "./transitions";
 
-export const DEFAULT_QUOTE_FEN = 29_900;
 export const MAX_AMOUNT_FEN = 2_147_483_647;
-type Project = typeof projects.$inferSelect;
 
 export async function projectOrder(db: Db, projectId: string) {
   const [order] = await db.select().from(orders).where(eq(orders.projectId, projectId)).limit(1);
@@ -30,73 +26,6 @@ async function lockOrder(db: Db, projectId: string) {
   const order = await projectOrder(db, projectId);
   if (!order) throw new Error("项目没有订单");
   return { project, order };
-}
-
-export async function quoteFeedback(db: Db, projectId: string, version: number) {
-  const [decision] = await db.select({ reason: decisions.reason }).from(decisions)
-    .where(and(eq(decisions.projectId, projectId), eq(decisions.gate, "quote"),
-      eq(decisions.subjectVersion, version), eq(decisions.verdict, "reject")))
-    .orderBy(desc(decisions.createdAt))
-    .limit(1);
-  return decision?.reason ?? null;
-}
-
-export async function saveDraftProposal(db: Db, project: Project, proposal: ProposalOutput) {
-  await db.transaction(async (tx) => {
-    const { order } = await lockOrder(tx, project.id);
-    const version = order.quoteVersion + 1;
-    await transition(tx, project, "awaiting_quote", "quote", `提案第 ${version} 版已起草`);
-    await tx.update(orders).set({
-      proposal,
-      quoteVersion: version,
-      quoteFen: order.quoteFen ?? DEFAULT_QUOTE_FEN,
-      status: "inquiry",
-    }).where(eq(orders.id, order.id));
-  });
-}
-
-export async function decideQuote(
-  db: Db,
-  enqueue: (projectId: string) => Promise<void>,
-  input: {
-    projectId: string;
-    version: number;
-    actor: ActorRole;
-    verdict: Verdict;
-    quoteFen?: number;
-    reason?: string | null;
-  },
-) {
-  await db.transaction(async (tx) => {
-    const { project, order } = await lockOrder(tx, input.projectId);
-    if (project.paused) throw new Error("项目已暂停，请恢复后再处理报价");
-    const founder = input.actor === "founder";
-    const expectedStatus = founder ? "awaiting_quote" : "awaiting_quote_acceptance";
-    if (project.status !== expectedStatus || order.quoteVersion !== input.version || !order.proposal) {
-      throw new Error("这份报价已更新，请刷新后查看");
-    }
-    const approved = input.verdict === "approve";
-    const reason = input.reason?.trim();
-    if (!approved && !reason) throw new Error("退回时请写明原因");
-    if (approved && founder) assertPositiveAmount(input.quoteFen);
-    await tx.insert(decisions).values({
-      projectId: project.id,
-      gate: "quote",
-      subjectVersion: order.quoteVersion,
-      actorRole: input.actor,
-      verdict: input.verdict,
-      snapshot: { orderId: order.id, quoteVersion: order.quoteVersion,
-        quoteFen: approved && founder ? input.quoteFen : order.quoteFen, proposal: order.proposal },
-      reason: approved && founder ? `确认报价 ${formatYuan(input.quoteFen!)}${reason ? ` · ${reason}` : ""}` : reason || null,
-    });
-    await tx.update(orders).set({
-      status: approved ? (founder ? "quoted" : "accepted") : "inquiry",
-      ...(approved && founder ? { quoteFen: input.quoteFen } : {}),
-    }).where(eq(orders.id, order.id));
-    const to = approved ? (founder ? "awaiting_quote_acceptance" : "awaiting_payment") : "drafting_quote";
-    await transition(tx, project, to, input.actor, approved ? (founder ? "老板确认报价" : "客户接受报价") : reason!);
-  });
-  if (input.verdict === "reject") await enqueue(input.projectId);
 }
 
 export async function savePaymentCode(db: Db, bytes: Uint8Array) {

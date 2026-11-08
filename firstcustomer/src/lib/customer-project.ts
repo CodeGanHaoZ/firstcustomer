@@ -6,7 +6,7 @@ import { projects } from "@/db/schema";
 import { findProjectByToken } from "@/workflow/actions";
 import { getCustomerSession } from "./customer-auth";
 import { customerReturnTo } from "./auth-return";
-import { isAccountPro, isPurchasedPro } from "@/domain/workflow";
+import { isAccountPro, isProjectServicePro } from "@/domain/workflow";
 
 const accountPrefix = "account.";
 
@@ -22,7 +22,7 @@ export async function requireCustomerProjectSession(token: string) {
 export async function findCustomerProject(db: Db, token: string) {
   if (!isAccountProjectToken(token)) {
     const project = await findProjectByToken(db, token);
-    if (project && (isAccountPro(project) || (isPurchasedPro(project) && project.customerId))) {
+    if (project && (isAccountPro(project) || (isProjectServicePro(project) && project.customerId))) {
       const session = await getCustomerSession();
       return session?.user.id === project.customerId ? project : null;
     }

@@ -10,7 +10,7 @@ export type OfficeGuideInput = {
   openGate?: Gate | null; reportReady?: boolean; receiptUploaded?: boolean;
   deliveryStatus?: string; canStartFree?: boolean; failedFrom?: string | null;
   audience?: "customer" | "operator"; operatorTurn?: boolean; selfServicePro?: boolean; proInactive?: boolean;
-  projectCheckout?: boolean;
+  projectCheckout?: boolean; proOffer?: boolean;
 };
 export type OfficeGuide = {
   room: DepartmentKey | null;
@@ -23,7 +23,7 @@ export type OfficeGuide = {
 type Copy = readonly [string, string];
 const WORK: Record<string, { room: DepartmentKey; agent: string; task: Copy; output: Copy }> = {
   researching: { room: "research", agent: "research", task: ["核对海外需求、竞品定价和反面证据，整理值得验证的人群。", "Check overseas demand, competitor pricing and counterevidence to identify audiences worth testing."], output: ["候选人群、来源证据和出海机会报告", "Candidate audiences, source evidence and an opportunity report"] },
-  drafting_quote: { room: "frontdesk", agent: "quote", task: ["把研究结果整理成 Pro 服务范围、交付清单与提案草稿。", "Turn research into a Pro service scope, deliverables and a draft proposal."], output: ["待经营者核定的服务提案", "A service proposal for the operator to review"] },
+  drafting_quote: { room: "frontdesk", agent: "quote", task: ["把研究结果整理成 Pro 服务范围、交付清单与提案草稿。", "Turn research into a Pro service scope, deliverables and a draft proposal."], output: ["项目服务范围与价格", "Project scope and price"] },
   reading_receipt: { room: "finance", agent: "receipt", task: ["读取付款凭证并整理可核对的信息，实际到账由经营者确认。", "Read payment proof and organize verifiable details. The operator confirms actual receipt."], output: ["凭证识别结果与待核对项", "Receipt details and items to verify"] },
   strategizing: { room: "strategy", agent: "strategy", task: ["比较目标人群，写清定位、实验假设和预先约定的判断标准。", "Compare audiences and define positioning, hypotheses and preset success criteria."], output: ["定位方案与验证计划", "Positioning options and a validation plan"] },
   preparing_page: { room: "launch", agent: "launch", task: ["根据已确认的定位制作英文验证页、核对事实声明并准备渠道素材。", "Build an English validation page from the approved positioning, check claims and prepare channel assets."], output: ["待审批的英文页面与渠道行动卡", "An English page and channel action card for approval"] },
@@ -81,27 +81,23 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
       break;
     case "researching":
       if (input.plan === "free") next("customer", ["先查看免费的出海机会报告", "Review your free opportunity report"], ["研究完成后，是否购买 Pro 由你决定", "After research, you decide whether to purchase Pro"]);
-      else if (input.quoteRequired && !input.quotePaid) next("frontdesk", ["Lumi 整理 Pro 服务提案", "Lumi prepares the Pro service proposal"], ["研究完成并保留来源后", "After research is complete with sources saved"]);
+      else if (input.quoteRequired && !input.quotePaid) next("customer", ["客户查看报告并决定是否购买 Pro", "The customer reviews the report and decides whether to buy Pro"], ["研究完成并保留来源后", "After research is complete with sources saved"]);
       else next("strategy", ["Fino 比较人群并制定定位", "Fino compares audiences and develops positioning"], ["研究材料核对通过后", "After the research material passes its checks"]);
       break;
     case "free_ready":
       guide.state = "complete"; guide.title = t("Nori 已完成免费出海机会报告", "Nori has completed your free opportunity report");
       guide.task = t("先看候选人群、证据与待验证的问题。Free 在这里交付结果。", "Review the audiences, evidence and open questions. This is the Free deliverable.");
-      guide.output = c(WORK.researching.output); next("customer", ["了解 Pro 的高级工作模块", "Explore the advanced Pro modules"], ["仅在账号开通 Pro 后继续", "Continue only after your account has Pro access"]);
+      guide.output = c(WORK.researching.output); next("customer", ["了解 Pro 的高级工作模块", "Explore the advanced Pro modules"], ["本项目付款校验通过后继续", "Continue after payment verification for this project"]);
       guide.yourAction = t("先读报告，再确认 Pro 的服务范围与报价。", "Read the report, then review the Pro service scope and quote."); action("#diagnosis", ["查看出海机会报告", "View opportunity report"]); break;
-    case "drafting_quote": next("owner", ["首客经营者核定服务范围与价格", "The operator reviews the scope and price"], ["Lumi 完成提案草稿后", "After Lumi finishes the draft proposal"]); break;
+    case "drafting_quote": next("customer", ["客户确认 Pro 服务并购买", "The customer confirms and buys Pro"], ["服务范围与价格准备好后", "After scope and price are ready"]); break;
     case "awaiting_quote":
-      guide.state = operator ? "action" : "waiting"; guide.title = t("等待经营者核定 Pro 提案", "Waiting for operator review of the Pro proposal");
-      guide.task = t("Lumi 已起草服务提案，这一步在等人工核价与确认条款。", "Lumi has drafted the proposal. A person now needs to approve its price and terms."); guide.output = c(WORK.drafting_quote.output);
-      next("customer", ["由项目发起人决定是否接受报价", "The project owner decides whether to accept the quote"]);
-      guide.yourAction = operator ? t("核定金额与条款后，交给客户确认。", "Approve the amount and terms, then request customer confirmation.") : t("当前无需付款，等报价核定后再决定是否接受。", "No payment is needed yet. Decide after the quote is approved.");
-      if (operator) action("#decisions", ["核定服务报价", "Review the service quote"]); break;
     case "awaiting_quote_acceptance":
-      guide.state = operator ? "waiting" : "action"; guide.title = operator ? t("等待客户接受服务报价", "Waiting for customer acceptance") : t("轮到你确认服务报价", "Your turn to review the service quote");
-      guide.task = t("服务范围与金额已核定，接受或退回由项目发起人决定。", "The scope and amount have been approved. The project owner can accept or return the quote."); guide.output = t("已核定的 Pro 服务提案", "The approved Pro proposal");
-      next("finance", ["Milo 读取提交的付款凭证", "Milo reads the submitted payment proof"], ["接受报价并上传付款凭证后", "After quote acceptance and payment proof upload"]);
-      guide.yourAction = operator ? t("客户接受报价后，等待付款凭证。", "Wait for payment proof after customer acceptance.") : t("核对范围、价格和条款，接受报价或退回修改。", "Check the scope, price and terms, then accept or request changes.");
-      if (!operator) action("#proposal", ["查看并确认报价", "Review the quote"]); break;
+      guide.state = operator ? "waiting" : "action"; guide.title = t("等待客户确认 Pro 服务", "Waiting for the customer to confirm Pro");
+      guide.task = t("项目改用自动定价，客户确认范围与价格后自助购买。", "Automatic pricing applies. The customer reviews scope and price before buying.");
+      guide.output = t("项目服务范围与价格", "Project scope and price");
+      next("finance", ["Milo 校验付款并自动开通项目", "Milo verifies payment and activates the project"], ["客户确认购买后", "After the customer confirms the purchase"]);
+      guide.yourAction = operator ? t("等待客户购买，无需逐单批价。", "Wait for the customer to buy. No per-order pricing approval is needed.") : t("查看 Pro 服务并确认购买。", "Review the Pro service and confirm your purchase.");
+      if (!operator) action("#pro", ["查看 Pro 服务", "View Pro service"]); break;
     case "awaiting_payment":
       if (input.projectCheckout) {
         guide.state = operator ? "waiting" : "action";
@@ -147,6 +143,15 @@ export function officeGuidance(input: OfficeGuideInput, locale: Locale = "zh"): 
       guide.title = t("等待首客经营者决定下一步", "Waiting for the operator’s decision"); guide.task = t("前序材料已保留，先由经营者判断继续补查还是调整方向。", "Previous material is saved. The operator decides whether to investigate further or change direction."); next("owner", ["裁决后再交给对应 Agent", "Hand off to the appropriate agent after the decision"]); guide.yourAction = operator ? t("查看待裁决事项，给出继续处理的方向。", "Review the pending decision and choose how to proceed.") : t("等待首客处理，可通过客服询问。", "Wait for HiFirst or ask support for an update."); guide.state = operator ? "action" : "waiting"; action(operator ? "#decisions" : "#support", ["查看待处理事项", "View pending items"]); break;
     case "cancelled":
       guide.room = null; guide.state = "closed"; guide.title = t("项目已取消", "Project cancelled"); guide.task = t("历史材料仍可查看，当前不会启动新的任务。", "Historical material remains available. No new tasks will start."); guide.yourAction = t("如需继续，请联系首客。", "Contact HiFirst if you would like to continue."); break;
+  }
+  if (input.proOffer && input.status !== "free_ready") {
+    guide.room = "frontdesk"; guide.state = operator ? "waiting" : "action";
+    guide.title = t("待确认 Pro 服务", "Review Pro service");
+    guide.task = t("核对当前项目的服务范围与价格，付款校验后自动开通并执行。", "Review this project's scope and price. Work starts automatically after payment verification.");
+    guide.output = t("项目服务范围与价格", "Project scope and price");
+    next("customer", ["确认 Pro 服务并购买", "Confirm and buy Pro"]);
+    guide.yourAction = operator ? t("等待客户购买，无需逐单批价。", "Wait for the customer to buy. No per-order approval is needed.") : t("查看 Pro 服务并确认购买。", "Review the Pro service and confirm your purchase.");
+    if (!operator) action("#pro", ["查看 Pro 服务", "View Pro service"]);
   }
   if (input.paused && !["delivered", "cancelled"].includes(input.status)) {
     const finishing = input.runningAgents.map(officeRoomForAgent).find((key) => key !== undefined);

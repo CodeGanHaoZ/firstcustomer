@@ -87,12 +87,12 @@ export async function companyDocuments(db: Db) {
       name: "02-brand.md", body: title("品牌语调", `${show(settings?.brand)}\n\n## 禁用词\n\n${lines(settings?.forbiddenTerms ?? [])}`),
     },
     {
-      name: "03-product.md", body: title("服务定义", settings?.service || "免费出海机会分析提供候选人群、支持和反面证据、待验证项。首客启动包提供定位、商业证据、英文验证页、单渠道行动与增长复盘。参考价 ¥299，实际以老板确认且客户接受的报价为准。"),
+      name: "03-product.md", body: title("服务定义", settings?.service || "免费出海机会分析提供候选人群、支持和反面证据、待验证项。首客启动包提供定位、商业证据、英文验证页、单渠道行动与增长复盘。标准 Pro 包含同一产品、同一目标市场的三轮完整验证，按当前计价配置生成项目价格，客户确认购买后自动开通，无需老板批价。"),
     },
     {
       name: "04-ops.md", body: title("运营与客服", `${show(settings?.operations)}\n\n## 闸门与权限\n\n${lines([
         "① 老板确认公司宪章", "② 声明证据由程序检查", "③ 定位和④发布先经老板把关，再由客户确认",
-        "⑤ 老板确认报价、客户接受", "⑥ 老板确认实际到账", "⑦ 老板处理升级客服", "⑧ 老板记录周报决定", "⑨ 老板交付、客户验收",
+        "⑤ 客户确认 Pro 范围与价格", "⑥ 系统校验付款并自动开通；历史凭证异常单独核对", "⑦ 老板处理升级客服", "⑧ 老板记录周报决定", "⑨ 老板交付、客户验收",
         "经营台需老板登录。客户通过专属链接只访问自己的项目。海外访客仅可访问已发布页面。",
       ])}\n\n## 客服记录\n\n${lines(inbox.map((item) => `${projectName(item.projectId)} · ${item.risk ?? "未分级"} · ${item.question} → ${item.reply ?? "待处理"}`))}`),
     },

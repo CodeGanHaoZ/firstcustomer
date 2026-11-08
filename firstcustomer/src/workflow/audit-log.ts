@@ -3,8 +3,8 @@ import type { Db } from "@/db";
 import { decisions, projects, stateTransitions } from "@/db/schema";
 
 export const AUDIT_GATES = {
-  all: "全部记录", quote: "批价", payment: "到账", positioning: "定位", publish: "发布",
-  next_round: "下一轮", acceptance: "交付验收", support: "客服处置", escalation: "异常裁决",
+  all: "全部记录", quote: "服务价格确认", payment: "到账", positioning: "定位", publish: "发布",
+  next_round: "下一轮", pro_round: "套餐验证轮次", acceptance: "交付验收", support: "客服处置", escalation: "异常裁决",
   weekly: "周报决定", charter: "公司宪章", pro_access: "Pro 开通", transition: "项目流转",
 } as const;
 export const AUDIT_PAGE_SIZE = 25;

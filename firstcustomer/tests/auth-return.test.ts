@@ -10,6 +10,13 @@ describe("登录上下文与角色隔离", () => {
     expect(customerReturnTo("/admin/access")).toBe("/account");
     expect(customerReturnTo("/p/account.invalid")).toBe("/account");
   });
+  it("领取试用时登录可返回合法访客项目，仍拒绝非法凭据路径", () => {
+    const path = `/p/${"a".repeat(43)}#pro-trial`;
+    expect(customerReturnTo(path)).toBe(path);
+    expect(customerReturnTo(`/p/${"a".repeat(42)}`)).toBe("/account");
+    expect(customerReturnTo(`/p/${"a".repeat(44)}`)).toBe("/account");
+    expect(customerReturnTo(`/p/${"a".repeat(43)}/admin`)).toBe("/account");
+  });
   it("老板返回合法内部页面，不能进入客户确认入口或登录循环", () => {
     for (const path of ["/admin/access", "/admin/audit?role=founder", `/admin/projects/${id}`, "/admin/payment"]) {
       expect(ownerReturnTo(path)).toBe(path);

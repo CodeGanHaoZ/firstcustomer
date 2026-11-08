@@ -13,7 +13,7 @@ import { enqueueAdvance } from "@/jobs/queue";
 import { adminCredentialsMatch, adminUsername, endAdminSession, requireAdmin, startAdminSession } from "@/lib/auth";
 import { withinLimit } from "@/lib/request";
 import { readUploadedFiles, readUploadedImage } from "@/lib/uploads";
-import { confirmReceipt, decideQuote, MAX_AMOUNT_FEN, savePaymentCode, uploadReceipt } from "@/workflow/commerce";
+import { confirmReceipt, MAX_AMOUNT_FEN, savePaymentCode, uploadReceipt } from "@/workflow/commerce";
 import {
   addManualEvidence,
   addProjectImage,
@@ -33,7 +33,6 @@ import {
   setOwnProduct,
   setPaused,
   setLeadTest,
-  setQuote,
   skipClarifications,
   startResearch,
   startReview,
@@ -205,13 +204,6 @@ export async function feedbackAction(projectId: string, formData: FormData) {
   return feedbackHandler(projectId, formData);
 }
 
-const quoteHandler = adminAction("quotes.approve", async (formData, projectId) => {
-  await setQuote(getDb(), projectId, yuanToFen(text(formData, "yuan")));
-});
-export async function quoteAction(projectId: string, formData: FormData) {
-  return quoteHandler(projectId, formData);
-}
-
 const paymentHandler = adminAction("payments.confirm", async (formData, projectId) => {
   await recordPayment(getDb(), projectId, {
     amountFen: yuanToFen(text(formData, "yuan")),
@@ -228,22 +220,6 @@ const minutesHandler = adminAction("company.manage", async (formData, projectId)
 });
 export async function minutesAction(projectId: string, formData: FormData) {
   return minutesHandler(projectId, formData);
-}
-
-const proposalHandler = adminAction("quotes.approve", async (formData, projectId) => {
-  const verdict = z.enum(["approve", "reject"]).parse(formData.get("verdict"));
-  await decideQuote(getDb(), enqueueAdvance, {
-    projectId,
-    actor: "founder",
-    version: z.coerce.number().int().positive().parse(formData.get("version")),
-    verdict,
-    reason: text(formData, "reason").slice(0, 500),
-    quoteFen: verdict === "approve" ? yuanToFen(text(formData, "yuan")) : undefined,
-  });
-  return verdict === "approve" ? "报价已确认，等待客户接受；此时尚未计入实收。" : "报价已退回重写，新版本需要重新审批。";
-});
-export async function founderProposalAction(projectId: string, formData: FormData) {
-  return proposalHandler(projectId, formData);
 }
 
 const receiptUploadHandler = adminAction("payments.confirm", async (formData, projectId) => {

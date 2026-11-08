@@ -8,7 +8,7 @@ import { enqueueAdvance } from "@/jobs/queue";
 import { findCustomerProject, requireCustomerProjectSession } from "@/lib/customer-project";
 import { withinLimit } from "@/lib/request";
 import { readUploadedFiles, readUploadedImage } from "@/lib/uploads";
-import { decideQuote, uploadReceipt } from "@/workflow/commerce";
+import { uploadReceipt } from "@/workflow/commerce";
 import {
   addProjectImage,
   acceptDelivery,
@@ -16,6 +16,7 @@ import {
   decide,
   deleteProjectImage,
   startReview,
+  startPurchasedProRound,
   deliverProject,
 } from "@/workflow/actions";
 import { openSupportMessage } from "@/workflow/support";
@@ -24,6 +25,10 @@ import { completeProPurchase, createProPurchase } from "@/workflow/purchases";
 import { reviseRequirements } from "@/workflow/requirements";
 import { requirementFields } from "@/domain/requirements";
 import { activateProByKey } from "@/workflow/pro-access";
+import { getCustomerSession } from "@/lib/customer-auth";
+import { claimTrialProjects, rememberTrialProject } from "@/lib/trial-projects";
+import { ensureProTrialVisitor } from "@/lib/pro-trial-visitor";
+import { claimGuestProTrial, claimProTrial } from "@/workflow/purchases";
 
 const schema = z.object({
   gate: z.enum(["positioning", "publish", "next_round"]),
@@ -77,6 +82,20 @@ export async function customerStartFreeAction(token: string) {
   });
 }
 
+export async function customerClaimTrialAction(token: string) {
+  const session = await getCustomerSession();
+  await withProject(token, async (projectId) => {
+    if (!(await withinLimit("pro-trial-claim", 8, 3600))) throw new Error("领取请求过于频繁，请稍后重试");
+    const guestHash = await ensureProTrialVisitor();
+    if (session) await claimTrialProjects(getDb(), [token], session.user.id);
+    else await rememberTrialProject(token);
+    const claimed = session ? await claimProTrial(getDb(), session.user.id, projectId, enqueueAdvance, guestHash)
+      : await claimGuestProTrial(getDb(), guestHash, projectId);
+    revalidatePath("/account"); revalidatePath("/account/pro");
+    return claimed ? "免费试用已开通，正在开始本轮完整验证。" : "本项目免费试用已开通，无需重复领取。";
+  });
+}
+
 export async function customerPurchaseProAction(token: string, formData: FormData) {
   await withProject(token, async (projectId) => {
     if (!(await withinLimit("pro-purchase", 12, 3600))) throw new Error("提交过于频繁，请稍后重试");
@@ -97,6 +116,18 @@ export async function customerPayProAction(token: string, formData: FormData) {
 
 export async function customerStartReviewAction(token: string) {
   await withProject(token, async (projectId) => { await startReview(getDb(), enqueueAdvance, projectId, "customer"); });
+}
+
+export async function customerNextRoundAction(token: string, formData: FormData) {
+  await withProject(token, async (projectId) => {
+    if (!(await withinLimit("pro-next-round", 12, 3600))) throw new Error("提交过于频繁，请稍后重试");
+    await startPurchasedProRound(getDb(), enqueueAdvance, {
+      projectId, round: z.coerce.number().int().positive().parse(formData.get("round")),
+      focus: z.string().max(500).parse(String(formData.get("focus") ?? "")),
+    });
+    revalidatePath("/account"); revalidatePath(`/admin/projects/${projectId}`);
+    return "套餐内下一轮已启动，无需再次付款。";
+  });
 }
 
 export async function customerCompleteProjectAction(token: string, formData: FormData) {
@@ -132,18 +163,6 @@ export async function customerUploadImages(token: string, formData: FormData) {
 export async function customerDeleteImage(token: string, formData: FormData) {
   await withProject(token, async (projectId) => {
     await deleteProjectImage(getDb(), projectId, z.uuid().parse(formData.get("imageId")));
-  });
-}
-
-export async function customerProposalAction(token: string, formData: FormData) {
-  await withProject(token, async (projectId) => {
-    await decideQuote(getDb(), enqueueAdvance, {
-      projectId,
-      actor: "customer",
-      version: z.coerce.number().int().positive().parse(formData.get("version")),
-      verdict: z.enum(["approve", "reject"]).parse(formData.get("verdict")),
-      reason: String(formData.get("reason") ?? "").slice(0, 500),
-    });
   });
 }
 

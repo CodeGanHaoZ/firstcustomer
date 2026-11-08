@@ -31,6 +31,7 @@ export function customerProgress(input: {
   canStartFree?: boolean;
   selfServicePro?: boolean;
   proInactive?: boolean;
+  proOffer?: boolean;
 }): Progress {
   if (input.proInactive) return { title: "Pro 账号权益当前不可用", detail: "请在账号工作台核对版本，现有项目资料会保留。", action: { href: "/account/upgrade", label: "查看账号版本" } };
   const phase = input.status === "reviewing" && input.reportReady ? undefined : WORK_PHASES[input.status as ProjectStatus];
@@ -43,6 +44,7 @@ export function customerProgress(input: {
       refreshSeconds: actor ? 3 : 12,
     };
   }
+  if (input.proOffer && input.status !== "free_ready") return { title: "待确认 Pro 服务", detail: "核对本项目的服务范围与价格，付款校验后自动开通并执行。", action: { href: "#pro", label: "查看 Pro 服务" } };
   if (phase) {
     const detail = actor === "截图读取员" ? "截图读取员正在整理你上传的图片。"
       : actor ? `${actor}正在${phase.work}。` : `正在等待${phase.label}开始处理。`;
@@ -60,10 +62,8 @@ export function customerProgress(input: {
       : { title: "已提交", detail: "项目已提交，等待首客老板确认后开始研究。", refreshSeconds: 12 };
     case "free_ready": return { title: "你的出海机会报告已生成", detail: "你可以查看候选人群和待验证事项，或购买 Pro 继续做定位与发布。", action: { href: "#diagnosis", label: "查看出海机会报告" } };
     case "needs_info": return { title: "待你补充资料", detail: "研究员需要你补充信息，可以先保存已填的回答。", action: { href: "#clarifications", label: "回答追问" } };
-    case "awaiting_quote": return { title: "首客正在核对报价", detail: "服务范围和价格确认后会在这里显示。", refreshSeconds: 12 };
-    case "awaiting_quote_acceptance": return input.quoteVisible
-      ? { title: "待你确认报价", detail: "请查看服务范围、价格和条款，接受或退回提案。", action: { href: "#proposal", label: "查看服务提案" } }
-      : { title: "报价待更新", detail: "请稍后查看最新提案。", refreshSeconds: 12 };
+    case "awaiting_quote":
+    case "awaiting_quote_acceptance": return { title: "待确认 Pro 服务", detail: "老板逐单报价已取消，项目服务价格以购买区展示为准。", action: { href: "#pro", label: "查看 Pro 服务" } };
     case "awaiting_payment": return input.receiptUploaded
       ? { title: "待首客确认到账", detail: "付款截图已收到，首客将核对实际收款。", refreshSeconds: 12 }
       : input.awaitingPayment

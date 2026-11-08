@@ -11,6 +11,7 @@ vi.mock("next/headers", () => ({ cookies: async () => ({
 import { adminCredentialsMatch, endAdminSession, getOwnerIdentity, hasAdminSession, isAdmin, requireAdmin, startAdminSession } from "@/lib/auth";
 import { hasOwnerPermission, OWNER_PERMISSION_KEYS, type OwnerPermission } from "@/domain/owner-permissions";
 import { parseTrialTokens, rememberTrialProject, trialProjectTokens, TRIAL_PROJECTS_COOKIE } from "@/lib/trial-projects";
+import { currentProTrialVisitor, ensureProTrialVisitor, PRO_TRIAL_VISITOR_COOKIE, proTrialVisitorHash } from "@/lib/pro-trial-visitor";
 
 beforeEach(() => {
   store.clear(); setCookie.mockClear();
@@ -21,6 +22,22 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
 describe("试用入口凭据", () => {
+  it("访客身份只在操作时签发，刷新不换身份，使用 HttpOnly 并只向数据库提供哈希", async () => {
+    expect(await currentProTrialVisitor()).toBeNull();
+    expect(setCookie).not.toHaveBeenCalled();
+    const first = await ensureProTrialVisitor();
+    expect(first).toMatch(/^[a-f0-9]{64}$/);
+    expect(store.get(PRO_TRIAL_VISITOR_COOKIE)).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(first).not.toBe(store.get(PRO_TRIAL_VISITOR_COOKIE));
+    expect(await currentProTrialVisitor()).toBe(first);
+    expect(await ensureProTrialVisitor()).toBe(first);
+    expect(setCookie).toHaveBeenCalledTimes(1);
+    expect(setCookie).toHaveBeenCalledWith(PRO_TRIAL_VISITOR_COOKIE, expect.any(String), expect.objectContaining({ httpOnly: true, sameSite: "lax", maxAge: 365 * 24 * 3600 }));
+    for (const value of [undefined, "bad", "a".repeat(42), "a".repeat(44), "<".repeat(43)]) expect(proTrialVisitorHash(value)).toBeNull();
+    store.set(PRO_TRIAL_VISITOR_COOKIE, "bad");
+    expect(await currentProTrialVisitor()).toBeNull();
+    expect(await ensureProTrialVisitor()).not.toBe(first);
+  });
   it("拒绝异常 Cookie，并只保留有效且不重复的项目凭据", () => {
     for (const value of [undefined, "invalid", "{}", "[]", "x".repeat(3000), '["account.project-id",42]']) {
       expect(parseTrialTokens(value)).toEqual([]);

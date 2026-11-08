@@ -6,7 +6,7 @@ import { loadCoo, projectAttention } from "./office";
 import { operatingMetrics } from "./operating-metrics";
 
 export const OWNER_CATEGORIES = {
-  all: "全部待办", quote: "批价", payment: "核款", approval: "方案与交付",
+  all: "全部待办", payment: "核款", approval: "方案与交付",
   risk: "异常与客服", operations: "项目推进", company: "公司决策",
 } as const;
 export type OwnerCategory = Exclude<keyof typeof OWNER_CATEGORIES, "all">;
@@ -17,7 +17,6 @@ export type OwnerItem = {
 
 function categoryFor(status: string, paused: boolean): OwnerCategory {
   if (paused) return "operations";
-  if (status === "awaiting_quote") return "quote";
   if (status === "awaiting_payment") return "payment";
   if (["failed", "awaiting_founder"].includes(status)) return "risk";
   if (["awaiting_positioning", "awaiting_publish", "reviewing", "delivered"].includes(status)) return "approval";
@@ -62,7 +61,7 @@ export async function loadOwnerDashboard(db: Db) {
     add({ id: "charter", projectId: null, title: "公司宪章", action: "确认业务范围与服务红线", category: "company",
       since: null, href: "/admin/context#company-settings", isOwnProduct: false });
   }
-  const priorities: Record<OwnerCategory, number> = { risk: 0, payment: 1, quote: 2, approval: 3, company: 4, operations: 5 };
+  const priorities: Record<OwnerCategory, number> = { risk: 0, payment: 1, approval: 3, company: 4, operations: 5 };
   queue.sort((a, b) => Number(b.overdue) - Number(a.overdue) || priorities[a.category] - priorities[b.category]
     || (a.since?.getTime() ?? Infinity) - (b.since?.getTime() ?? Infinity) || a.id.localeCompare(b.id));
   const counts = Object.fromEntries(Object.keys(OWNER_CATEGORIES).map((key) =>

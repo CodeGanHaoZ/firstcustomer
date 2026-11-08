@@ -6,6 +6,7 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import { accountProjectToken } from "@/lib/customer-project";
 import { withinLimit } from "@/lib/request";
 import { rememberTrialProject } from "@/lib/trial-projects";
+import { ensureProTrialVisitor } from "@/lib/pro-trial-visitor";
 import { submitProject } from "@/workflow/intake";
 import { startFreeDiagnosis } from "@/workflow/plans";
 import { activateAccountPro, customerMembership } from "@/workflow/membership";
@@ -21,7 +22,7 @@ export async function createProjectAction(formData: FormData) {
     redirect(`/projects/new?error=${encodeURIComponent(error instanceof Error ? error.message : "提交失败")}`);
   });
   const query = new URLSearchParams({ intake: "public" });
-  if (!session) await rememberTrialProject(token);
+  if (!session) { await ensureProTrialVisitor(); await rememberTrialProject(token); }
   let warning = imageWarning;
   try {
     if (session && (await customerMembership(db, session.user.id)).plan === "pro") await activateAccountPro(db, projectId, session.user.id);

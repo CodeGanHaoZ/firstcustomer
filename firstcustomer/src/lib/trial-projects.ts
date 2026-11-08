@@ -1,7 +1,7 @@
-import { and, desc, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { cookies } from "next/headers";
 import type { Db } from "@/db";
-import { projects } from "@/db/schema";
+import { authUsers, projects, proTrialClaims } from "@/db/schema";
 import { hashToken } from "@/workflow/actions";
 
 export const TRIAL_PROJECTS_COOKIE = "fc_trial_projects";
@@ -46,10 +46,24 @@ export async function listTrialProjects(db: Db, tokens: string[]) {
 
 export async function claimTrialProjects(db: Db, tokens: string[], customerId: string) {
   if (!tokens.length) return 0;
-  const saved = await db.update(projects).set({ customerId, updatedAt: new Date() })
-    .where(and(isNull(projects.customerId), inArray(projects.tokenHash, tokens.map(hashToken))))
-    .returning({ id: projects.id });
-  return saved.length;
+  return db.transaction(async (tx) => {
+    // Use the same account-first lock order as trial activation. Importing a
+    // guest trial consumes this account's allowance rather than gifting another.
+    const [customer] = await tx.select({ id: authUsers.id }).from(authUsers).where(eq(authUsers.id, customerId)).for("update");
+    if (!customer) throw new Error("账号不存在，请重新登录");
+    const hashes = tokens.map(hashToken);
+    const saved = await tx.update(projects).set({ customerId, updatedAt: new Date() })
+      .where(and(isNull(projects.customerId), inArray(projects.tokenHash, hashes))).returning({ id: projects.id });
+    const [existingClaim] = await tx.select({ id: proTrialClaims.id }).from(proTrialClaims).where(eq(proTrialClaims.customerId, customerId)).limit(1);
+    if (!existingClaim) {
+      const [guestClaim] = await tx.select({ id: proTrialClaims.id }).from(proTrialClaims)
+        .innerJoin(projects, eq(projects.id, proTrialClaims.projectId))
+        .where(and(eq(projects.customerId, customerId), inArray(projects.tokenHash, hashes), isNull(proTrialClaims.customerId)))
+        .orderBy(asc(proTrialClaims.claimedAt)).limit(1);
+      if (guestClaim) await tx.update(proTrialClaims).set({ customerId }).where(eq(proTrialClaims.id, guestClaim.id));
+    }
+    return saved.length;
+  });
 }
 
 export async function clearTrialProjects() {

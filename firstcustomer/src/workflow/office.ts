@@ -4,12 +4,12 @@ import type { Db } from "@/db";
 import { agentTasks, clarifications, companyReports, decisions, landingPages, leads, payments, projects, stateTransitions, supportMessages } from "@/db/schema";
 import { founderReady, gateState } from "@/domain/approval";
 import { departmentViews, OFFICE_TRANSFER_STEPS, type OfficeTransfer } from "@/domain/office";
-import { isPurchasedPro, isSelfServicePro, type ProjectStatus } from "@/domain/workflow";
+import { isProjectServicePro, isSelfServicePro, type ProjectStatus } from "@/domain/workflow";
 import { gateStatusFor } from "./actions";
 import { latestReceipt, projectOrder } from "./commerce";
 import { reportFor } from "./engine";
 
-const WAITING_OWNER_STATUSES = ["submitted", "awaiting_quote", "awaiting_payment", "awaiting_positioning", "awaiting_publish", "awaiting_founder", "reviewing", "failed"];
+const WAITING_OWNER_STATUSES = ["submitted", "awaiting_payment", "awaiting_positioning", "awaiting_publish", "awaiting_founder", "reviewing", "failed"];
 export const OWNER_REMINDER_HOURS = 24;
 const reminderCutoff = (now: Date) => new Date(now.getTime() - OWNER_REMINDER_HOURS * 3_600_000);
 
@@ -37,13 +37,13 @@ export async function projectAttention(db: Db, project: typeof projects.$inferSe
   switch (project.status) {
     case "submitted": return isSelfServicePro(project) ? waiting("等客户从 Pro 工作台启动模块") : project.productPlan === "free" ? null : owner("确认后开始研究");
     case "needs_info": return waiting("等客户回答追问，也可选择继续研究");
-    case "awaiting_quote": return owner("确认报价和服务条款");
-    case "awaiting_quote_acceptance": return waiting("等客户接受报价");
+    case "awaiting_quote":
+    case "awaiting_quote_acceptance": return waiting("等客户确认 Pro 服务并购买");
     case "awaiting_payment": {
-      if (isPurchasedPro(project)) return waiting("等客户完成付款，系统自动校验并开通");
+      if (isProjectServicePro(project)) return waiting("等客户完成付款，系统自动校验并开通");
       const order = await projectOrder(db, project.id);
       const receipt = order && await latestReceipt(db, order.id);
-      if (!receipt) return waiting("等客户上传付款截图");
+      if (!receipt) return waiting("等客户确认 Pro 服务并购买");
       return receipt.analysisStatus === "pending" ? null : owner("核对付款截图并确认到账");
     }
     case "awaiting_positioning":
@@ -56,11 +56,11 @@ export async function projectAttention(db: Db, project: typeof projects.$inferSe
         : waiting(positioning ? "等客户确认定位" : "等客户确认发布");
     }
     case "awaiting_founder": return owner((project.escalation as { route?: string } | null)?.route === "clarification-limit" ? "补充信息需你处理" : "打回超限，等你裁决");
-    case "failed": return owner("执行失败，决定是否重试");
+    case "failed": return project.failedFrom === "drafting_quote" ? waiting("等客户确认 Pro 服务并购买") : owner("执行失败，决定是否重试");
     case "collecting": return isSelfServicePro(project) ? waiting("客户可从 Pro 工作台启动增长复盘") : owner("数据够了就开始复盘", null);
     case "reviewing": {
       const report = await reportFor(db, project);
-      if (!report || isPurchasedPro(project) || (isSelfServicePro(project) && !(report.content as { next_hypothesis?: string | null }).next_hypothesis)) return null;
+      if (!report || isProjectServicePro(project) || (isSelfServicePro(project) && !(report.content as { next_hypothesis?: string | null }).next_hypothesis)) return null;
       const { state } = await gateStatusFor(db, project, "next_round");
       if (!founderReady(state)) return owner("看复盘，决定交付或下一轮");
       return project.isOwnProduct ? owner("代为确认自有产品下一轮") : waiting("等客户确认下一轮");

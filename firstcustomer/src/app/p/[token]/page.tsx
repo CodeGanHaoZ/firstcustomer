@@ -1,8 +1,12 @@
 import { customerMembership } from "@/workflow/membership";
 import { PRO_MODULES } from "@/domain/membership";
-import { proQuote } from "@/domain/pro-pricing";
 import { ProPurchase } from "@/components/pro-purchase";
-import { canPurchasePro, projectPurchasePayment } from "@/workflow/purchases";
+import { ProNextRound } from "@/components/pro-next-round";
+import { ProTrial } from "@/components/pro-trial";
+import { getCustomerSession } from "@/lib/customer-auth";
+import { proRoundProgress } from "@/domain/pro-pricing";
+import { canClaimProTrialOnProject, customerProTrial, guestProTrial, proPurchaseOffer, projectProTrial, projectPurchasePayment, validProTrialClaim } from "@/workflow/purchases";
+import { currentProTrialVisitor } from "@/lib/pro-trial-visitor";
 import { paymentsEnabled } from "@/payments/provider";
 import { LocalizedTextarea } from "@/components/localized-controls";
 import { getLocale } from "@/lib/locale-server";
@@ -44,15 +48,15 @@ import { Button } from "@/components/ui/button";
 import { getDb } from "@/db";
 import { founderReady, type Gate } from "@/domain/approval";
 import { customerProgress } from "@/domain/customer-progress";
-import { canActivateProByKey, canStartFreeDiagnosis, hasProAccess, isAccountPro, isKeyActivatedPro, isPurchasedPro, isSelfServicePro, usesQuoteFlow } from "@/domain/workflow";
+import { canActivateProByKey, canStartFreeDiagnosis, hasProAccess, isAccountPro, isKeyActivatedPro, isPurchasedPro, isSelfServicePro, isTrialPro, usesQuoteFlow } from "@/domain/workflow";
 import { formatDateTime, formatYuan } from "@/lib/format";
 import { findCustomerProject, isAccountProjectToken, requireCustomerProjectSession } from "@/lib/customer-project";
 import { confirmedOrderPayment, hasPaymentCode, latestReceipt, projectOrder } from "@/workflow/commerce";
 import { loadOfficeTransfer } from "@/workflow/office";
 import { loadProjectView, runningProjectAgents } from "@/workflow/queries";
 import { projectSupport } from "@/workflow/support";
-import { customerAcceptanceAction, customerActivateProAction, customerAnswers, customerDecision, customerDeleteImage, customerProposalAction, customerReceiptAction, customerSupportAction, customerUploadImages } from "./actions";
-import { customerCompleteProjectAction, customerPayProAction, customerPurchaseProAction, customerStartFreeAction, customerStartReviewAction } from "./actions";
+import { customerAcceptanceAction, customerActivateProAction, customerAnswers, customerDecision, customerDeleteImage, customerReceiptAction, customerSupportAction, customerUploadImages } from "./actions";
+import { customerClaimTrialAction, customerCompleteProjectAction, customerNextRoundAction, customerPayProAction, customerPurchaseProAction, customerStartFreeAction, customerStartReviewAction } from "./actions";
 import "../../admin/office.css";
 import "../../workspace.css";
 
@@ -86,17 +90,26 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
     loadProjectView(db, project), projectOrder(db, project.id), projectSupport(db, project.id), runningProjectAgents(db, project),
     project.status === "submitted" || project.status === "cancelled" ? null : loadOfficeTransfer(db, project.id),
   ]);
-  const commercialOrder = usesQuoteFlow(project) ? order : null;
+  const offer = await proPurchaseOffer(db, project, order);
+  const commercialOrder = usesQuoteFlow(project) && !offer ? order : null;
   const canStartFree = canStartFreeDiagnosis(project, order);
   const membership = await customerMembership(db, project.customerId);
   const accountPro = isAccountPro(project);
-  const proActive = hasProAccess(project, order) && (!accountPro || membership.plan === "pro");
-  const proByKey = proActive && isKeyActivatedPro(project);
   const purchasedPro = isPurchasedPro(project);
+  const trialPro = isTrialPro(project);
+  const session = await getCustomerSession();
+  const [trialStatus, trialReady, trialClaim, browserTrial] = await Promise.all([
+    customerProTrial(db, session?.user.id), canClaimProTrialOnProject(db, project, order),
+    trialPro ? projectProTrial(db, project.id) : null,
+    guestProTrial(db, await currentProTrialVisitor()),
+  ]);
+  const proActive = hasProAccess(project, order) && (!accountPro || membership.plan === "pro") && (!trialPro || validProTrialClaim(project, order, trialClaim));
+  const proByKey = proActive && isKeyActivatedPro(project);
   const selfServicePro = isSelfServicePro(project);
-  const quote = order?.pricingSnapshot ?? (canPurchasePro(project) && paymentsEnabled() ? proQuote(project) : null);
+  const quote = order?.paymentMode === "simulated" ? order.pricingSnapshot : offer;
+  const roundProgress = quote ? proRoundProgress(quote, project.round) : null;
   const purchasePayment = order?.paymentMode === "simulated" ? await projectPurchasePayment(db, order.id) : null;
-  const checkoutPending = purchasedPro && order?.status === "simulation_pending" && project.status === "awaiting_payment";
+  const checkoutPending = order?.paymentMode === "simulated" && order.status === "simulation_pending" && project.status === "awaiting_payment";
   const advancedAvailable = project.productPlan === "legacy" ? !canStartFree : proActive;
   const visibleProposal = commercialOrder && ["quoted", "accepted", "paid"].includes(commercialOrder.status)
     ? commercialOrder.proposal : null;
@@ -117,25 +130,25 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           founderReady(view.gates.publish) &&
           view.gates.publish.customer === "pending"
         ? "publish"
-        : project.status === "reviewing" && !purchasedPro && (!accountPro || Boolean(view.report?.next_hypothesis)) &&
+        : project.status === "reviewing" && !purchasedPro && !trialPro && (!accountPro || Boolean(view.report?.next_hypothesis)) &&
             founderReady(view.gates.next_round) &&
             view.gates.next_round.customer === "pending"
           ? "next_round"
           : null;
   const progress = customerProgress({
     status: project.status, paused: project.paused, runningAgents, openGate, reportReady: !!view.report,
-    quoteVisible: !!visibleProposal, awaitingPayment: awaitingPayment || checkoutPending, receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree, selfServicePro: selfServicePro && proActive, proInactive: accountPro && !proActive,
+    quoteVisible: !!visibleProposal, awaitingPayment: awaitingPayment || checkoutPending, receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree, selfServicePro: selfServicePro && proActive, proInactive: accountPro && !proActive, proOffer: !!offer,
   });
   const supportPending = !project.paused && support.some((item) => item.status === "queued");
   const officeInput: OfficeGuideInput = { status: project.status, paused: project.paused, runningAgents, plan: project.productPlan,
     quoteRequired: usesQuoteFlow(project), quotePaid: commercialOrder?.status === "paid", openGate, reportReady: !!view.report,
-    receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree, failedFrom: project.failedFrom, selfServicePro: selfServicePro && proActive, proInactive: accountPro && !proActive, projectCheckout: checkoutPending };
+    receiptUploaded: !!receipt, deliveryStatus: order?.deliveryStatus, canStartFree, failedFrom: project.failedFrom, selfServicePro: selfServicePro && proActive, proInactive: accountPro && !proActive, projectCheckout: checkoutPending, proOffer: !!offer };
   const stations = customerOfficeStations(officeInput);
   const activeRoom = stations.find(({ state }) => state === "running")?.key;
   const finished = project.status === "free_ready" || project.status === "cancelled" || (project.status === "delivered" && order?.deliveryStatus === "accepted");
   const refresh = supportPending || activeRoom || project.status === "submitted" ? 3 : progress.refreshSeconds ?? (finished ? null : 12);
 
-  const planLabel = accountPro && proActive ? (membership.testAccount ? "Pro · 测试权益" : "Pro · 账号权益") : proByKey ? "Pro · 密钥已开通" : proActive ? "Pro" : project.productPlan === "pro" ? "Free · Pro 待开通" : "Free";
+  const planLabel = trialPro && proActive ? "Pro · 免费试用" : accountPro && proActive ? (membership.testAccount ? "Pro · 测试权益" : "Pro · 账号权益") : proByKey ? "Pro · 密钥已开通" : proActive ? "Pro" : project.productPlan === "pro" ? "Free · Pro 待开通" : "Free";
   const showPlan = project.productPlan !== "legacy" || canStartFree;
 
   return (
@@ -146,6 +159,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         {view.simulated ? <SimulatedBanner /> : null}
         <ProjectHeader
           project={project}
+          statusLabel={offer && project.status !== "free_ready" ? "待确认 Pro 服务" : undefined}
           eyebrow={<><T>客户项目工作台</T>{showPlan ? <> · <T>{planLabel}</T></> : null}</>}
           actions={<Link href="/account" className="btn btn--ghost btn--sm"><T>{isAccountProjectToken(token) ? "我的项目" : "试用工作台"}</T></Link>}
         />
@@ -153,7 +167,7 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         {notice ? <p className="notice notice--ok" role="status"><T>{String(notice)}</T></p> : null}
         {accountPro && proActive ? <section className="paper"><p className="notice notice--ok"><T>{membership.testAccount ? "当前使用 Pro 测试权益，不代表付款或收入。" : "当前项目使用已开通的 Pro 账号权益，无需初步报价与老板开通审核。"}</T></p><nav className="flex flex-wrap gap-2" aria-label="Pro 工作模块">{PRO_MODULES.map((module) => <a key={module.key} href={`#${module.anchor}`} className="btn btn--ghost btn--sm"><T>{module.zh}</T></a>)}</nav></section> : null}
         {proByKey ? <p className="notice notice--ok"><T>当前项目已通过密钥开通 Pro。后续定位和发布仍需双方确认。</T></p> : null}
-        {purchasedPro && proActive ? <nav className="mb-5 flex flex-wrap gap-2" aria-label="Pro 工作模块">{PRO_MODULES.map((module) => <a key={module.key} href={`#${module.anchor}`} className="btn btn--ghost btn--sm"><T>{module.zh}</T></a>)}</nav> : null}
+        {(purchasedPro || trialPro) && proActive ? <nav className="mb-5 flex flex-wrap gap-2" aria-label="Pro 工作模块">{PRO_MODULES.map((module) => <a key={module.key} href={`#${module.anchor}`} className="btn btn--ghost btn--sm"><T>{module.zh}</T></a>)}</nav> : null}
 
         {refresh ? <AutoRefresh seconds={refresh} /> : null}
         <div className="customer-project-layout">
@@ -197,12 +211,6 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           <section id="proposal" className="paper rise" aria-labelledby="proposal-title">
             <h2 id="proposal-title" className="paper__title mb-5"><T>首客服务提案</T></h2>
             <ProposalDetails proposal={visibleProposal} version={commercialOrder.quoteVersion} quoteFen={commercialOrder.quoteFen} />
-            {project.status === "awaiting_quote_acceptance" ? (
-              <div className="mt-6 border-t pt-5">
-                <Decide action={customerProposalAction.bind(null, token)} approveLabel="接受报价" rejectLabel="退回报价" reasonLabel="退回原因（退回时必填）"
-                  hidden={{ version: commercialOrder.quoteVersion }} />
-              </div>
-            ) : null}
             {commercialOrder.status === "paid" ? (
               <div className="notice notice--ok mt-5">
                 <p className="m-0"><T>首客已确认到账，正式服务已开始。</T>{confirmedPayment ? <> <T>实际到账 </T>{formatYuan(confirmedPayment.amountFen)} · {formatDateTime(confirmedPayment.paidAt)}</> : null}</p>
@@ -211,11 +219,16 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
           </section>
         ) : null}
 
-        {quote && (proActive || checkoutPending || canPurchasePro(project)) ? <ProPurchase state={proActive ? "active" : checkoutPending ? "checkout" : "offer"}
-          productName={project.productName} targetMarket={project.targetMarket} round={quote.round} amountFen={quote.quoteFen}
+        {(trialPro && trialClaim && proActive) || (trialReady && !browserTrial && (!session || trialStatus.eligible)) ? <ProTrial
+          state={trialPro ? "active" : "offer"} guest={!session} action={customerClaimTrialAction.bind(null, token)}
+          loginHref={`/register?next=${encodeURIComponent(`/p/${token}`)}`} disabled={project.paused} /> : null}
+
+        {quote && ((purchasedPro && proActive) || checkoutPending || !!offer) ? <ProPurchase state={checkoutPending ? "checkout" : purchasedPro && proActive ? "active" : "offer"}
+          productName={project.productName} targetMarket={project.targetMarket} round={purchasedPro && proActive ? project.round : quote.round} amountFen={quote.quoteFen}
+          includedRounds={roundProgress?.included ?? 1} startedRounds={roundProgress?.started} remainingRounds={roundProgress?.remaining}
           fingerprint={quote.fingerprint} paymentId={purchasePayment?.id} paidAt={purchasePayment?.completedAt}
           disabled={project.paused || !paymentsEnabled()}
-          action={(checkoutPending || proActive ? customerPayProAction : customerPurchaseProAction).bind(null, token)} /> : null}
+          action={(checkoutPending ? customerPayProAction : customerPurchaseProAction).bind(null, token)} /> : null}
 
         {canActivateProByKey(project) && isProAccessKeyConfigured() ? (
           <section id="pro-key" className="paper rise" aria-labelledby="project-pro-title">
@@ -266,6 +279,9 @@ export default async function CustomerProjectPage({ params, searchParams }: Page
         ) : null}
         {selfServicePro && proActive && ["published", "collecting"].includes(project.status) ? <section className="paper"><h2 className="paper__title"><T>开始本轮增长复盘</T></h2><p className="paper__lead"><T>核对当前访问和反馈后开始复盘，样本不足会在报告中说明。</T></p><form action={customerStartReviewAction.bind(null, token)}><Button type="submit" disabled={project.paused}><T>开始增长复盘</T></Button></form></section> : null}
         {selfServicePro && proActive && project.status === "reviewing" && view.report ? <section className="paper"><h2 className="paper__title"><T>完成本轮交付</T></h2><p className="paper__lead"><T>定位、页面、渠道方案和复盘通过核对后，即可进入交付验收。</T></p><form action={customerCompleteProjectAction.bind(null, token)}><input type="hidden" name="deliveryStamp" value={readiness.stamp} /><Button type="submit" disabled={!readiness.ready || project.paused}><T>完成交付，前往验收</T></Button></form></section> : null}
+        {purchasedPro && proActive && roundProgress && ["reviewing", "delivered"].includes(project.status) && view.report ? <ProNextRound
+          round={project.round} remaining={roundProgress.remaining} disabled={project.paused || (!readiness.ready && !(project.status === "delivered" && order?.deliveryStatus === "accepted"))}
+          action={customerNextRoundAction.bind(null, token)} /> : null}
         <details id="support" className="fold rise" open={support.length > 0 || undefined}>
           <summary>
             <span>

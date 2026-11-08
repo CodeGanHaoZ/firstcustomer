@@ -198,8 +198,8 @@ export function departmentViews(input: OfficeInput): DepartmentView[] {
       if (status === "needs_info") {
         return view("awaiting_approval", `等客户回答 ${input.unansweredQuestions} 个问题`);
       }
-      if (status === "awaiting_quote") return view("awaiting_approval", "提案已起草，等老板确认价格和条款");
-      if (status === "awaiting_quote_acceptance") return view("awaiting_approval", "等客户接受报价");
+      if (status === "awaiting_quote") return view("awaiting_approval", "等客户确认 Pro 服务并购买");
+      if (status === "awaiting_quote_acceptance") return view("awaiting_approval", "等客户确认 Pro 服务并购买");
       if (status === "awaiting_payment") return view("waiting", "等付款截图或老板确认到账");
       if (status === "awaiting_positioning") return view("awaiting_approval", gateDetail(input.gates.positioning, "定位方案已提交"));
       if (status === "awaiting_publish") return view("awaiting_approval", gateDetail(input.gates.publish, "页面通过声明检查"));

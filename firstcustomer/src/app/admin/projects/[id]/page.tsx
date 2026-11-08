@@ -11,7 +11,7 @@ import { hasModelListPrice } from "@/ai/call-model";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { ProvenanceSection } from "@/components/provenance-details";
 import { conclusionReviewAction } from "@/app/admin/actions";
-import { ProposalDetails, ReceiptUpload } from "@/components/commerce-details";
+import { ReceiptUpload } from "@/components/commerce-details";
 import { LandingEditor } from "@/components/landing-editor";
 import { ClearProjectDraft } from "@/components/project-draft";
 import {
@@ -60,7 +60,6 @@ import {
   feedbackAction,
   founderAnswersAction,
   founderDecision,
-  founderProposalAction,
   founderReceiptUploadAction,
   manualEvidenceAction,
   markTestLeadAction,
@@ -69,7 +68,6 @@ import {
   ownProductConfirm,
   paymentAction,
   pauseProjectAction,
-  quoteAction,
   regenerateLinkAction,
   replyToSupportAction,
   retryAction,
@@ -211,25 +209,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               </T></Button>
             </form>
           ) : null}
-          {project.status === "awaiting_quote" && order?.proposal ? (
-            <div className="flex flex-col gap-4">
-              <ProposalDetails proposal={order.proposal} version={order.quoteVersion} quoteFen={order.quoteFen} />
-              <Decide action={bind(founderProposalAction)} approveLabel="确认价格与条款" rejectLabel="退回重写" reasonLabel="退回原因（退回时必填）"
-                hidden={{ version: order.quoteVersion }}>
-                <label className="grid max-w-xs gap-2 text-sm font-medium" htmlFor="approved-quote"><T>报价（元）</T>
-                  <Input id="approved-quote" name="yuan" type="number" min="0.01" step="0.01" defaultValue={(order.quoteFen ?? 29900) / 100} />
-                </label>
-              </Decide>
-            </div>
-          ) : null}
-          {project.status === "awaiting_quote_acceptance" && order?.proposal ? (
-            <>
-              <p className="pill pill--wait m-0 w-fit"><T>报价已确认，等待客户接受。</T></p>
-              <ProposalDetails proposal={order.proposal} version={order.quoteVersion} quoteFen={order.quoteFen} />
-            </>
-          ) : null}
+          {(["awaiting_quote", "awaiting_quote_acceptance", "drafting_quote"].includes(project.status) || (project.status === "awaiting_payment" && order?.paymentMode !== "simulated" && !receipt)) ? <p className="notice"><T>客户可在项目页确认 Pro 服务范围与价格并购买，无需老板批价。</T></p> : null}
           {project.status === "awaiting_payment" && order?.paymentMode === "simulated" ? <p className="notice"><T>等待客户完成付款，系统自动校验并开通，无需人工核款。</T></p> : null}
-          {project.status === "awaiting_payment" && order && order.paymentMode !== "simulated" ? (
+          {project.status === "awaiting_payment" && order && order.paymentMode !== "simulated" && receipt ? (
             <>
               <ReceiptUpload action={bind(founderReceiptUploadAction)} />
               {receipt && receipt.analysisStatus !== "pending" ? (
@@ -569,7 +551,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           {order ? (
             <>
               <dl className="figures m-0">
-                <div className="figure"><dt className="order-last"><span>{order.sku}</span></dt><dd className="m-0"><b><T>{order.quoteFen ? `¥${(order.quoteFen / 100).toFixed(2)}` : "未报价"}</T></b></dd></div>
+                <div className="figure"><dt className="order-last"><span>{order.sku}</span></dt><dd className="m-0"><b><T>{order.quoteFen !== null ? `¥${(order.quoteFen / 100).toFixed(2)}` : "未报价"}</T></b></dd></div>
                 <div className="figure"><dt className="order-last"><span><T>付款状态</T></span></dt><dd className="m-0"><b className="text-[1.25rem]"><T>{order.status === "key_activated" ? "密钥已开通 Pro（无实收）" : order.status}</T></b></dd></div>
                 <div className="figure"><dt className="order-last"><span><T>交付状态</T></span></dt><dd className="m-0"><b className="text-[1.25rem]">{order.deliveryStatus}</b></dd></div>
               </dl>
@@ -588,13 +570,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               <details className="fold bg-background">
                 <summary><span className="fold__title"><T>调整订单与人工记录</T></span></summary>
                 <div className="fold__body grid gap-3">
-              {!project.requiresPayment && project.productPlan === "legacy" ? <><form action={bind(quoteAction)} className="flex items-end gap-2">
-                <input type="hidden" name="orderId" value={order.id} />
-                <LocalizedInput name="yuan" type="number" step="0.01" min="0" required placeholder="报价（元）" className="w-40" />
-                <Button type="submit" variant="outline"><T>
-                  保存报价
-                </T></Button>
-              </form>
+              {!project.requiresPayment && project.productPlan === "legacy" ? <>
               <form action={bind(paymentAction)} className="flex flex-wrap items-end gap-2">
                 <input type="hidden" name="orderId" value={order.id} />
                 <LocalizedInput name="yuan" type="number" step="0.01" min="0.01" required placeholder="实收（元）" className="w-40" />

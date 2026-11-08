@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check, RefreshCw } from "lucide-react";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { ProposalDetails } from "@/components/commerce-details";
-import { OwnerQuoteForm } from "@/components/owner-quote-form";
 import { StatusPill } from "@/components/site-chrome";
 import { T } from "@/components/ui-text";
 import { Button } from "@/components/ui/button";
@@ -14,9 +12,7 @@ import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, formatYuan } from "@/lib/format";
 import { getLocale } from "@/lib/locale-server";
 import { translateUi } from "@/lib/ui-translation";
-import { projectOrder } from "@/workflow/commerce";
 import { loadOwnerDashboard, OWNER_CATEGORIES } from "@/workflow/owner-dashboard";
-import { founderProposalAction } from "../actions";
 import "./owner.css";
 
 export const dynamic = "force-dynamic";
@@ -34,8 +30,6 @@ export default async function OwnerPage({ searchParams }: PageProps<"/admin/owne
   const filtered = data.queue.filter((item) => category === "all" || item.category === category);
   const pageCount = Math.max(1, Math.ceil(filtered.length / 12));
   const page = Math.max(1, Math.min(pageCount, Math.floor(Number(one(params.page))) || 1));
-  const selected = data.queue.find((item) => item.projectId === one(params.review) && item.category === "quote");
-  const order = selected?.projectId ? await projectOrder(getDb(), selected.projectId) : null;
   const running = data.taskCounts.find((item) => item.status === "running")?.total ?? 0;
   const failed = data.projects.filter((project) => project.status === "failed").length;
   const active = data.projects.filter((project) => !["cancelled", "delivered", "free_ready"].includes(project.status)).length;
@@ -47,7 +41,7 @@ export default async function OwnerPage({ searchParams }: PageProps<"/admin/owne
   return <main className="admin-section owner-console">
     <AutoRefresh seconds={30} />
     <header className="admin-section-heading">
-      <div><h1><T>老板经营台</T></h1><p><T>把关价格与交付，核对实收，处理全公司的待办。</T></p></div>
+      <div><h1><T>老板经营台</T></h1><p><T>查看项目与交付，核对实收，处理经营异常。</T></p></div>
       <div className="owner-header-actions">
         <Link href="/admin"><T>进入办公室</T><ArrowUpRight size={15} aria-hidden="true" /></Link>
         <Link href="/admin/owner"><RefreshCw size={14} aria-hidden="true" /><T>刷新数据</T></Link>
@@ -79,8 +73,8 @@ export default async function OwnerPage({ searchParams }: PageProps<"/admin/owne
               <h3>{item.title}</h3><p><T>{item.action}</T></p>
               {item.since ? <time className="meta" dateTime={item.since.toISOString()}>{formatDateTime(item.since)} <T>起等待处理</T></time> : null}
             </div>
-            <Link className="owner-action-link" href={item.category === "quote" ? `/admin/owner?category=quote&review=${item.projectId}#quote-review` : item.href}>
-              <T>{item.category === "quote" ? "审阅报价" : item.category === "payment" ? "核对到账" : "查看并处理"}</T><ArrowRight size={16} aria-hidden="true" />
+            <Link className="owner-action-link" href={item.href}>
+              <T>{item.category === "payment" ? "核对到账" : "查看并处理"}</T><ArrowRight size={16} aria-hidden="true" />
             </Link>
           </li>)}
         </ul> : <div className="owner-empty"><Check size={24} aria-hidden="true" /><h3><T>当前没有这类待办</T></h3><p><T>新的审批会随项目进展出现在这里。</T></p></div>}
@@ -119,13 +113,6 @@ export default async function OwnerPage({ searchParams }: PageProps<"/admin/owne
       </aside>
     </div>
 
-    {selected && order?.proposal && selected.projectId ? <section id="quote-review" className="owner-panel owner-quote-review" aria-labelledby="quote-review-title">
-      <div className="owner-section-title"><div><h2 id="quote-review-title"><T>批价</T> · {selected.title}</h2><p className="meta"><T>核对服务范围、交付清单与条款后，确认本版价格。</T></p></div>
-        <Link href={`/admin/projects/${selected.projectId}#frontdesk`}><T>查看项目资料</T><ArrowUpRight size={14} aria-hidden="true" /></Link></div>
-      <ProposalDetails proposal={order.proposal} version={order.quoteVersion} quoteFen={order.quoteFen} />
-      <OwnerQuoteForm key={`${order.id}-${order.quoteVersion}`} action={founderProposalAction.bind(null, selected.projectId)} version={order.quoteVersion} quoteFen={order.quoteFen} />
-    </section> : one(params.review) ? <p className="notice" role="status"><T>这份报价已处理、更新或暂停，请从当前待办重新打开。</T></p> : null}
-
     <section className="owner-panel" aria-labelledby="owner-projects-title">
       <div className="owner-section-title"><h2 id="owner-projects-title"><T>项目与订单</T> <span className="meta">{matchingProjects.length}</span></h2><Link href="/admin/metrics"><T>完整经营报表</T><ArrowUpRight size={14} aria-hidden="true" /></Link></div>
       <form className="owner-search" action="/admin/owner">
@@ -138,7 +125,7 @@ export default async function OwnerPage({ searchParams }: PageProps<"/admin/owne
             <p className="meta"><T>{project.testAccount ? "测试账号" : project.isOwnProduct ? "自有产品" : "外部客户"}</T> · <T>{project.productPlan === "legacy" ? "项目服务" : project.productPlan.toUpperCase()}</T> · {formatDateTime(project.updatedAt)}</p></div>
           <StatusPill status={project.status} paused={project.paused} label={project.paused ? "已暂停" : STATUS_LABELS[project.status as ProjectStatus] ?? project.status} />
           <div className="owner-project-money"><span><T>报价</T> {project.quoteFen === null ? "—" : formatYuan(project.quoteFen)}</span>
-            <span className="meta"><T>{project.paymentMode === "simulated" ? "模拟支付 · 不计实收" : project.orderStatus === "key_activated" ? "密钥开通 · 无实收" : "实收"}</T>{project.paymentMode === "simulated" || project.orderStatus === "key_activated" ? "" : ` ${formatYuan(project.receivedFen)}`}</span></div>
+            <span className="meta"><T>{project.paymentMode === "simulated" ? "模拟支付 · 不计实收" : project.orderStatus === "trial_active" ? "免费试用 · 不计实收" : project.orderStatus === "key_activated" ? "密钥开通 · 无实收" : "实收"}</T>{project.paymentMode === "simulated" || ["key_activated", "trial_active"].includes(project.orderStatus ?? "") ? "" : ` ${formatYuan(project.receivedFen)}`}</span></div>
           <Link href={`/admin/audit?project=${project.id}`} className="owner-record-link"><T>决策记录</T></Link>
         </li>)}
       </ul>

@@ -79,7 +79,7 @@ export const projects = pgTable("projects", {
   isOwnProduct: boolean("is_own_product").notNull().default(false),
   requiresPayment: boolean("requires_payment").notNull().default(false),
   productPlan: text("product_plan").$type<ProjectPlan>().notNull().default("legacy"),
-  proAccessSource: text("pro_access_source").$type<"key" | "account" | "simulation">(),
+  proAccessSource: text("pro_access_source").$type<"key" | "account" | "simulation" | "trial">(),
   paused: boolean("paused").notNull().default(false),
   status: text("status").notNull().default("submitted"),
   failedFrom: text("failed_from"),
@@ -189,6 +189,18 @@ export const purchasePayments = pgTable("purchase_payments", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt: createdAt(),
 }, (table) => [uniqueIndex("purchase_payments_order_idx").on(table.orderId)]);
+
+// Keep browser/account claims after project deletion. Guest identities are
+// random server-issued cookie hashes, never IP addresses or browser fingerprints.
+export const proTrialClaims = pgTable("pro_trial_claims", {
+  id: id(),
+  customerId: text("customer_id").references(() => authUsers.id, { onDelete: "cascade" }),
+  guestHash: text("guest_hash"),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+  snapshot: jsonb("snapshot").$type<ProQuote>().notNull(),
+  claimedAt: createdAt(),
+}, (table) => [uniqueIndex("pro_trial_customer_idx").on(table.customerId), uniqueIndex("pro_trial_guest_idx").on(table.guestHash), uniqueIndex("pro_trial_project_idx").on(table.projectId)]);
 
 export const payments = pgTable("payments", {
   id: id(),

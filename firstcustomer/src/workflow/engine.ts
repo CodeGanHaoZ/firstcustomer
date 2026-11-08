@@ -1,6 +1,6 @@
 import { activateAccountPro, customerMembership } from "./membership";
 import { randomBytes } from "node:crypto";
-import { and, asc, count, countDistinct, desc, eq, gt, inArray, max, sql } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, gt, inArray, max } from "drizzle-orm";
 import {
   GROWTH_PROMPT,
   LAUNCH_PROMPT,
@@ -15,7 +15,6 @@ import {
 import {
   growthOutput,
   launchOutput,
-  proposalOutput,
   receiptOutput,
   researchPlan,
   researchSelection,
@@ -72,14 +71,16 @@ import {
   usesQuoteFlow,
   isAccountPro,
   isPurchasedPro,
+  isProjectServicePro,
+  isTrialPro,
   isKeyActivatedPro,
   type ProjectStatus,
   type SendBackRoute,
 } from "@/domain/workflow";
 
 import { ConflictError, transition } from "./transitions";
-import { assertPurchasedProjectAccess } from "./purchases";
-import { latestReceipt, loadReceiptImage, projectOrder, quoteFeedback, saveDraftProposal } from "./commerce";
+import { assertPurchasedProjectAccess, assertTrialProjectAccess } from "./purchases";
+import { latestReceipt, loadReceiptImage, projectOrder } from "./commerce";
 import { recordClaimCheck } from "./landing-edits";
 import { needsFounder } from "./support";
 import { knowledgeForAgent } from "@/knowledge/store";
@@ -649,42 +650,18 @@ async function runResearch(deps: EngineDeps, project: Project) {
   }
   const [currentProject] = await db.select().from(projects).where(eq(projects.id, project.id));
   const effectiveProject = currentProject ?? project;
-  if (effectiveProject.productPlan === "free") {
-    await transition(db, project, "free_ready", "research", "出海机会报告已生成", { pendingRequest: null });
+  const order = usesQuoteFlow(effectiveProject) ? await projectOrder(db, project.id) : null;
+  if (effectiveProject.productPlan === "free" || (usesQuoteFlow(effectiveProject) && order?.status !== "paid")) {
+    await transition(db, project, "free_ready", "research", "出海机会报告已生成，客户可自助购买 Pro", { productPlan: "free", pendingRequest: null });
     return;
   }
-  const order = usesQuoteFlow(effectiveProject) ? await projectOrder(db, project.id) : null;
-  const next = usesQuoteFlow(effectiveProject) && order?.status !== "paid" ? "drafting_quote" : "strategizing";
-  await transition(db, project, next, "research", null, { pendingRequest: null });
+  await transition(db, project, "strategizing", "research", null, { pendingRequest: null });
   await deps.enqueue(project.id);
 }
 
 async function runQuote(deps: EngineDeps, project: Project) {
-  const order = await projectOrder(deps.db, project.id);
-  if (!order) throw new Error("项目没有订单");
-  const [diagnosis] = await deps.db.select({ output: agentTasks.output }).from(agentTasks)
-    .where(and(eq(agentTasks.projectId, project.id), eq(agentTasks.agent, "research"), eq(agentTasks.scopeVersion, project.scopeVersion),
-      eq(agentTasks.status, "succeeded"), sql`${agentTasks.output}->>'status' = 'done'`))
-    .orderBy(desc(agentTasks.finishedAt))
-    .limit(1);
-  const input = {
-    knowledge: await knowledgeForAgent(deps.db, "quote", `${project.productName} 服务范围 需求版本 验收`),
-    product: productInput(project),
-    diagnosis: diagnosis?.output ?? null,
-    service: order.sku,
-    previous_proposal: order.proposal,
-    feedback: await quoteFeedback(deps.db, project.id, order.quoteVersion),
-  };
-  const { output } = await runTask(deps, project, { agent: "quote", input }, () => runAgent({
-    agent: "quote",
-    tier: "flash",
-    thinking: false,
-    system: QUOTE_PROMPT,
-    input,
-    schema: proposalOutput,
-    model: deps.model,
-  }));
-  await saveDraftProposal(deps.db, project, output);
+  // Drain already queued legacy quote jobs without another model call or review.
+  await transition(deps.db, project, "free_ready", "system", "改用 Pro 自动定价，由客户自助确认购买", { productPlan: "free", failedFrom: null, failedReason: null });
   if (project.customerId && (await customerMembership(deps.db, project.customerId)).plan === "pro") await activateAccountPro(deps.db, project.id, project.customerId, deps.enqueue);
 }
 
@@ -1240,7 +1217,8 @@ async function runSupportInbox(deps: EngineDeps, project: Project) {
         ? (await customerMembership(deps.db, project.customerId)).plan === "pro"
           ? "账号 Pro 权益有效，直接使用模块，无需报价、付款截图或老板开通审核；不代表实际到账"
           : "账号 Pro 权益已失效，需恢复权益后继续高级任务"
-        : isPurchasedPro(project) ? order?.status === "simulation_active" ? "当前项目 Pro 已开通；定位与发布由客户确认；其他项目需单独购买" : "当前项目报价已确认，等待客户完成付款"
+        : isTrialPro(project) ? "本项目使用新用户免费试用，包含一轮完整验证，无需付款；试用后购买 Pro 可再获得三轮，试用不计入实收"
+        : isPurchasedPro(project) ? order?.status === "simulation_active" ? "当前项目 Pro 已开通；可用验证轮数以订单快照为准，客户确认开启下一轮；定位与发布由客户确认；其他项目需单独购买" : "当前项目报价已确认，等待客户完成付款"
         : isKeyActivatedPro(project) && order?.status === "key_activated" ? "密钥已开通 Pro，无需付款截图；不代表实际到账" : null,
       brand: settings?.brand ?? null,
       service: settings?.service ?? null,
@@ -1275,8 +1253,8 @@ export async function advanceProject(deps: EngineDeps, projectId: string) {
   if (await runSupportInbox(deps, project)) [project] = await load();
   if (!project || project.paused) return;
   if (isAccountPro(project) && (await customerMembership(deps.db, project.customerId)).plan !== "pro") return;
-  if (isPurchasedPro(project)) {
-    try { await assertPurchasedProjectAccess(deps.db, project); } catch { return; }
+  if (isProjectServicePro(project)) {
+    try { await assertPurchasedProjectAccess(deps.db, project); await assertTrialProjectAccess(deps.db, project); } catch { return; }
   }
   const step = STEPS[project.status as ProjectStatus];
   if (!step) return;

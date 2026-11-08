@@ -1,5 +1,5 @@
 const UUID = "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}";
-const customerPaths = new RegExp(`^(?:/account(?:/(?:pro|upgrade))?|/projects/new|/p/account\\.${UUID})$`, "i");
+const customerPaths = new RegExp(`^(?:/account(?:/(?:pro|upgrade))?|/projects/new|/p/account\\.${UUID}|/p/[A-Za-z0-9_-]{43})$`, "i");
 const ownerPaths = new RegExp(`^/admin(?:/(?:owner|audit|access|metrics|tasks|reports|payment|context|knowledge(?:/${UUID})?|projects/(?:new|${UUID}(?:/preview)?)))?$`, "i");
 
 function safeReturn(value: unknown, paths: RegExp, fallback: string) {

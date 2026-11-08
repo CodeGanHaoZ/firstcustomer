@@ -543,7 +543,7 @@ export function GrowthSection({ view }: { view: ProjectView }) {
   );
 }
 
-export function ProjectHeader({ project, eyebrow, actions }: { project: Project; eyebrow?: ReactNode; actions?: ReactNode }) {
+export function ProjectHeader({ project, eyebrow, actions, statusLabel }: { project: Project; eyebrow?: ReactNode; actions?: ReactNode; statusLabel?: string }) {
   return (
     <header className="grid gap-6">
       <div className="page-head rise">
@@ -551,7 +551,7 @@ export function ProjectHeader({ project, eyebrow, actions }: { project: Project;
           {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
           <h1 className="page-head__title">{project.productName}</h1>
           <div className="page-head__meta">
-            <StatusPill status={project.status} paused={project.paused} label={project.paused ? "已暂停" : STATUS_LABELS[project.status as ProjectStatus] ?? project.status} />
+            <StatusPill status={project.status} paused={project.paused} label={project.paused ? "已暂停" : statusLabel ?? STATUS_LABELS[project.status as ProjectStatus] ?? project.status} />
             <span className="pill pill--line"><T>{project.stage}</T></span>
             <span className="pill pill--line"><T>{project.goal}</T></span>
             {project.targetMarket ? <span className="pill pill--line">{project.targetMarket}</span> : null}

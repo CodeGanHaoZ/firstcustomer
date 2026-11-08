@@ -6,7 +6,7 @@ import { hasProAccess, isAccountPro, type ProjectStatus } from "@/domain/workflo
 import { enqueueAdvance } from "@/jobs/queue";
 import { projectOrder } from "./commerce";
 import { transition } from "./transitions";
-import { assertPurchasedProjectAccess } from "./purchases";
+import { assertPurchasedProjectAccess, assertTrialProjectAccess } from "./purchases";
 
 export async function customerMembership(db: Db, customerId: string | null | undefined) {
   const [record] = customerId ? await db.select().from(customerMemberships).where(eq(customerMemberships.customerId, customerId)).limit(1) : [];
@@ -16,6 +16,7 @@ export async function customerMembership(db: Db, customerId: string | null | und
 export async function assertAccountProjectAccess(db: Db, project: typeof projects.$inferSelect) {
   if (isAccountPro(project) && (await customerMembership(db, project.customerId)).plan !== "pro") throw new Error("Pro 账号权益已失效，请在账号工作台查看版本。");
   await assertPurchasedProjectAccess(db, project);
+  await assertTrialProjectAccess(db, project);
 }
 
 // The authenticated customer ID and membership are verified here. Neither a

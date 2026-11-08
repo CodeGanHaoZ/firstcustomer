@@ -7,8 +7,8 @@ import EmbeddedPostgres from "embedded-postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDb, type Db } from "@/db";
 import { companyReports, companySettings, decisions, events, landingPages, leads, orders, paymentReceipts, payments, projects, stateTransitions, supportMessages } from "@/db/schema";
-import { recordPayment, setFounderMinutes, setQuote } from "@/workflow/actions";
-import { confirmReceipt, decideQuote, uploadReceipt } from "@/workflow/commerce";
+import { recordPayment, setFounderMinutes } from "@/workflow/actions";
+import { confirmReceipt, uploadReceipt } from "@/workflow/commerce";
 import { loadOwnerDashboard } from "@/workflow/owner-dashboard";
 import { loadAuditLog } from "@/workflow/audit-log";
 import { operatingMetrics } from "@/workflow/operating-metrics";
@@ -50,10 +50,11 @@ describe("老板经营台与真实数据口径", () => {
     const { project: paused } = await fixture({ paused: true });
     await db.insert(supportMessages).values({ projectId: waiting.id, question: "退款", status: "escalated" });
     const dashboard = await loadOwnerDashboard(db);
-    expect(dashboard.counts).toMatchObject({ all: 4, quote: 1, risk: 1, operations: 1, company: 1, payment: 0 });
-    expect(dashboard.queue[0]).toMatchObject({ projectId: quote.id, category: "quote", overdue: true });
+    expect(dashboard.counts).toMatchObject({ all: 3, risk: 1, operations: 1, company: 1, payment: 0 });
+    expect(dashboard.queue.some((item) => item.projectId === quote.id)).toBe(false);
+    expect(dashboard.counts).not.toHaveProperty("quote");
     expect(dashboard.queue.find((item) => item.projectId === paused.id)).toMatchObject({ category: "operations" });
-    expect(dashboard.waiting).toEqual([expect.objectContaining({ projectId: waiting.id, action: "等客户上传付款截图" })]);
+    expect(dashboard.waiting).toEqual(expect.arrayContaining([expect.objectContaining({ projectId: waiting.id, action: "等客户确认 Pro 服务并购买" }), expect.objectContaining({ projectId: quote.id, action: "等客户确认 Pro 服务并购买" })]));
     expect(dashboard.projects[0]).not.toHaveProperty("tokenHash");
     expect(dashboard.projects[0]).not.toHaveProperty("contact");
   });
@@ -91,30 +92,6 @@ describe("老板经营台与真实数据口径", () => {
 });
 
 describe("批价与核款保护", () => {
-  it("暂停时拒绝批价，旧版本无效，并发批价只记录一次且保存条款快照", async () => {
-    const { project, order } = await fixture({ paused: true });
-    const approve = (version = 1) => decideQuote(db, enqueue, { projectId: project.id, actor: "founder", verdict: "approve", version, quoteFen: 39900 });
-    await expect(approve()).rejects.toThrow("暂停");
-    await db.update(projects).set({ paused: false }).where(eq(projects.id, project.id));
-    await expect(approve(2)).rejects.toThrow("已更新");
-    const results = await Promise.allSettled([approve(), approve()]);
-    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
-    const rows = await db.select().from(decisions);
-    expect(rows).toHaveLength(1);
-    expect(rows[0].snapshot).toEqual({ orderId: order.id, quoteVersion: 1, quoteFen: 39900, proposal });
-    expect((await operatingMetrics(db)).revenueFen).toBe(0);
-  });
-
-  it("退回必填原因，客户仍需单独接受老板批准的价格", async () => {
-    const { project } = await fixture();
-    await expect(decideQuote(db, enqueue, { projectId: project.id, actor: "founder", verdict: "reject", version: 1 })).rejects.toThrow("原因");
-    await expect(decideQuote(db, enqueue, { projectId: project.id, actor: "customer", verdict: "approve", version: 1 })).rejects.toThrow("已更新");
-    await decideQuote(db, enqueue, { projectId: project.id, actor: "founder", verdict: "approve", version: 1, quoteFen: 19900 });
-    expect((await loadOwnerDashboard(db)).waiting).toEqual([expect.objectContaining({ projectId: project.id, action: "等客户接受报价" })]);
-    await decideQuote(db, enqueue, { projectId: project.id, actor: "customer", verdict: "approve", version: 1 });
-    expect((await loadAuditLog(db, { actor: "customer", gate: "quote" })).items[0].snapshot).toMatchObject({ quoteFen: 19900 });
-  });
-
   it("核款绑定最新凭证和实收快照，暂停时不能付款推进", async () => {
     const { project, order } = await fixture({ status: "awaiting_payment", paused: true });
     await db.update(orders).set({ status: "accepted" }).where(eq(orders.id, order.id));
@@ -133,14 +110,13 @@ describe("批价与核款保护", () => {
     const { project } = await fixture({ requiresPayment: false });
     for (const amountFen of [0, -1, 1.5, Infinity, 2147483648]) {
       await expect(recordPayment(db, project.id, { amountFen, method: "人工核对" })).rejects.toThrow("金额");
-      await expect(setQuote(db, project.id, amountFen)).rejects.toThrow("金额");
     }
-    await setQuote(db, project.id, 39900);
+    const [order] = await db.select().from(orders).where(eq(orders.projectId, project.id));
+    await db.update(orders).set({ quoteFen: 39900 }).where(eq(orders.id, order.id));
     const results = await Promise.allSettled([1, 2].map(() => recordPayment(db, project.id, { amountFen: 39900, method: "人工核对" })));
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     expect(await db.select().from(payments)).toHaveLength(1);
     expect((await loadAuditLog(db, { gate: "payment" })).items[0].snapshot).toMatchObject({ quoteFen: 39900, amountFen: 39900 });
-    await expect(setQuote(db, project.id, 19900)).rejects.toThrow("不能直接改价");
     await expect(setFounderMinutes(db, project.id, -1)).rejects.toThrow("非负整数");
     await expect(setFounderMinutes(db, project.id, 2.5)).rejects.toThrow("非负整数");
   });

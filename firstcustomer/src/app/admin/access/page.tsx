@@ -33,7 +33,7 @@ export default async function AccessPage() {
         </li>)}
       </ul>
     </section>
-    <section className="notice"><div><h2 className="font-medium"><T>客户确认权保持独立</T></h2><p className="mt-2 text-sm leading-relaxed"><T>老板审核不代替外部客户接受报价、确认发布或验收。客户账号与项目链接不能取得内部权限。</T></p></div></section>
+    <section className="notice"><div><h2 className="font-medium"><T>客户确认权保持独立</T></h2><p className="mt-2 text-sm leading-relaxed"><T>老板审核不代替外部客户确认购买服务、确认发布或验收。客户账号与项目链接不能取得内部权限。</T></p></div></section>
     <section className="border-t pt-6"><h2 className="font-serif text-2xl"><T>供需协作账号设计</T></h2><p className="mt-3 max-w-3xl text-sm leading-relaxed"><T>需求方只管理本人委托；供给方审核通过后，只能查看受邀或已分配的项目。供给成本与对客报价分开可见。该双边模块目前处于流程与交互设计阶段，尚未开放供给账号授予。</T></p></section>
   </main>;
 }

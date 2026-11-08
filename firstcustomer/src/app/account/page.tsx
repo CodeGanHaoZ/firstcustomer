@@ -20,7 +20,8 @@ import { formatDateTime } from "@/lib/format";
 import { listTrialProjects, trialProjectTokens } from "@/lib/trial-projects";
 import { saveTrialProjectsAndReturnAction } from "./actions";
 import { customerMembership } from "@/workflow/membership";
-import { customerPurchasedProjects } from "@/workflow/purchases";
+import { customerPurchasedProjects, customerProTrial, guestProTrial } from "@/workflow/purchases";
+import { currentProTrialVisitor } from "@/lib/pro-trial-visitor";
 
 type AccountMembership = Awaited<ReturnType<typeof customerMembership>>;
 
@@ -68,7 +69,7 @@ export default async function AccountPage() {
     FREE_MEMBERSHIP,
   );
   if (membership.plan === "pro") redirect("/account/pro");
-  const [owned, trial, purchased] = await Promise.all([
+  const [owned, trial, purchased, proTrial, browserTrial] = await Promise.all([
     withAccountFallback(
       "owned projects",
       () => session ? db.select({
@@ -79,7 +80,11 @@ export default async function AccountPage() {
     ),
     withAccountFallback("trial projects", () => listTrialProjects(db, tokens), []),
     withAccountFallback("purchased projects", () => session ? customerPurchasedProjects(db, session.user.id) : Promise.resolve([]), []),
+    customerProTrial(db, session?.user.id),
+    guestProTrial(db, await currentProTrialVisitor()),
   ]);
+  const trialReadyProject = owned.find((item) => item.status === "free_ready");
+  const guestReadyProject = trial.find((item) => item.status === "free_ready");
   const visible = [...owned.map((project) => ({ ...project, token: accountProjectToken(project.id) })), ...trial]
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
@@ -95,6 +100,13 @@ export default async function AccountPage() {
         {session ? <section className="notice flex-wrap items-center justify-between">
           <div><strong><T>{purchased.length ? "Pro · 项目权益" : "Free"}</T></strong><p className="m-0"><T>{purchased.length ? "已购买的项目可使用 Pro 模块，新项目可先免费分析出海机会。" : "免费分析出海机会。升级 Pro 后可使用定位、英文页面与增长复盘模块。"}</T></p></div>
           <Link href={purchased.length ? "/account/pro" : "/account/upgrade"} className="btn btn--primary btn--sm"><T>{purchased.length ? "进入 Pro 工作台" : "了解 Pro"}</T></Link>
+        </section> : null}
+        {(!session || proTrial.eligible) && !browserTrial ? <section className="notice notice--ok flex-wrap items-center justify-between">
+          <div><strong><T>新用户可免费体验 1 轮完整验证</T></strong><p className="m-0"><T>先查看免费报告，再领取定位、英文页、渠道方案和复盘试用，无需付款。</T></p></div>
+          <Link className="btn btn--primary btn--sm" href={trialReadyProject ? `/p/${accountProjectToken(trialReadyProject.id)}#pro-trial` : guestReadyProject ? `/p/${guestReadyProject.token}#pro-trial` : "/projects/new"}><T>开始免费试用</T></Link>
+        </section> : session && proTrial.claim?.projectId && !purchased.length ? <section className="notice flex-wrap items-center justify-between">
+          <div><strong><T>已领取 1 轮完整验证试用</T></strong><p className="m-0"><T>试用绑定领取时的项目，修改和失败重试无需重新领取。</T></p></div>
+          <Link className="btn btn--primary btn--sm" href={`/p/${accountProjectToken(proTrial.claim.projectId)}`}><T>继续试用项目</T></Link>
         </section> : null}
         {!session ? (
           <details className="notice notice--fold rise" style={{ "--i": 1 } as CSSProperties}>
