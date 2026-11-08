@@ -149,3 +149,20 @@
 .lumi-guide-confirm:hover:not(:disabled) { background: var(--forest); transform: translateY(-1px); }
 .lumi-guide-confirm:disabled { background: var(--line-strong); color: var(--muted); opacity: 1; }
 .lumi-intake-page :is(a,button,summary,input):focus-visible { outline-color: var(--forest); }
+
+/* ---------- 标题区：眉行徽标 + 关键词荧光笔 ---------- */
+.lumi-guide-eyebrow { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; color: var(--faint); font-family: var(--font-sans); font-size: var(--fs-micro); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.lumi-guide-eyebrow img { width: 22px; height: 22px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--paper-2); box-shadow: 0 0 0 2.5px var(--paper), 0 0 0 3.5px var(--line); }
+.lumi-guide-title h1 em { font-style: normal; background: linear-gradient(transparent 62%, var(--sage-soft) 62%, var(--sage-soft) 94%, transparent 94%); padding-inline: 2px; }
+
+/* ---------- 侧栏顶部的动物列队（纸面工单卡） ---------- */
+.lumi-guide-parade { position: relative; display: grid; gap: 6px; padding: 16px 16px 12px; border: 1px dashed var(--line-strong); border-radius: 16px; background: var(--paper-2); animation: rise 0.72s var(--ease-out) 90ms both; }
+.lumi-guide-parade-row { position: relative; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 8px; }
+.lumi-guide-parade-row::before { content: ""; position: absolute; left: 6px; right: 6px; bottom: 6px; border-bottom: 1px dashed var(--line-strong); }
+.lumi-guide-parade-figure { position: relative; width: 36px; aspect-ratio: 3 / 4; background: url("/office/staff.webp") var(--portrait-x) var(--portrait-y) / 400% 200% no-repeat; transform: rotate(var(--rot, 0deg)) translateY(var(--lift, 0px)); transition: transform var(--dur) var(--ease); }
+.lumi-guide-parade-figure[data-person="growth"] { clip-path: inset(0 8% 0 0); }
+.lumi-guide-parade-figure:nth-child(odd) { --rot: -3deg; --lift: -3px; }
+.lumi-guide-parade-figure:nth-child(even) { --rot: 2.5deg; }
+.lumi-guide-parade-figure:hover { transform: translateY(-6px) rotate(0deg); }
+.lumi-guide-parade > p { color: var(--faint); font-size: 11px; line-height: 1.7; }
+@media (max-width: 999px) { .lumi-guide-parade { display: none; } }

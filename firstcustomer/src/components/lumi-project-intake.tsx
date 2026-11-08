@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import { ArrowUp, Check, LoaderCircle, Paperclip, RotateCcw, Square, X } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useFormStatus } from "react-dom";
 import { useLocale } from "@/components/locale-provider";
 import { translateUi } from "@/lib/ui-translation";
 import { BRAND } from "@/lib/brand";
+import { demoMember } from "@/lib/office-showcase";
 import { INTAKE_STEPS, PUBLIC_INTAKE_DRAFT_KEY, type IntakeAnswers } from "@/lib/project-intake";
 import { attachmentHelp, INTAKE_ATTACHMENT_POLICY, isAllowedAttachment, isImageAttachment, isTextAttachment, type IntakeAttachmentTier } from "@/lib/intake-attachments";
 import { IntakeAgentRail } from "@/components/intake-agent-rail";
@@ -18,6 +19,7 @@ import {
 
 const subscribe = () => () => {};
 const rabbit = "/brand/front-desk-rabbit.webp";
+const PARADE_KEYS = ["frontdesk", "research", "strategy", "finance", "launch", "growth"] as const;
 type Props = { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string; initialUrl?: string; initialBrand?: string; attachmentTier?: IntakeAttachmentTier };
 
 function ConfirmProject({ disabled }: { disabled: boolean }) {
@@ -162,7 +164,11 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
   const canRetry = error && draft.messages.at(-1)?.role === "user";
 
   return <div className="lumi-guide">
-    <header className="lumi-guide-title"><h1>{copy.title}</h1><p>{copy.subtitle}</p></header>
+    <header className="lumi-guide-title">
+      <p className="lumi-guide-eyebrow"><Image src={rabbit} alt="" width={20} height={20} />{copy.speaker}</p>
+      <h1>{locale === "en" ? <>Talk your idea through <em>with Lumi</em></> : <>和 Lumi 一起，把想法<em>聊清楚</em></>}</h1>
+      <p>{copy.subtitle}</p>
+    </header>
     <nav className="workspace-mobile-tabs" aria-label={locale === "en" ? "Workspace view" : "工作区视图"}>
       <button type="button" aria-pressed={workspaceView === "conversation"} onClick={() => setWorkspaceView("conversation")}>{locale === "en" ? "Conversation" : "对话"}</button>
       <button type="button" aria-pressed={workspaceView === "content"} onClick={() => setWorkspaceView("content")}>{locale === "en" ? "Project content" : "项目内容"}</button>
@@ -220,7 +226,7 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
               onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(draft.input); } }} />
             <div className="lumi-guide-compose-tools">
               <button type="button" onClick={() => fileInput.current?.click()} disabled={busy || creating} aria-label={copy.attach} title={attachmentHelp(attachmentTier, locale)}><Paperclip size={19} aria-hidden /></button>
-              <span>{draft.input.length ? `${draft.input.length} / ${INTAKE_MESSAGE_LIMIT}` : BRAND.agentName}</span>
+              <span>{draft.input.length ? `${draft.input.length} / ${INTAKE_MESSAGE_LIMIT}` : ""}</span>
               {busy ? <button type="button" className="lumi-guide-send" onClick={() => request.current?.abort()} aria-label={copy.stop}><Square size={15} fill="currentColor" aria-hidden /></button>
                 : <button type="submit" className="lumi-guide-send" aria-label={copy.send} disabled={!draft.input.trim() || creating || Boolean(fileError)}><ArrowUp size={20} aria-hidden /></button>}
             </div>
@@ -250,6 +256,17 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
       </section>
 
       <aside className="lumi-guide-sidebar" aria-label={locale === "en" ? "Project content" : "项目内容"}>
+        <div className="lumi-guide-parade">
+          <div className="lumi-guide-parade-row" aria-hidden="true">
+            {PARADE_KEYS.map((person) => {
+              const member = demoMember(person, locale);
+              return <span key={person} className="lumi-guide-parade-figure" data-person={person} title={member.name} style={{
+                "--portrait-x": `${member.portrait[0] * 100 / 3}%`, "--portrait-y": `${member.portrait[1] * 100}%`,
+              } as CSSProperties} />;
+            })}
+          </div>
+          <p>{locale === "en" ? "Once confirmed, these six colleagues pass your project through the office." : "确认项目后，这六位动物同事会在办公室里接力处理你的需求。"}</p>
+        </div>
         <header className="workspace-content-head"><h2>{locale === "en" ? "Project content" : "项目内容"}</h2><span>{locale === "en" ? "Updated as you talk" : "随对话整理"}</span></header>
         <div className="workspace-content-tabs" role="tablist" aria-label={locale === "en" ? "Project documents" : "项目资料"}
           onKeyDown={(event) => {
