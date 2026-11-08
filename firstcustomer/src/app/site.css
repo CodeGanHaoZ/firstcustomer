@@ -524,6 +524,11 @@ details[open] > *:not(summary) { animation: details-content-in .32s var(--ease-o
 /* ---------- Free / Pro 版本选择 ---------- */
 .site-main--upgrade { max-width: 1180px; gap: clamp(28px, 4vw, 44px); }
 .upgrade-eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--forest); }
+/* 试用横幅：标题 / 段落 / 按钮留出呼吸间距，避免贴合挤压 */
+.upgrade-trial { display: grid; justify-items: start; row-gap: 12px; padding: clamp(24px, 3vw, 36px); }
+.upgrade-trial .paper__title { font-size: 1.45rem; }
+.upgrade-trial > p { margin: 0; max-width: 72ch; line-height: 1.8; color: var(--ink-2); }
+.upgrade-trial .btn { margin-top: 6px; }
 .upgrade-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 2.2vw, 24px); align-items: stretch; }
 .upgrade-plan { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 520px; padding: clamp(24px, 3vw, 36px); border: 1px solid var(--line); border-radius: 24px; background: var(--paper-2); box-shadow: 0 18px 50px -38px rgba(56, 59, 44, .55); overflow: hidden; }
 .upgrade-plan--free { background: linear-gradient(160deg, #fffefb 0%, #f7f4eb 100%); }

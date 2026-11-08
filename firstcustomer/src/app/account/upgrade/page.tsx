@@ -52,7 +52,7 @@ export default async function UpgradePage() {
       lead={en ? "Start with a free opportunity scan and try one full Pro round without signing in. Afterwards, buy three additional rounds for ¥99." : "先用 Free 找到机会，无需登录即可体验一轮完整 Pro 验证。试用后可自愿购买 ¥99 三轮套餐，不会自动收费。"}
     />
 
-    {(!session || proTrial.eligible) && !browserTrial ? <section className="paper paper--apricot mb-6">
+    {(!session || proTrial.eligible) && !browserTrial ? <section className="paper paper--apricot upgrade-trial mb-6">
       <h2 className="paper__title">{en ? "Try one complete round free, without signing in" : "无需登录，免费体验 1 轮完整验证"}</h2>
       <p>{en ? "Create your project and read the free opportunity report, then claim a full Pro trial. One per browser, no payment required. Sign up later to save your results and continue on other devices." : "直接创建项目，免费报告完成后即可领取完整 Pro 试用，当前浏览器限领一次，无需付款。注册仅用于保存成果、跨设备继续，不会再额外赠送一轮。"}</p>
       <Link href="/projects/new" className="btn btn--primary">{en ? "Start your free trial" : "开始免费试用"}<ArrowRight size={15} aria-hidden="true" /></Link>
