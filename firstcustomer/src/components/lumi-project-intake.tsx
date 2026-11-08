@@ -20,6 +20,9 @@ import {
 const subscribe = () => () => {};
 const rabbit = "/brand/front-desk-rabbit.webp";
 const PARADE_KEYS = ["frontdesk", "research", "strategy", "finance", "launch", "growth"] as const;
+const PARADE_SPRITES: Record<(typeof PARADE_KEYS)[number], number> = {
+  frontdesk: 0, research: 1, strategy: 2, finance: 3, launch: 4, growth: 5,
+};
 type Props = { action: (data: FormData) => Promise<void>; maxTotalBytes?: number; serverError?: string; initialUrl?: string; initialBrand?: string; attachmentTier?: IntakeAttachmentTier };
 
 function ConfirmProject({ disabled }: { disabled: boolean }) {
@@ -165,7 +168,6 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
 
   return <div className="lumi-guide">
     <header className="lumi-guide-title">
-      <p className="lumi-guide-eyebrow"><Image src={rabbit} alt="" width={20} height={20} />{copy.speaker}</p>
       <h1>{locale === "en" ? <>Talk your idea through <em>with Lumi</em></> : <>和 Lumi 一起，把想法<em>聊清楚</em></>}</h1>
       <p>{copy.subtitle}</p>
     </header>
@@ -261,7 +263,7 @@ function IntakeConversation({ action, maxTotalBytes, serverError, initialUrl = "
             {PARADE_KEYS.map((person) => {
               const member = demoMember(person, locale);
               return <span key={person} className="lumi-guide-parade-figure" data-person={person} title={member.name} style={{
-                "--portrait-x": `${member.portrait[0] * 100 / 3}%`, "--portrait-y": `${member.portrait[1] * 100}%`,
+                "--portrait-x": `${PARADE_SPRITES[person] * 100 / 7}%`,
               } as CSSProperties} />;
             })}
           </div>
