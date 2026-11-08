@@ -3,29 +3,75 @@
 .brand-welcome {
   position: relative;
   isolation: isolate;
+  overflow: hidden;
   display: grid;
   justify-items: center;
   align-content: center;
   width: 100%;
   min-width: 0;
-  min-height: 19rem;
-  padding: 1rem 1rem 1.25rem;
-  border: 1px solid #e9dcc2;
+  min-height: 22rem;
+  padding: 1.1rem 1rem 1.25rem;
+  border: 1px solid rgba(69, 100, 71, .2);
   border-radius: 1.1rem;
-  background: radial-gradient(ellipse at 50% 36%, #fff8e8 10%, #f0e4cb 88%);
+  background: transparent;
+  box-shadow: 0 24px 52px -38px rgba(36, 59, 45, .72);
   cursor: pointer;
   transition: border-color 160ms ease-out;
 }
 
-.brand-welcome:hover { border-color: #ad9f7e; }
+.brand-welcome::before,
+.brand-welcome::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  border: 1px solid rgba(69, 100, 71, .15);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.brand-welcome::before { width: 72%; aspect-ratio: 1; top: 9%; left: 14%; }
+.brand-welcome::after { width: 88%; aspect-ratio: 1; top: 1%; left: 6%; border-color: rgba(206, 174, 116, .22); }
+.brand-welcome:hover { border-color: rgba(69, 100, 71, .52); }
+.brand-welcome > :is(.brand-welcome-kicker, .brand-welcome-rabbit, .brand-welcome-caption, .brand-welcome-status, .brand-welcome-cta) { position: relative; z-index: 1; }
+
+.brand-welcome-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  color: #687765;
+  font-size: .63rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  line-height: 1;
+}
+.brand-welcome-kicker i,
+.brand-welcome-status i {
+  display: block;
+  width: .42rem;
+  height: .42rem;
+  border-radius: 50%;
+  background: #6c945f;
+  box-shadow: 0 0 0 4px rgba(108, 148, 95, .12);
+}
+.brand-welcome-orbit { position: absolute; z-index: 1; border-radius: 50%; pointer-events: none; }
+.brand-welcome-orbit--one { top: 16%; right: 12%; width: .42rem; height: .42rem; background: #d0ad71; }
+.brand-welcome-orbit--two { bottom: 28%; left: 12%; width: .3rem; height: .3rem; background: #8eaa7d; }
 
 .brand-welcome-rabbit {
+  position: relative;
+  z-index: 1;
   display: block;
   width: clamp(13.75rem, 71%, 21.5rem);
   max-width: 100%;
   height: auto;
   aspect-ratio: 1;
-  border-radius: .75rem;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 14px rgba(72, 58, 36, .14));
+  animation: lumi-float 5.4s ease-in-out infinite;
+}
+
+@keyframes lumi-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .brand-welcome-caption {
@@ -43,6 +89,18 @@
   font-size: 1rem;
   font-weight: 800;
 }
+
+.brand-welcome-status {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  margin-top: .65rem;
+  color: #758071;
+  font-size: .68rem;
+  letter-spacing: .03em;
+}
+.brand-welcome-status span { display: inline-flex; align-items: center; gap: .35rem; }
+.brand-welcome-status span:last-child { color: #a19b8a; font-variant-numeric: tabular-nums; }
 
 .brand-welcome-cta {
   display: inline-flex;
@@ -248,6 +306,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .brand-welcome, .brand-welcome-shell, .lumi-chat-backdrop, .lumi-chat { transition: none; }
+  .brand-welcome-rabbit { animation: none; }
   .lumi-chat-status svg { animation: none; }
 }
 

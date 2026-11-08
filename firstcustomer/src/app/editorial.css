@@ -1155,6 +1155,7 @@ main .container,
 }
 .brand-welcome-shell[data-open] .brand-welcome-rabbit {
   backface-visibility: hidden;
+  animation: none !important;
   will-change: auto;
 }
 
