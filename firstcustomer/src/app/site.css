@@ -417,6 +417,24 @@ a.tile:hover .tile__arrow { transform: translate(3px, 0); color: var(--forest); 
 .fold__title { margin: 0; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 400; color: var(--ink); transition: color var(--dur) var(--ease); }
 .fold__hint { margin: 2px 0 0; color: var(--muted); font-size: var(--fs-meta); }
 .fold__body { padding: 0 clamp(18px, 2.4vw, 28px) clamp(18px, 2.4vw, 26px); animation: rise 0.42s var(--ease-out) both; }
+.counter-searches__title { display: inline-flex; align-items: center; gap: 9px; }
+.counter-searches__count { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding-inline: 6px; border-radius: var(--r-pill); background: var(--wait-bg); color: #8a6328; font-family: var(--font-sans); font-size: 11px; font-weight: 700; }
+.counter-searches-list { display: grid; gap: 10px; margin: 0; list-style: none; }
+.counter-search-item { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 13px 14px 13px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.counter-search-item__index { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+.counter-search-item__main { min-width: 0; }
+.counter-search-item__top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+.counter-search-item__top strong { color: var(--ink-2); font-size: 13px; font-weight: 650; line-height: 1.5; }
+.counter-search-item__source { padding: 3px 8px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--muted); font-size: 11px; line-height: 1.3; }
+.counter-search-item__main p { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.counter-search-item__result { flex: none; padding: 5px 9px; border-radius: var(--r-pill); background: var(--ok-bg); color: var(--ok); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.counter-search-item__result--empty { background: var(--paper-2); color: var(--muted); }
+.counter-search-item:hover { border-color: var(--line-strong); box-shadow: var(--shadow-1); }
+
+@media (max-width: 640px) {
+  .counter-search-item { grid-template-columns: 30px minmax(0, 1fr); align-items: start; }
+  .counter-search-item__result { grid-column: 2; justify-self: start; }
+}
 
 /* ---------- 提示条 ---------- */
 .notice {

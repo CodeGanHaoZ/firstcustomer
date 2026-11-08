@@ -355,16 +355,23 @@ export function EvidenceSection({ view, token, cacheKey }: { view: ProjectView; 
         <h3 className="eyebrow m-0"><T>反面证据</T> · {against.length}</h3>
         <EvidenceCards items={against} empty="还没有找到反面证据" />
         {counterSearches.length ? (
-          <details className="fold bg-background">
-            <summary><span className="fold__title"><T>反向检索记录</T></span></summary>
-            <ul className="fold__body m-0 list-disc pl-10 text-sm text-muted-foreground">
-              {counterSearches.map((s) => (
-                <li key={s.id}>
-                  {s.candidate}<T>：在 </T>{s.source}<T> 查“</T>{s.query}”，
-                  <T>{s.resultCount ? `找到 ${s.resultCount} 条` : "已检索，未发现"}</T>
+          <details className="fold fold--counter-searches bg-background">
+            <summary>
+              <span className="fold__title counter-searches__title"><T>反向检索记录</T><span className="counter-searches__count">{counterSearches.length}</span></span>
+              <span className="fold__hint"><T>已按时间倒序收起，避免一次看太多</T></span>
+            </summary>
+            <ol className="fold__body counter-searches-list">
+              {counterSearches.map((s, index) => (
+                <li key={s.id} className="counter-search-item">
+                  <span className="counter-search-item__index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                  <div className="counter-search-item__main">
+                    <div className="counter-search-item__top"><strong>{s.candidate}</strong><span className="counter-search-item__source">{s.source}</span></div>
+                    <p><T>查“</T>{s.query}<T>”</T></p>
+                  </div>
+                  <span className={s.resultCount ? "counter-search-item__result" : "counter-search-item__result counter-search-item__result--empty"}><T>{s.resultCount ? `找到 ${s.resultCount} 条` : "已检索，未发现"}</T></span>
                 </li>
               ))}
-            </ul>
+            </ol>
           </details>
         ) : null}
       </CardContent>
