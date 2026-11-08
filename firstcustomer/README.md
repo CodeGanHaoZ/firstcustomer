@@ -8,6 +8,14 @@ Pro 已支持按项目自动计价、付款校验后开通并执行，取消新�
 
 `/admin/access` 展示当前老板账号与 11 项服务端权限。供给方（服务商／开发者）与需求方（委托客户）的角色、委托流转和交互规格见 [双边协作设计](../docs/two-sided-workflow-design.md)；双边委托模块仍处于设计阶段。
 
+## 自动代码校验
+
+仓库根目录的 `.github/workflows/ci.yml` 在每次分支 push、PR 创建或更新时自动运行，也支持在 GitHub Actions 页面手动触发。
+
+使用 Ubuntu 和 Node.js 24，通过 `npm ci` 安装锁定依赖，分别运行 `npm run lint`、`npm run typecheck`、`npm test` 和 `npm run build`。四项校验独立执行，任何一项失败都会显示为失败；同一分支的新提交会取消尚未完成的旧校验。
+
+集成测试自行创建临时 PostgreSQL，不需要线上数据库、AI 密钥或部署凭据。运行结果和错误日志见仓库 Actions 页与 PR Checks。此工作流不部署项目，也不会同步本地代码；是否阻止合并需另行配置分支保护。
+
 ## 本机运行
 
 需要 Node.js 22.12 或以上版本及 npm。使用嵌入式 PostgreSQL 时不需要 Docker；没有 MiMo Key 时可用模拟模型体验项目工作流，输出会标注为示例。
