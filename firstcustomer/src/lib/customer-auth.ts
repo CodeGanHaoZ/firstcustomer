@@ -1,25 +1,17 @@
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getSessionCookie } from "better-auth/cookies";
-import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
+import { betterAuth } from "better-auth/minimal";
 import { nextCookies } from "better-auth/next-js";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { getDb } from "@/db";
 import { authAccounts, authRateLimits, authSessions, authUsers, authVerifications } from "@/db/customer-auth-schema";
-
-function baseURL(): BetterAuthOptions["baseURL"] {
-  if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
-  const allowedHosts = [process.env.VERCEL_PROJECT_PRODUCTION_URL, process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]
-    .filter((host): host is string => Boolean(host));
-  if (allowedHosts.length) return { allowedHosts, protocol: "https" };
-  if (process.env.DOMAIN) return `https://${process.env.DOMAIN}`;
-  return { allowedHosts: ["localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*"], protocol: "http" };
-}
+import { customerAuthBaseURL } from "./customer-auth-url";
 
 function createCustomerAuth() {
   return betterAuth({
     appName: "首客 HiFirst",
-    baseURL: baseURL(),
+    baseURL: customerAuthBaseURL(),
     secret: process.env.BETTER_AUTH_SECRET ?? process.env.SESSION_SECRET,
     database: drizzleAdapter(getDb(), {
       provider: "pg",

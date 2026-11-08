@@ -183,6 +183,7 @@ Vercel 构建使用 `npm run build:vercel`：生产部署先只读检查迁移�
 | `CRON_SECRET` | 每日站会接口的鉴权密钥 |
 | `NODE_OPTIONS` | `--experimental-require-module`，供研究任务中的网页解析依赖加载 |
 | `BETTER_AUTH_URL` | 可选，自定义域名使用的完整 HTTPS 地址 |
+| `BETTER_AUTH_ALLOWED_HOSTS` | 多域名部署时的额外本站主机名，逗号分隔；此时保留 `BETTER_AUTH_URL` 为空，自动兼容 Vercel 主域名与发布地址 |
 | `PRIVACY_CONTACT` | 可选，英文验证页隐私说明中的联系信息 |
 
 生产环境移除本机的模拟模型配置。环境变量修改后需重新部署。
