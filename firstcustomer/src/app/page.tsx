@@ -23,7 +23,8 @@ import "./office-relay.css";
 const WORDMARK = "首客 HIFIRST";
 
 /* 服务边界发言阵容：每条边界由一位办公室成员说出 */
-const BOUNDARY_CAST: DepartmentKey[] = ["research", "strategy", "launch", "growth", "frontdesk", "finance"];
+const BOUNDARY_DOS: DepartmentKey[] = ["research", "frontdesk", "growth"];
+const BOUNDARY_DONTS: DepartmentKey[] = ["strategy", "launch", "finance"];
 
 export async function generateMetadata() {
   const locale = await getLocale();
@@ -189,9 +190,15 @@ export default async function Home() {
               </p>
             </div>
             <ul className="boundaries" data-reveal>
-              {copy.boundaries.items.map((item, index) => (
-                <li key={item}>
-                  <span className="boundary-avatar" aria-hidden="true"><OfficePortrait person={BOUNDARY_CAST[index % BOUNDARY_CAST.length]} locale={locale} /></span>
+              {copy.boundaries.dos.map((item, index) => (
+                <li key={item} className="boundary-do">
+                  <span className="boundary-avatar" aria-hidden="true"><OfficePortrait person={BOUNDARY_DOS[index]} locale={locale} /></span>
+                  <p>{item}</p>
+                </li>
+              ))}
+              {copy.boundaries.donts.map((item, index) => (
+                <li key={item} className="boundary-dont">
+                  <span className="boundary-avatar" aria-hidden="true"><OfficePortrait person={BOUNDARY_DONTS[index]} locale={locale} /></span>
                   <p>{item}</p>
                 </li>
               ))}

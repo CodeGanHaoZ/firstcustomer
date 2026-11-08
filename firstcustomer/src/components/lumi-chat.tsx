@@ -17,7 +17,8 @@ const rabbit = "/brand/front-desk-rabbit.webp";
 export function LumiChat({ locale = "zh" }: { locale?: Locale }) {
   const copy = LUMI_CHAT_COPY[locale];
   const starters = locale === "en" ? LUMI_STARTERS_EN : LUMI_STARTERS;
-  const [open, setOpen] = useState(false);
+  // ?chat=1 直开弹窗（便于分享/测试/无障碍深链）
+  const [open, setOpen] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("chat"));
   const [messages, setMessages] = useState<LumiMessage[]>([]);
   const [draft, setDraft] = useState("");
   const composerInput = useRef("");

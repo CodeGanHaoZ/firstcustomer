@@ -137,11 +137,8 @@
 .brand-icon { display: block; width: 1.875rem; height: 1.875rem; flex: none; }
 ::selection { background: #d9e5c5; color: #243b2d; }
 
-/* ---------- 全站路由过场：离开页淡出 / 进入页淡入（PageTransition 组件驱动） ---------- */
-html.page-leaving body {
-  opacity: 0;
-  transition: opacity .24s ease;
-}
+/* ---------- 全站路由过场：加载层接管等待态，避免导航期间出现空白页 ---------- */
+html.page-leaving body { opacity: 1; }
 html.page-entering body {
   animation: page-fade-in .36s ease-out both;
 }
@@ -150,7 +147,6 @@ html.page-entering body {
   to   { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  html.page-leaving body { transition: none; }
   html.page-entering body { animation: none; }
 }
 
@@ -161,3 +157,53 @@ html.page-entering body {
 .language-switch button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .language-switch button:disabled { opacity: .6; cursor: wait; }
 .language-switch [data-active="true"] { color: var(--foreground); font-weight: 700; }
+
+.page-transition-overlay {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(251, 250, 248, .84);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 180ms ease, visibility 180ms ease;
+}
+.page-transition-overlay[data-visible="true"] { opacity: 1; visibility: visible; pointer-events: auto; }
+.page-transition-card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(100%, 360px);
+  padding: 28px 30px 24px;
+  border: 1px solid rgba(183, 143, 83, .34);
+  border-radius: 22px;
+  background: rgba(242, 230, 207, .92);
+  box-shadow: 0 24px 60px -30px rgba(60, 53, 38, .4);
+  color: var(--pine, #243b2d);
+  text-align: center;
+}
+.page-transition-animal {
+  display: block;
+  width: 118px;
+  height: 132px;
+  background: url("/office/map-staff.webp") var(--animal-x, 0%) 0 / 800% 200% no-repeat;
+  filter: drop-shadow(0 12px 10px rgba(72, 58, 36, .16));
+  animation: page-loading-bob 1.8s ease-in-out infinite;
+}
+.page-transition-copy { display: grid; gap: 5px; }
+.page-transition-copy strong { font-family: var(--font-serif, serif); font-size: 20px; font-weight: 500; }
+.page-transition-copy span { color: #6f766b; font-size: 12px; line-height: 1.65; }
+.page-transition-status { display: inline-flex; align-items: center; gap: 6px; color: #6b765d; font-size: 12px; font-weight: 700; }
+.page-transition-status svg { animation: page-loading-spin 1s linear infinite; }
+.page-transition-status i { width: 6px; height: 6px; border-radius: 50%; background: #b98e52; animation: page-loading-pulse 1.2s ease-in-out infinite; }
+@keyframes page-loading-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes page-loading-spin { to { transform: rotate(360deg); } }
+@keyframes page-loading-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .page-transition-overlay { transition: none; }
+  .page-transition-animal, .page-transition-status svg, .page-transition-status i { animation: none; }
+}
