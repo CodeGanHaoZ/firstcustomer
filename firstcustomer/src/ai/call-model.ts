@@ -111,9 +111,13 @@ async function callEndpoint(endpoint: Endpoint, request: ModelRequest) {
     ...(endpoint.provider === "mimo" && request.thinking === false
       ? ({ thinking: { type: "disabled" } } as Record<string, unknown>)
       : {}),
+    // Step Plan uses reasoning_effort for lightweight extraction/chat tasks.
+    ...(endpoint.provider === "stepfun" && request.thinking === false
+      ? { reasoning_effort: "low" as const }
+      : {}),
   } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
-  if (endpoint.provider === "mimo" && !tools.length && request.preferStreaming) {
-    return streamMimoCompletion(endpoint, payload, request.signal, request.onTextDelta);
+  if (["mimo", "stepfun"].includes(endpoint.provider) && !tools.length && request.preferStreaming) {
+    return streamCompletion(endpoint, payload, request.signal, request.onTextDelta);
   }
   const { data, response } = await endpoint.client.chat.completions.create(payload, { signal: request.signal }).withResponse();
   if (!Array.isArray(data?.choices)) {
@@ -122,7 +126,7 @@ async function callEndpoint(endpoint: Endpoint, request: ModelRequest) {
   return toResponse(data, endpoint.provider);
 }
 
-async function streamMimoCompletion(
+async function streamCompletion(
   endpoint: Endpoint,
   payload: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
   signal?: AbortSignal,

@@ -70,11 +70,18 @@ npm run dev
 
 默认通过服务器直连 MiMo，当前默认模型为 `mimo-v2.6-pro` 和 `mimo-v2.6-flash`。在 `.env.local` 填写 `MIMO_API_KEY`，移除 `LLM_PROVIDER=stub` 和 `ALLOW_STUB=1`，重启网站与 Worker 即可启用真实调用。
 
+StepFun Step Plan 可设置 `LLM_PROVIDER=stepfun`、`STEPFUN_API_KEY`，接口为 `https://api.stepfun.com/step_plan/v1`，使用订阅额度。默认三个任务档位均为 `step-5-preview`；对话、JSON、图片输入和工具调用通过同一适配器，简单整理使用低推理强度，并支持正文流式输出。接入说明见[官方文档](https://platform.stepfun.com/docs/zh/step-plan/integrations/reasoning-api)。
+
+本机修改 `.env.local` 后需重启 Web 与 Worker。线上切换时，在同一 Vercel 项目的 Production 环境配置这些变量，将 `STEPFUN_API_KEY` 保存为 Secret，再重新部署 main，Web 与云端任务会共同使用新配置。MiMo 专属联网插件在此模式下关闭，公开来源检索继续可用；历史付款截图的 MiMo 专属核验限制保留。Step Plan 未配置标价时显示“未计价”，不代表实际免费，也不改变现有 Pro 售价。
+
 | 变量 | 用途 |
 | --- | --- |
 | `MIMO_API_KEY` | MiMo API 密钥，网站前台与后台任务共用 |
 | `MIMO_MODEL_PRO` / `MIMO_MODEL_FLASH` | 可选，覆盖默认模型 |
 | `MIMO_BASE_URL` | 可选，覆盖 MiMo 接口地址 |
+| `LLM_PROVIDER` | 选择 `mimo`、`stepfun` 或显式启用的 `stub` |
+| `STEPFUN_API_KEY` / `STEPFUN_BASE_URL` | Step Plan 密钥及订阅接口地址，仅由服务端读取 |
+| `STEPFUN_MODEL_PRO` / `STEPFUN_MODEL_FLASH` / `STEPFUN_MODEL_VISION` | StepFun 各档位模型，默认 `step-5-preview` |
 | `MIMO_WEB_SEARCH` | 默认 `0`，设为 `1` 时启用 MiMo 联网搜索并产生对应调用费用 |
 | `MODEL_COST_SPONSORED` | 赛事赞助模型费用时设为 `1`，经营台保留标价并注明赞助 |
 | `FALLBACK_PROVIDER` / `FALLBACK_BASE_URL` / `FALLBACK_API_KEY` / `FALLBACK_MODEL` | 可选，主模型故障时使用兼容 OpenAI 接口的备用模型 |

@@ -22,7 +22,7 @@ export type ModelRequest = {
   onTextDelta?: (delta: string) => void;
   webSearch?: boolean;
   maxCompletionTokens?: number;
-  /** false 时关闭 MiMo 的思考模式：提取、整理类任务不需要推理，关掉后更快、耗时更稳定。 */
+  /** 简单提取/对话设为 false：MiMo 关闭思考，StepFun 使用 low 推理强度。 */
   thinking?: boolean;
   mimoOnly?: boolean;
   signal?: AbortSignal;
